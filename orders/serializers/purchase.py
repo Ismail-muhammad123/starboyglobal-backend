@@ -1,49 +1,78 @@
 from rest_framework import serializers
 from orders.models import Purchase
 
-from orders.serializers.variations import (
-    AirtimeNetworkSerializer, DataVariationSerializer, ElectricityServiceSerializer,
-    ElectricityVariationSerializer, TVVariationSerializer, InternetVariationSerializer,
-    EducationVariationSerializer
-)
 
 class PurchaseSerializer(serializers.ModelSerializer):
-    airtime_service = AirtimeNetworkSerializer(read_only=True)
-    data_variation = DataVariationSerializer(read_only=True)
-    electricity_service = ElectricityServiceSerializer(read_only=True)
-    electricity_variation = ElectricityVariationSerializer(read_only=True)
-    tv_variation = TVVariationSerializer(read_only=True)
-    internet_variation = InternetVariationSerializer(read_only=True)
-    education_variation = EducationVariationSerializer(read_only=True)
-    
     service_details = serializers.SerializerMethodField()
 
     class Meta:
         model = Purchase
         fields = [
-            "id", "purchase_type", "reference", "amount", "beneficiary", 
+            "id", "purchase_type", "reference", "amount", "beneficiary",
             "status", "initiator", "time", "remarks",
-            "airtime_service", "data_variation", "electricity_service", 
-            "electricity_variation", "tv_variation", "internet_variation", 
-            "education_variation", "token", "metadata", "service_details"
+            "token", "metadata", "service_details"
         ]
 
     def get_service_details(self, obj):
+        request = self.context.get('request')
+
+        def abs_url(image_field):
+            if not image_field:
+                return None
+            if request:
+                return request.build_absolute_uri(image_field.url)
+            return image_field.url
+
         if obj.purchase_type == 'airtime' and obj.airtime_service:
-            return AirtimeNetworkSerializer(obj.airtime_service, context=self.context).data
+            svc = obj.airtime_service
+            return {
+                "service_name": svc.service_name,
+                "plan_name": None,
+                "image": abs_url(svc.image),
+            }
         elif obj.purchase_type == 'data' and obj.data_variation:
-            return DataVariationSerializer(obj.data_variation, context=self.context).data
+            var = obj.data_variation
+            return {
+                "service_name": var.service.service_name if var.service else None,
+                "plan_name": var.name,
+                "image": abs_url(var.service.image) if var.service else None,
+            }
         elif obj.purchase_type == 'electricity':
-            if obj.electricity_variation:
-                return ElectricityVariationSerializer(obj.electricity_variation, context=self.context).data
+            if obj.electricity_variation and obj.electricity_variation.service:
+                svc = obj.electricity_variation.service
+                return {
+                    "service_name": svc.service_name,
+                    "plan_name": obj.electricity_variation.name,
+                    "image": abs_url(svc.image),
+                }
             elif obj.electricity_service:
-                return ElectricityServiceSerializer(obj.electricity_service, context=self.context).data
+                svc = obj.electricity_service
+                return {
+                    "service_name": svc.service_name,
+                    "plan_name": None,
+                    "image": abs_url(svc.image),
+                }
         elif obj.purchase_type == 'tv' and obj.tv_variation:
-            return TVVariationSerializer(obj.tv_variation, context=self.context).data
+            var = obj.tv_variation
+            return {
+                "service_name": var.service.service_name if var.service else None,
+                "plan_name": var.name,
+                "image": abs_url(var.service.image) if var.service else None,
+            }
         elif obj.purchase_type == 'internet' and obj.internet_variation:
-            return InternetVariationSerializer(obj.internet_variation, context=self.context).data
+            var = obj.internet_variation
+            return {
+                "service_name": var.service.service_name if var.service else None,
+                "plan_name": var.name,
+                "image": abs_url(var.service.image) if var.service else None,
+            }
         elif obj.purchase_type == 'education' and obj.education_variation:
-            return EducationVariationSerializer(obj.education_variation, context=self.context).data
+            var = obj.education_variation
+            return {
+                "service_name": var.service.service_name if var.service else None,
+                "plan_name": var.name,
+                "image": abs_url(var.service.image) if var.service else None,
+            }
         return None
 
 class BasePurchaseRequestSerializer(serializers.Serializer):
