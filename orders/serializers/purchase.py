@@ -9,7 +9,7 @@ class PurchaseSerializer(serializers.ModelSerializer):
             "status", "initiator", "time", "remarks",
             "airtime_service", "data_variation", "electricity_service", 
             "electricity_variation", "tv_variation", "internet_variation", 
-            "education_variation"
+            "education_variation", "token", "metadata"
         ]
 
 class BasePurchaseRequestSerializer(serializers.Serializer):

@@ -60,6 +60,15 @@ class WalletTransaction(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="success")
     initiated_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name="initiated_transactions")
     reference = models.CharField(max_length=100, unique=True)
+    
+    sender_account_name = models.CharField(max_length=200, blank=True, null=True)
+    sender_account_number = models.CharField(max_length=20, blank=True, null=True)
+    sender_bank_name = models.CharField(max_length=100, blank=True, null=True)
+    
+    receiver_account_name = models.CharField(max_length=200, blank=True, null=True)
+    receiver_account_number = models.CharField(max_length=20, blank=True, null=True)
+    receiver_bank_name = models.CharField(max_length=100, blank=True, null=True)
+
     timestamp = models.DateTimeField(default=timezone.now)
 
     def __str__(self):

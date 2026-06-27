@@ -38,7 +38,7 @@ class SignupSerializer(serializers.ModelSerializer):
     def validate_referral_code(self, value):
         if value:
             if not User.objects.filter(referral_code=value).exists():
-                raise serializers.ValidationError("Invalid referral code.")
+                return ""
         return value
 
     def validate_email(self, value):

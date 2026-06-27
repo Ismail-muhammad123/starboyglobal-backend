@@ -263,6 +263,7 @@ class Purchase(models.Model):
     provider_response = models.JSONField(default=dict, blank=True, null=True)
     provider = models.ForeignKey('VTUProviderConfig', on_delete=models.SET_NULL, null=True, blank=True, related_name='purchases')
     token = models.CharField(max_length=255, blank=True, null=True)
+    metadata = models.JSONField(default=dict, blank=True, null=True)
     retry_count = models.PositiveIntegerField(default=0)
     last_error = models.TextField(blank=True, null=True)
     

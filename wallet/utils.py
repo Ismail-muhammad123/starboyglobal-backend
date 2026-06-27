@@ -12,7 +12,9 @@ def to_decimal(value):
         return value
     return Decimal(str(value))
 
-def fund_wallet(user_id, amount, description="Wallet funded", reference=None, initiator='self', initiated_by=None):
+def fund_wallet(user_id, amount, description="Wallet funded", reference=None, initiator='self', initiated_by=None,
+                sender_account_name=None, sender_account_number=None, sender_bank_name=None,
+                receiver_account_name=None, receiver_account_number=None, receiver_bank_name=None):
     if amount <= 0:
         raise ValueError("Amount must be positive")
     with transaction.atomic():
@@ -37,6 +39,12 @@ def fund_wallet(user_id, amount, description="Wallet funded", reference=None, in
             initiator=initiator,
             initiated_by=initiated_by,
             reference=uuid.uuid4().hex[:10].upper(),
+            sender_account_name=sender_account_name,
+            sender_account_number=sender_account_number,
+            sender_bank_name=sender_bank_name,
+            receiver_account_name=receiver_account_name,
+            receiver_account_number=receiver_account_number,
+            receiver_bank_name=receiver_bank_name,
         )
         NotificationService.send_from_template(
             wallet.user, 
@@ -45,7 +53,9 @@ def fund_wallet(user_id, amount, description="Wallet funded", reference=None, in
         )
     return wallet.balance
 
-def debit_wallet(user_id, amount, description="Wallet debited", initiator='self', initiated_by=None):
+def debit_wallet(user_id, amount, description="Wallet debited", initiator='self', initiated_by=None,
+                 sender_account_name=None, sender_account_number=None, sender_bank_name=None,
+                 receiver_account_name=None, receiver_account_number=None, receiver_bank_name=None):
     if amount <= 0:
         raise ValueError("Amount must be positive")
     with transaction.atomic():
@@ -66,6 +76,12 @@ def debit_wallet(user_id, amount, description="Wallet debited", initiator='self'
             initiated_by=initiated_by,
             user=wallet.user,
             reference=uuid.uuid4().hex[:10].upper(),
+            sender_account_name=sender_account_name,
+            sender_account_number=sender_account_number,
+            sender_bank_name=sender_bank_name,
+            receiver_account_name=receiver_account_name,
+            receiver_account_number=receiver_account_number,
+            receiver_bank_name=receiver_bank_name,
         )
         NotificationService.send_from_template(
             wallet.user, 

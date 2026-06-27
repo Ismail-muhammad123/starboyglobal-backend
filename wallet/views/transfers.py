@@ -27,17 +27,45 @@ class InitiateBankTransferView(APIView):
         if config and not config.withdrawals_enabled:
             return Response({"error": "Withdrawals are currently disabled"}, status=403)
 
+        # Get sender virtual account details
+        sender_account_name = None
+        sender_account_number = None
+        sender_bank_name = None
+        try:
+            va = user.virtual_account
+            sender_account_name = va.account_name
+            sender_account_number = va.account_number
+            sender_bank_name = va.bank_name
+        except Exception:
+            pass
+
+        # Receiver bank details (the withdrawal target bank account)
+        receiver_account_name = serializer.validated_data['account_name']
+        receiver_account_number = serializer.validated_data['account_number']
+        receiver_bank_name = serializer.validated_data['bank_name']
+
         ref = f"WTH-{uuid.uuid4().hex[:12].upper()}"
         try:
             with db_transaction.atomic():
-                debit_wallet(user.id, amount, description=f"Withdrawal to {serializer.validated_data['bank_name']}", initiator="self")
+                debit_wallet(
+                    user.id,
+                    amount,
+                    description=f"Withdrawal to {receiver_bank_name}",
+                    initiator="self",
+                    sender_account_name=sender_account_name,
+                    sender_account_number=sender_account_number,
+                    sender_bank_name=sender_bank_name,
+                    receiver_account_name=receiver_account_name,
+                    receiver_account_number=receiver_account_number,
+                    receiver_bank_name=receiver_bank_name,
+                )
                 withdrawal = Withdrawal.objects.create(
                     user=user,
                     amount=amount,
-                    bank_name=serializer.validated_data['bank_name'],
+                    bank_name=receiver_bank_name,
                     bank_code=serializer.validated_data['bank_code'],
-                    account_number=serializer.validated_data['account_number'],
-                    account_name=serializer.validated_data['account_name'],
+                    account_number=receiver_account_number,
+                    account_name=receiver_account_name,
                     reference=ref,
                     status="PENDING",
                 )
@@ -68,6 +96,12 @@ class InitiateBankTransferView(APIView):
                         withdrawal.amount,
                         description=f"Refund: Withdrawal failed ({withdrawal.reference})",
                         initiator='system',
+                        sender_account_name=receiver_account_name,
+                        sender_account_number=receiver_account_number,
+                        sender_bank_name=receiver_bank_name,
+                        receiver_account_name=sender_account_name,
+                        receiver_account_number=sender_account_number,
+                        receiver_bank_name=sender_bank_name,
                     )
                     return Response(
                         {"message": "Withdrawal failed and amount refunded", "reference": ref},
@@ -99,9 +133,55 @@ class WalletTransferView(APIView):
         try: recipient = User.objects.get(phone_number__icontains=search_phone)
         except User.DoesNotExist: return Response({"error": "Recipient not found"}, status=404)
         if sender == recipient: return Response({"error": "Cannot transfer to yourself"}, status=400)
+        # Get sender virtual account details
+        sender_account_name = None
+        sender_account_number = None
+        sender_bank_name = None
+        try:
+            va_sender = sender.virtual_account
+            sender_account_name = va_sender.account_name
+            sender_account_number = va_sender.account_number
+            sender_bank_name = va_sender.bank_name
+        except Exception:
+            pass
+
+        # Get recipient virtual account details
+        receiver_account_name = None
+        receiver_account_number = None
+        receiver_bank_name = None
+        try:
+            va_recipient = recipient.virtual_account
+            receiver_account_name = va_recipient.account_name
+            receiver_account_number = va_recipient.account_number
+            receiver_bank_name = va_recipient.bank_name
+        except Exception:
+            pass
+
         with db_transaction.atomic():
-            debit_wallet(sender.id, amount, description=f"Transfer to {recipient.phone_number}", initiator='self')
-            fund_wallet(recipient.id, amount, description=f"Transfer from {sender.phone_number}", initiator='self')
+            debit_wallet(
+                sender.id,
+                amount,
+                description=f"Transfer to {recipient.phone_number}",
+                initiator='self',
+                sender_account_name=sender_account_name,
+                sender_account_number=sender_account_number,
+                sender_bank_name=sender_bank_name,
+                receiver_account_name=receiver_account_name,
+                receiver_account_number=receiver_account_number,
+                receiver_bank_name=receiver_bank_name,
+            )
+            fund_wallet(
+                recipient.id,
+                amount,
+                description=f"Transfer from {sender.phone_number}",
+                initiator='self',
+                sender_account_name=sender_account_name,
+                sender_account_number=sender_account_number,
+                sender_bank_name=sender_bank_name,
+                receiver_account_name=receiver_account_name,
+                receiver_account_number=receiver_account_number,
+                receiver_bank_name=receiver_bank_name,
+            )
         NotificationService.send_from_template(
             sender, 
             "wallet-transfer-sent", 

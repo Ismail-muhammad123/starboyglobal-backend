@@ -344,8 +344,46 @@ def _build_finalize_purchase(purchase_type, status, res, user, final_amount, ben
         if 'tv_variation' in kwargs: purchase.tv_variation = kwargs['tv_variation']
         if 'internet_variation' in kwargs: purchase.internet_variation = kwargs['internet_variation']
         if 'education_variation' in kwargs: purchase.education_variation = kwargs['education_variation']
-        if res.get('token'): purchase.purchased_token = res['token']
+        # Extract token and other metadata
+        token_val = None
+        metadata = {}
+
+        if isinstance(res, dict):
+            # Check direct keys
+            token_val = res.get('token') or res.get('purchased_code') or res.get('pin')
+            
+            # Populate metadata dictionary
+            for key in ['token', 'tokens', 'pin', 'pins', 'serial', 'serial_number', 'units', 'receipt_no', 'meter_name', 'customer_name', 'purchased_code']:
+                if key in res and res[key] is not None:
+                    metadata[key] = res[key]
+            
+            # Inspect raw_response for further details
+            raw = res.get('raw_response')
+            if isinstance(raw, dict):
+                if not token_val:
+                    token_val = raw.get('token') or raw.get('purchased_code') or raw.get('pin') or raw.get('pin_code')
+                for k, v in raw.items():
+                    kl = k.lower()
+                    if any(x in kl for x in ['token', 'pin', 'serial', 'units', 'receipt', 'code', 'meter', 'customer']):
+                        if v is not None:
+                            metadata[k] = v
+                # Check nested content/details
+                for nested_key in ['content', 'details', 'data']:
+                    nested = raw.get(nested_key)
+                    if isinstance(nested, dict):
+                        if not token_val:
+                            token_val = nested.get('token') or nested.get('purchased_code') or nested.get('pin') or nested.get('pin_code')
+                        for k, v in nested.items():
+                            kl = k.lower()
+                            if any(x in kl for x in ['token', 'pin', 'serial', 'units', 'receipt', 'code', 'meter', 'customer']):
+                                if v is not None:
+                                    metadata[k] = v
+
+        if token_val:
+            purchase.token = token_val
+            metadata['token'] = token_val
         
+        purchase.metadata = metadata
         purchase.save()
 
         # Handle Promo Usage
