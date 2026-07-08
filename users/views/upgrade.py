@@ -160,6 +160,25 @@ class RoleUpgradeView(APIView):
                     fee_charged=fee,
                 )
 
+                if to_role == 'developer':
+                    from developer_api.models import DeveloperProfile, APIKey
+                    import secrets
+                    profile, _ = DeveloperProfile.objects.get_or_create(user=user)
+                    if not APIKey.objects.filter(profile=profile, mode='live').exists():
+                        APIKey.objects.create(
+                            profile=profile,
+                            key=APIKey.generate_key(mode='live'),
+                            mode='live',
+                            is_active=True
+                        )
+                    if not APIKey.objects.filter(profile=profile, mode='sandbox').exists():
+                        APIKey.objects.create(
+                            profile=profile,
+                            key=APIKey.generate_key(mode='sandbox'),
+                            mode='sandbox',
+                            is_active=True
+                        )
+
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

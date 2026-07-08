@@ -46,34 +46,97 @@ class DeveloperPurchaseView(generics.CreateAPIView):
         vtu_kwargs = {'reference': ref, 'initiator': 'api', 'initiated_by': user}
         
         try:
+            from orders.serializers.variations import resolve_price
+            
             if purchase_type == 'airtime':
                 network_id = data.get('network_id')
                 network = get_object_or_404(AirtimeNetwork, id=network_id)
-                # Apply role-based discount for airtime
-                discount_val = network.agent_discount if user.role == 'agent' else network.discount
-                actual_amount = float(amount) - (float(amount) * float(discount_val) / 100)
+                # Apply developer-specific price (as discount percentage) or fall back to standard discount
+                discount_val = network.developer_price if (hasattr(network, 'developer_price') and network.developer_price > 0) else network.discount
+                face_value = float(amount)
+                actual_amount = face_value - (face_value * float(discount_val) / 100)
                 amount = actual_amount
-                vtu_kwargs.update({'airtime_service': network, 'network': network.service_id, 'action': 'buy_airtime', 'service_name': f"{network.service_name} Airtime"})
+                vtu_kwargs.update({
+                    'airtime_service': network,
+                    'network': network.service_id,
+                    'provider_amount': face_value,
+                    'action': 'buy_airtime',
+                    'service_name': f"{network.service_name} Airtime"
+                })
             
             elif purchase_type == 'data':
                 plan_id = data.get('plan_id')
                 plan = get_object_or_404(DataVariation, id=plan_id)
-                amount = plan.agent_price if user.role == 'agent' else plan.selling_price
-                vtu_kwargs.update({'data_variation': plan, 'network': plan.service.service_id, 'plan_id': plan.variation_id, 'action': 'buy_data', 'service_name': f"{plan.name} Data"})
+                amount = resolve_price(plan, 'developer', 'data')
+                vtu_kwargs.update({
+                    'data_variation': plan,
+                    'network': plan.service.service_id,
+                    'plan_id': plan.variation_id,
+                    'provider_amount': amount,
+                    'action': 'buy_data',
+                    'service_name': f"{plan.name} Data"
+                })
             
             elif purchase_type == 'tv':
                 variation_id = data.get('variation_id')
                 variation = get_object_or_404(TVVariation, id=variation_id)
-                amount = variation.agent_price if user.role == 'agent' else variation.selling_price
-                vtu_kwargs.update({'tv_variation': variation, 'tv_id': variation.service.service_id, 'package_id': variation.variation_id, 'smart_card_number': beneficiary, 'action': 'buy_tv', 'service_name': f"{variation.name} TV"})
+                amount = resolve_price(variation, 'developer', 'tv')
+                vtu_kwargs.update({
+                    'tv_variation': variation,
+                    'tv_id': variation.service.service_id,
+                    'package_id': variation.variation_id,
+                    'smart_card_number': beneficiary,
+                    'provider_amount': amount,
+                    'action': 'buy_tv',
+                    'service_name': f"{variation.name} TV"
+                })
             
             elif purchase_type == 'electricity':
                 variation_id = data.get('variation_id')
                 variation = get_object_or_404(ElectricityVariation, id=variation_id)
-                discount_val = variation.agent_discount if user.role == 'agent' else variation.discount
-                actual_amount = float(amount) - (float(amount) * float(discount_val) / 100)
+                discount_val = variation.developer_price if (hasattr(variation, 'developer_price') and variation.developer_price > 0) else variation.discount
+                face_value = float(amount)
+                actual_amount = face_value - (face_value * float(discount_val) / 100)
                 amount = actual_amount
-                vtu_kwargs.update({'electricity_variation': variation, 'disco_id': variation.service.service_id, 'plan_id': variation.variation_id, 'meter_number': beneficiary, 'action': 'buy_electricity', 'service_name': f"{variation.name} Electricity"})
+                vtu_kwargs.update({
+                    'electricity_variation': variation,
+                    'disco_id': variation.service.service_id,
+                    'plan_id': variation.variation_id,
+                    'meter_number': beneficiary,
+                    'provider_amount': face_value,
+                    'action': 'buy_electricity',
+                    'service_name': f"{variation.name} Electricity"
+                })
+
+            elif purchase_type == 'internet':
+                variation_id = data.get('variation_id')
+                variation = get_object_or_404(InternetVariation, id=variation_id)
+                amount = resolve_price(variation, 'developer', 'internet')
+                vtu_kwargs.update({
+                    'internet_variation': variation,
+                    'plan_id': variation.variation_id,
+                    'provider_amount': amount,
+                    'action': 'buy_internet',
+                    'service_name': f"{variation.name} Internet"
+                })
+
+            elif purchase_type == 'education':
+                variation_id = data.get('variation_id')
+                variation = get_object_or_404(EducationVariation, id=variation_id)
+                quantity = int(data.get('quantity', 1))
+                amount = resolve_price(variation, 'developer', 'education') * quantity
+                vtu_kwargs.update({
+                    'education_variation': variation,
+                    'exam_type': variation.service.service_id,
+                    'variation_id': variation.variation_id,
+                    'quantity': quantity,
+                    'provider_amount': amount,
+                    'action': 'buy_education',
+                    'service_name': f"{variation.name} Education"
+                })
+
+            else:
+                return Response({"error": f"Unsupported service type: {purchase_type}"}, status=400)
             
             # Execute purchase
             result = process_vtu_purchase(user, purchase_type, amount, beneficiary, **vtu_kwargs)

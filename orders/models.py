@@ -64,6 +64,7 @@ class AirtimeNetwork(models.Model):
     cost_price = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     selling_price = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     agent_price = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    developer_price = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     image = models.ImageField(upload_to='networks/', blank=True, null=True)
     is_active = models.BooleanField(default=True)
 
@@ -96,6 +97,7 @@ class ElectricityVariation(models.Model):
     cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Amount the provider charges the platform")
     selling_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     agent_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    developer_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     plan_type = models.CharField(max_length=20, choices=PLAN_TYPES, default='general')
 
     is_active = models.BooleanField(default=True)
@@ -130,6 +132,7 @@ class TVVariation(models.Model):
     cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Amount the provider charges the platform")
     selling_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     agent_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    developer_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     plan_type = models.CharField(max_length=20, choices=PLAN_TYPES, default='general')
     package_bouquet = models.CharField(max_length=255, null=True, blank=True)
 
@@ -162,6 +165,7 @@ class InternetVariation(models.Model):
     cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     selling_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     agent_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    developer_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     plan_type = models.CharField(max_length=20, choices=PLAN_TYPES, default='general')
 
     is_active = models.BooleanField(default=True)
@@ -182,6 +186,7 @@ class DataVariation(models.Model):
     cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)   
     selling_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     agent_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    developer_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     plan_type = models.CharField(max_length=20, choices=PLAN_TYPES, default='general')
 
     is_active = models.BooleanField(default=True)
@@ -213,6 +218,7 @@ class EducationVariation(models.Model):
     cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     selling_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     agent_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    developer_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     plan_type = models.CharField(max_length=20, choices=PLAN_TYPES, default='general')
     is_active = models.BooleanField(default=True)
 
@@ -378,6 +384,7 @@ class ServiceRouting(models.Model):
     )
     customer_margin = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Fixed amount/percentage to add to cost for users")
     agent_margin = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Fixed amount/percentage to add to cost for agents")
+    developer_margin = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text="Fixed amount/percentage to add to cost for developers")
 
     # Fallback chain (ordered list of provider IDs or names)
     # We can use a many-to-many relationship with an through model to maintain order

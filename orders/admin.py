@@ -182,6 +182,8 @@ class DataVariationAdmin(admin.ModelAdmin):
         "name",
         "service",
         "selling_price",
+        "agent_price",
+        "developer_price",
         "is_active",
         "sales_count",
         "updated_at",
@@ -230,7 +232,7 @@ class ElectricityServiceAdmin(admin.ModelAdmin, ProviderSyncMixin):
 
 @admin.register(ElectricityVariation)
 class ElectricityVariationAdmin(admin.ModelAdmin):
-    list_display = ["name", "service", "variation_id", "is_active", "sales_count"]
+    list_display = ["name", "service", "variation_id", "selling_price", "agent_price", "developer_price", "is_active", "sales_count"]
     list_filter = ["service", "is_active"]
     list_per_page = 50
 
@@ -271,6 +273,8 @@ class TVVariationAdmin(admin.ModelAdmin):
         "service",
         "variation_id",
         "selling_price",
+        "agent_price",
+        "developer_price",
         "is_active",
         "sales_count",
         "created_at",
@@ -309,6 +313,8 @@ class InternetVariationAdmin(admin.ModelAdmin):
         "service",
         "variation_id",
         "selling_price",
+        "agent_price",
+        "developer_price",
         "is_active",
         "sales_count",
         "created_at",
@@ -582,6 +588,9 @@ class AirtimeNetworkAdmin(admin.ModelAdmin, ProviderSyncMixin):
         "service_name", 
         "service_id", 
         "provider",
+        "selling_price",
+        "agent_price",
+        "developer_price",
         "is_active",
         "sales_count",
     ]
@@ -631,6 +640,7 @@ class EducationVariationAdmin(admin.ModelAdmin):
         "variation_id", 
         "selling_price", 
         "agent_price",
+        "developer_price",
         "is_active",
         "sales_count"
     ]
@@ -676,7 +686,7 @@ class VTUProviderConfigAdmin(admin.ModelAdmin):
 
 @admin.register(ServiceRouting)
 class ServiceRoutingAdmin(admin.ModelAdmin):
-    list_display = ('service', 'primary_provider_name')
+    list_display = ('service', 'primary_provider_name', 'pricing_mode', 'customer_margin', 'agent_margin', 'developer_margin')
     inlines = [ServiceFallbackInline]
     
     def primary_provider_name(self, obj):

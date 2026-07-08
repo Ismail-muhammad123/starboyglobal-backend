@@ -6,8 +6,15 @@ from orders.models import (
     EducationService, EducationVariation, TVVariation,
     InternetVariation, ElectricityVariation
 )
+from orders.serializers.variations import resolve_price
 from ..authentication import APIKeyAuthentication
 from ..permissions import IsDeveloperUser
+
+def get_resolved_prices(obj, service_name):
+    return {
+        "normal_price": resolve_price(obj, 'customer', service_name),
+        "api_seller_price": resolve_price(obj, 'developer', service_name),
+    }
 
 class DeveloperServiceListView(generics.GenericAPIView):
     authentication_classes = [APIKeyAuthentication]
@@ -37,7 +44,11 @@ class DeveloperAirtimeNetworkListView(generics.ListAPIView):
             "service_id": n.service_id,
             "name": n.service_name,
             "min_amount": n.min_amount,
-            "max_amount": n.max_amount
+            "max_amount": n.max_amount,
+            "normal_discount": float(n.discount),
+            "api_seller_discount": float(n.agent_discount),
+            "normal_price": resolve_price(n, 'customer', 'airtime'),
+            "api_seller_price": resolve_price(n, 'developer', 'airtime'),
         } for n in networks]
         return Response(data)
 
@@ -60,16 +71,19 @@ class DeveloperDataPlanListView(generics.ListAPIView):
 
     def get(self, request, network_id):
         plans = DataVariation.objects.filter(service_id=network_id, is_active=True).order_by('id')
-        data = [{
-            "id": p.id,
-            "variation_id": p.variation_id,
-            "name": p.name,
-            "price": float(p.selling_price),
-            "plan_type": p.plan_type
-        } for p in plans]
+        data = []
+        for p in plans:
+            prices = get_resolved_prices(p, 'data')
+            data.append({
+                "id": p.id,
+                "variation_id": p.variation_id,
+                "name": p.name,
+                "normal_price": prices["normal_price"],
+                "api_seller_price": prices["api_seller_price"],
+                "plan_type": p.plan_type
+            })
         return Response(data)
 
-# Electricity, TV, Internet, Education following same pattern
 class DeveloperTVServiceListView(generics.ListAPIView):
     authentication_classes = [APIKeyAuthentication]
     permission_classes = [IsDeveloperUser]
@@ -85,10 +99,97 @@ class DeveloperTVPackageListView(generics.ListAPIView):
 
     def get(self, request, service_id):
         variations = TVVariation.objects.filter(service_id=service_id, is_active=True).order_by('id')
-        data = [{
-            "id": v.id,
-            "variation_id": v.variation_id,
-            "name": v.name,
-            "price": float(v.selling_price)
-        } for v in variations]
+        data = []
+        for v in variations:
+            prices = get_resolved_prices(v, 'tv')
+            data.append({
+                "id": v.id,
+                "variation_id": v.variation_id,
+                "name": v.name,
+                "normal_price": prices["normal_price"],
+                "api_seller_price": prices["api_seller_price"]
+            })
+        return Response(data)
+
+class DeveloperElectricityServiceListView(generics.ListAPIView):
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = [IsDeveloperUser]
+
+    def list(self, request):
+        services = ElectricityService.objects.filter(is_active=True).order_by('id')
+        data = [{"id": s.id, "service_id": s.service_id, "name": s.service_name} for s in services]
+        return Response(data)
+
+class DeveloperElectricityVariationListView(generics.ListAPIView):
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = [IsDeveloperUser]
+
+    def get(self, request, service_id):
+        variations = ElectricityVariation.objects.filter(service_id=service_id, is_active=True).order_by('id')
+        data = []
+        for v in variations:
+            prices = get_resolved_prices(v, 'electricity')
+            data.append({
+                "id": v.id,
+                "variation_id": v.variation_id,
+                "name": v.name,
+                "min_amount": v.min_amount,
+                "max_amount": v.max_amount,
+                "normal_price": prices["normal_price"],
+                "api_seller_price": prices["api_seller_price"]
+            })
+        return Response(data)
+
+class DeveloperInternetServiceListView(generics.ListAPIView):
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = [IsDeveloperUser]
+
+    def list(self, request):
+        services = InternetService.objects.filter(is_active=True).order_by('id')
+        data = [{"id": s.id, "service_id": s.service_id, "name": s.service_name} for s in services]
+        return Response(data)
+
+class DeveloperInternetPlanListView(generics.ListAPIView):
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = [IsDeveloperUser]
+
+    def get(self, request, service_id):
+        variations = InternetVariation.objects.filter(service_id=service_id, is_active=True).order_by('id')
+        data = []
+        for v in variations:
+            prices = get_resolved_prices(v, 'internet')
+            data.append({
+                "id": v.id,
+                "variation_id": v.variation_id,
+                "name": v.name,
+                "normal_price": prices["normal_price"],
+                "api_seller_price": prices["api_seller_price"]
+            })
+        return Response(data)
+
+class DeveloperEducationServiceListView(generics.ListAPIView):
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = [IsDeveloperUser]
+
+    def list(self, request):
+        services = EducationService.objects.filter(is_active=True).order_by('id')
+        data = [{"id": s.id, "service_id": s.service_id, "name": s.service_name} for s in services]
+        return Response(data)
+
+class DeveloperEducationVariationListView(generics.ListAPIView):
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = [IsDeveloperUser]
+
+    def get(self, request, service_id):
+        variations = EducationVariation.objects.filter(service_id=service_id, is_active=True).order_by('id')
+        data = []
+        for v in variations:
+            prices = get_resolved_prices(v, 'education')
+            data.append({
+                "id": v.id,
+                "variation_id": v.variation_id,
+                "name": v.name,
+                "normal_price": prices["normal_price"],
+                "api_seller_price": prices["api_seller_price"]
+            })
         return Response(data)

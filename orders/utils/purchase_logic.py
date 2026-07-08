@@ -190,6 +190,7 @@ def _resolve_role_amount(user, purchase_type, amount, kwargs):
 
 def _build_provider_call_kwargs(purchase_type: str, amount, beneficiary: str, reference: str, kwargs: dict, user):
     phone = kwargs.get("phone") or beneficiary or getattr(user, "phone_number", None)
+    prov_amount = kwargs.get("provider_amount") or amount
 
     if purchase_type == "airtime":
         network = kwargs.get("network")
@@ -198,7 +199,7 @@ def _build_provider_call_kwargs(purchase_type: str, amount, beneficiary: str, re
         return {
             "phone": phone,
             "network": network,
-            "amount": amount,
+            "amount": prov_amount,
             "reference": reference,
         }
 
@@ -215,7 +216,7 @@ def _build_provider_call_kwargs(purchase_type: str, amount, beneficiary: str, re
             "phone": phone,
             "network": network,
             "plan_id": plan_id,
-            "amount": amount,
+            "amount": prov_amount,
             "reference": reference,
         }
 
@@ -234,7 +235,7 @@ def _build_provider_call_kwargs(purchase_type: str, amount, beneficiary: str, re
             "package_id": package_id,
             "smart_card_number": smart_card_number,
             "phone": phone,
-            "amount": amount,
+            "amount": prov_amount,
             "reference": reference,
         }
 
@@ -253,7 +254,7 @@ def _build_provider_call_kwargs(purchase_type: str, amount, beneficiary: str, re
             "plan_id": plan_id,
             "meter_number": meter_number,
             "phone": phone,
-            "amount": amount,
+            "amount": prov_amount,
             "reference": reference,
         }
 
@@ -266,7 +267,7 @@ def _build_provider_call_kwargs(purchase_type: str, amount, beneficiary: str, re
         return {
             "plan_id": plan_id,
             "phone": phone,
-            "amount": amount,
+            "amount": prov_amount,
             "reference": reference,
         }
 
@@ -284,12 +285,12 @@ def _build_provider_call_kwargs(purchase_type: str, amount, beneficiary: str, re
             "exam_type": exam_type,
             "variation_id": variation_id,
             "quantity": quantity,
-            "amount": amount,
+            "amount": prov_amount,
             "reference": reference,
         }
 
     return {
-        "amount": amount,
+        "amount": prov_amount,
         "reference": reference,
     }
 
@@ -448,7 +449,12 @@ def purchase_airtime(user, network, phone, amount, reference, promo_code_str=Non
     if not network.is_active:
         return {"status": "failed", "error": "Airtime service is inactive."}
 
-    discount_val = network.discount
+    if user.role == 'developer':
+        discount_val = network.developer_price if (hasattr(network, 'developer_price') and network.developer_price > 0) else network.discount
+    elif user.role == 'agent':
+        discount_val = network.agent_discount
+    else:
+        discount_val = network.discount
     
     from summary.models import SiteConfig
     config = SiteConfig.objects.first()
@@ -511,7 +517,9 @@ def purchase_data(user, plan, phone, reference, promo_code_str=None, initiator="
     if not plan.is_active or not plan.service.is_active:
         return {"status": "failed", "error": "Data plan is inactive."}
 
-    amount = plan.agent_price if user.role == 'agent' else plan.selling_price
+    from orders.serializers.variations import resolve_price
+    price_type = 'developer' if user.role == 'developer' else 'agent' if user.role == 'agent' else 'customer'
+    amount = resolve_price(plan, price_type, 'data')
     cost_price = plan.cost_price
     
     discount = Decimal('0.00')
@@ -568,7 +576,9 @@ def purchase_tv(user, tv_variation, customer_id, reference, promo_code_str=None,
     if not tv_variation.is_active or not tv_variation.service.is_active:
         return {"status": "failed", "error": "TV package is inactive."}
 
-    amount = tv_variation.agent_price if user.role == 'agent' else tv_variation.selling_price
+    from orders.serializers.variations import resolve_price
+    price_type = 'developer' if user.role == 'developer' else 'agent' if user.role == 'agent' else 'customer'
+    amount = resolve_price(tv_variation, price_type, 'tv')
     cost_price = tv_variation.cost_price
     
     discount = Decimal('0.00')
@@ -619,7 +629,12 @@ def purchase_electricity(user, electricity_variation, meter_number, amount, refe
     if not electricity_variation.is_active or not electricity_variation.service.is_active:
         return {"status": "failed", "error": "Electricity service is inactive."}
 
-    discount_val = electricity_variation.agent_discount if user.role == 'agent' else electricity_variation.discount
+    if user.role == 'developer':
+        discount_val = electricity_variation.developer_price if (hasattr(electricity_variation, 'developer_price') and electricity_variation.developer_price > 0) else electricity_variation.discount
+    elif user.role == 'agent':
+        discount_val = electricity_variation.agent_discount
+    else:
+        discount_val = electricity_variation.discount
     
     from summary.models import SiteConfig
     config = SiteConfig.objects.first()
@@ -682,7 +697,9 @@ def purchase_internet(user, internet_variation, phone, reference, promo_code_str
     if not internet_variation.is_active or not internet_variation.service.is_active:
         return {"status": "failed", "error": "Internet service is inactive."}
 
-    amount = internet_variation.agent_price if user.role == 'agent' else internet_variation.selling_price
+    from orders.serializers.variations import resolve_price
+    price_type = 'developer' if user.role == 'developer' else 'agent' if user.role == 'agent' else 'customer'
+    amount = resolve_price(internet_variation, price_type, 'internet')
     cost_price = internet_variation.cost_price
     
     discount = Decimal('0.00')
@@ -732,7 +749,9 @@ def purchase_education(user, education_variation, phone, quantity=1, reference=N
     if not education_variation.is_active or not education_variation.service.is_active:
         return {"status": "failed", "error": "Education service is inactive."}
 
-    amount = (education_variation.agent_price if user.role == 'agent' else education_variation.selling_price) * quantity
+    from orders.serializers.variations import resolve_price
+    price_type = 'developer' if user.role == 'developer' else 'agent' if user.role == 'agent' else 'customer'
+    amount = resolve_price(education_variation, price_type, 'education') * quantity
     cost_price = education_variation.cost_price * quantity
     
     discount = Decimal('0.00')
@@ -796,9 +815,14 @@ def process_vtu_purchase(user, purchase_type, amount, beneficiary, action, promo
     cost_price = Decimal('0.00')
     if purchase_type == 'airtime' and 'airtime_service' in kwargs:
         asv = kwargs['airtime_service']
-        disc = asv.agent_discount if user.role == 'agent' else asv.discount
-        # Standard cost calculation if not explicitly set
-        cost_price = to_decimal(amount) - (to_decimal(amount) * to_decimal(disc) / 100)
+        if user.role == 'developer':
+            disc = asv.developer_price if (hasattr(asv, 'developer_price') and asv.developer_price > 0) else asv.discount
+        elif user.role == 'agent':
+            disc = asv.agent_discount
+        else:
+            disc = asv.discount
+        base_amt = kwargs.get('provider_amount') or amount
+        cost_price = to_decimal(base_amt) - (to_decimal(base_amt) * to_decimal(disc) / 100)
     elif purchase_type == 'data' and 'data_variation' in kwargs:
         cost_price = kwargs['data_variation'].cost_price
     elif purchase_type == 'tv' and 'tv_variation' in kwargs:
@@ -807,8 +831,14 @@ def process_vtu_purchase(user, purchase_type, amount, beneficiary, action, promo
         ev = kwargs['electricity_variation']
         if ev.cost_price > 0: cost_price = ev.cost_price
         else:
-            disc = ev.agent_discount if user.role == 'agent' else ev.discount
-            cost_price = to_decimal(amount) - (to_decimal(amount) * to_decimal(disc) / 100)
+            if user.role == 'developer':
+                disc = ev.developer_price if (hasattr(ev, 'developer_price') and ev.developer_price > 0) else ev.discount
+            elif user.role == 'agent':
+                disc = ev.agent_discount
+            else:
+                disc = ev.discount
+            base_amt = kwargs.get('provider_amount') or amount
+            cost_price = to_decimal(base_amt) - (to_decimal(base_amt) * to_decimal(disc) / 100)
     elif purchase_type == 'internet' and 'internet_variation' in kwargs:
         cost_price = kwargs['internet_variation'].cost_price
     elif purchase_type == 'education' and 'education_variation' in kwargs:
