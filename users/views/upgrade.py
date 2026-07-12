@@ -269,3 +269,132 @@ class AgentUpgradeView(APIView):
             "new_role": "agent",
             "fee_charged": fee,
         })
+
+
+@extend_schema(tags=["Account - Role Upgrade"])
+class DeveloperUpgradeView(APIView):
+    """
+    POST /users/upgrade/developer/
+    Upgrades the authenticated user's role to Developer using fees and KYC settings
+    configured in the Global Site Configuration (SiteConfig).
+    Automatically provisions live and sandbox API keys.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        summary="Upgrade to Developer (Global Config)",
+        description=(
+            "Upgrades the user to Developer role using settings from the Global Site Configuration. "
+            "A fee is deducted from the user's wallet (if configured). "
+            "Live and sandbox API keys are automatically generated."
+        ),
+        responses={
+            200: inline_serializer("DeveloperUpgradeResponse", fields={
+                "message": serializers.CharField(),
+                "new_role": serializers.CharField(),
+                "fee_charged": serializers.DecimalField(max_digits=12, decimal_places=2),
+                "api_keys": inline_serializer("APIKeysSummary", fields={
+                    "live": serializers.CharField(),
+                    "sandbox": serializers.CharField(),
+                }),
+            }),
+            400: inline_serializer("DeveloperUpgradeError", fields={"error": serializers.CharField()}),
+        }
+    )
+    def post(self, request):
+        user = request.user
+
+        if user.role == "developer":
+            return Response({"error": "You are already a developer."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if user.role not in ("customer", "agent"):
+            return Response(
+                {"error": f"Upgrade to developer is not permitted from role '{user.role}'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from summary.models import SiteConfig
+        config = SiteConfig.objects.first()
+        if not config:
+            return Response({"error": "Site configuration not found."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        fee = config.developer_upgrade_fee
+        kyc_required = config.developer_upgrade_kyc_required
+
+        if kyc_required and not user.is_kyc_verified:
+            return Response(
+                {"error": "KYC verification is required for this upgrade. Please complete your KYC first."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        live_key = sandbox_key = None
+
+        try:
+            with transaction.atomic():
+                if fee > 0:
+                    from wallet.models import Wallet
+                    from wallet.utils import deduct_wallet
+
+                    wallet = Wallet.objects.select_for_update().filter(user=user).first()
+                    if not wallet or wallet.balance < fee:
+                        return Response(
+                            {"error": f"Insufficient wallet balance. Required: ₦{fee:,.2f}."},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+
+                    deduct_wallet(
+                        user_id=user.id,
+                        amount=fee,
+                        description="Developer upgrade fee",
+                    )
+
+                from_role = user.role
+                user.role = "developer"
+                user.upgraded_at = timezone.now()
+                user.save(update_fields=["role", "upgraded_at"])
+
+                RoleUpgradeLog.objects.create(
+                    user=user,
+                    from_role=from_role,
+                    to_role="developer",
+                    fee_charged=fee,
+                )
+
+                # Provision developer profile and API keys
+                from developer_api.models import DeveloperProfile, APIKey
+                profile, _ = DeveloperProfile.objects.get_or_create(user=user)
+
+                if not APIKey.objects.filter(profile=profile, mode='live').exists():
+                    live_obj = APIKey.objects.create(
+                        profile=profile,
+                        key=APIKey.generate_key(mode='live'),
+                        mode='live',
+                        is_active=True,
+                    )
+                    live_key = live_obj.key
+                else:
+                    live_key = APIKey.objects.filter(profile=profile, mode='live').first().key
+
+                if not APIKey.objects.filter(profile=profile, mode='sandbox').exists():
+                    sandbox_obj = APIKey.objects.create(
+                        profile=profile,
+                        key=APIKey.generate_key(mode='sandbox'),
+                        mode='sandbox',
+                        is_active=True,
+                    )
+                    sandbox_key = sandbox_obj.key
+                else:
+                    sandbox_key = APIKey.objects.filter(profile=profile, mode='sandbox').first().key
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({
+            "message": "Successfully upgraded to Developer status.",
+            "new_role": "developer",
+            "fee_charged": fee,
+            "api_keys": {
+                "live": live_key,
+                "sandbox": sandbox_key,
+            },
+        })

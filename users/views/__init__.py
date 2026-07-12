@@ -14,4 +14,4 @@ from .notifications import (
     MarkAllNotificationsReadView, AnnouncementListView
 )
 from .referrals import ReferralListView, ReferralStatsView
-from .upgrade import RoleUpgradeFeesView, RoleUpgradeView, AgentUpgradeView
+from .upgrade import RoleUpgradeFeesView, RoleUpgradeView, AgentUpgradeView, DeveloperUpgradeView

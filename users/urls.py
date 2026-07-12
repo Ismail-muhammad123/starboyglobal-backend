@@ -8,7 +8,7 @@ from .views import (
     MarkNotificationReadView, MarkAllNotificationsReadView, ReferralListView, 
     ReferralStatsView, RegisterFCMTokenView, KYCView, AnnouncementListView,
     Resend2FACodeView, Reset2FAView,
-    RoleUpgradeFeesView, RoleUpgradeView, AgentUpgradeView
+    RoleUpgradeFeesView, RoleUpgradeView, AgentUpgradeView, DeveloperUpgradeView
 )
 
 urlpatterns = [
@@ -78,4 +78,5 @@ urlpatterns = [
     path("upgrade/fees/", RoleUpgradeFeesView.as_view(), name="role-upgrade-fees"),
     path("upgrade/", RoleUpgradeView.as_view(), name="role-upgrade"),
     path("upgrade/agent/", AgentUpgradeView.as_view(), name="agent-upgrade"),
+    path("upgrade/developer/", DeveloperUpgradeView.as_view(), name="developer-upgrade"),
 ]

@@ -167,3 +167,26 @@ class DeveloperVerifyPurchaseView(generics.RetrieveAPIView):
             "created_at": purchase.time,
             "remarks": purchase.remarks
         })
+
+
+from orders.serializers import PurchaseSerializer
+from drf_spectacular.utils import extend_schema
+
+@extend_schema(tags=["Developer - Purchases"])
+class DeveloperPurchaseHistoryView(generics.ListAPIView):
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = [IsDeveloperUser]
+    serializer_class = PurchaseSerializer
+
+    def get_queryset(self):
+        return Purchase.objects.filter(user=self.request.user).order_by('-time')
+
+
+@extend_schema(tags=["Developer - Purchases"])
+class DeveloperPurchaseDetailsView(generics.RetrieveAPIView):
+    authentication_classes = [APIKeyAuthentication]
+    permission_classes = [IsDeveloperUser]
+    serializer_class = PurchaseSerializer
+
+    def get_queryset(self):
+        return Purchase.objects.filter(user=self.request.user)

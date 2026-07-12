@@ -211,10 +211,10 @@ class VerifyRecipientView(APIView):
 class TransferBeneficiaryListCreateView(generics.ListCreateAPIView):
     serializer_class = TransferBeneficiarySerializer; permission_classes = [permissions.IsAuthenticated]
     @extend_schema(tags=["Wallet - Beneficiaries"])
-    def get_queryset(self): return TransferBeneficiary.objects.filter(user=self.request.user)
+    def get_queryset(self): return TransferBeneficiary.objects.filter(user=self.request.user).order_by('-id')
     def perform_create(self, serializer): serializer.save(user=self.request.user)
 
 class TransferBeneficiaryDeleteView(generics.DestroyAPIView):
     serializer_class = TransferBeneficiarySerializer; permission_classes = [permissions.IsAuthenticated]
     @extend_schema(tags=["Wallet - Beneficiaries"])
-    def get_queryset(self): return TransferBeneficiary.objects.filter(user=self.request.user)
+    def get_queryset(self): return TransferBeneficiary.objects.filter(user=self.request.user).order_by('-id')

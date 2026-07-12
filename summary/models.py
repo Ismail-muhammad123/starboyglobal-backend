@@ -555,6 +555,7 @@ class SiteConfig(models.Model):
     
     # Developer API Settings
     developer_upgrade_fee = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, help_text="Amount charged to upgrade to developer status.")
+    developer_upgrade_kyc_required = models.BooleanField(default=False, help_text="If enabled, user must be KYC verified to upgrade to developer.")
 
     # Agent Upgrade Settings
     agent_upgrade_fee = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, help_text="Amount charged to upgrade to agent status.")

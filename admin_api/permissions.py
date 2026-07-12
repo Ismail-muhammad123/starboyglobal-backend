@@ -6,7 +6,7 @@ class StaffPermissionBase(permissions.BasePermission):
     Checks if user is staff or superuser.
     """
     def has_permission(self, request, view):
-        return request.user and request.user.is_authenticated and (request.user.role == 'staff' or request.user.is_staff)
+        return request.user and request.user.is_authenticated and (request.user.is_staff or request.user.is_admin or request.user.is_superuser)
 
 
 class CanManageUsers(StaffPermissionBase):

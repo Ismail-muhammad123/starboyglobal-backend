@@ -23,7 +23,7 @@ class AdminUserListSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id","phone_country_code", "phone_number", "first_name", "last_name", "email", "profile_image", "role", "is_active", 
-            "is_verified", "is_kyc_verified", "is_staff", "is_closed", "referral_code", 
+            "is_verified", "is_kyc_verified", "is_staff", "is_admin", "is_closed", "referral_code", 
             "wallet_balance", "total_credits", "total_debits", "created_at"
         ]
 
@@ -55,7 +55,7 @@ class AdminUserDetailSerializer(serializers.ModelSerializer):
         fields = [
             "id", "phone_number", "first_name", "last_name", "middle_name", "email", 
             "phone_country_code", "role", "agent_commission_rate", "is_active", "is_verified", 
-            "is_kyc_verified", "is_staff", "is_superuser", "is_closed", "closed_at", 
+            "is_kyc_verified", "is_staff", "is_admin", "is_superuser", "is_closed", "closed_at", 
             "closed_reason", "referral_code", "referral_earnings_count", "referral_earnings_amount", 
             "transaction_pin_set", "two_factor_enabled", "profile_image", "wallet_balance", 
             "kyc", "staff_permissions", "virtual_account", "beneficiaries", "purchase_beneficiaries", 
@@ -128,12 +128,16 @@ class AdminCreateUserRequestSerializer(serializers.Serializer):
     last_name = serializers.CharField(required=False)
     email = serializers.EmailField(required=False)
     password = serializers.CharField()
-    role = serializers.ChoiceField(choices=['customer', 'agent', 'staff'], default='customer')
+    role = serializers.ChoiceField(choices=['customer', 'agent', 'developer'], default='customer')
     is_active = serializers.BooleanField(default=True)
+    is_staff = serializers.BooleanField(default=False)
+    is_admin = serializers.BooleanField(default=False)
 
 class AdminSetRoleRequestSerializer(serializers.Serializer):
-    role = serializers.ChoiceField(choices=['customer', 'agent', 'staff'])
+    role = serializers.ChoiceField(choices=['customer', 'agent', 'developer'])
     commission_rate = serializers.FloatField(required=False, default=0.0)
+    is_staff = serializers.BooleanField(required=False, default=None, allow_null=True)
+    is_admin = serializers.BooleanField(required=False, default=None, allow_null=True)
 
 class AdminSetPermissionsRequestSerializer(serializers.Serializer):
     can_manage_users = serializers.BooleanField(default=False)

@@ -109,11 +109,14 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                 # For now, we assume a signal or subsequent step handles the real API call
                 pass
 
-        # If staff, create permission record
-        if user.role == 'staff':
+        # Apply is_staff / is_admin flags if supplied
+        if d.get('is_staff', False):
             user.is_staff = True
             user.save(update_fields=['is_staff'])
             StaffPermission.objects.get_or_create(user=user)
+        if d.get('is_admin', False):
+            user.is_admin = True
+            user.save(update_fields=['is_admin'])
 
         log_admin_action(
             user=request.user,
@@ -288,7 +291,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
 
     @extend_schema(
         tags=["Admin User Management"],
-        summary="Set user role (customer / agent / staff)",
+        summary="Set user role (customer / agent / developer) and optionally grant is_staff / is_admin flags",
         request=AdminSetRoleRequestSerializer,
         responses={200: AdminStatusResponseSerializer}
     )
@@ -307,12 +310,16 @@ class AdminUserViewSet(viewsets.ModelViewSet):
 
         if new_role == 'agent':
             user.agent_commission_rate = commission_rate
-        elif new_role == 'staff':
-            user.is_staff = True
-            StaffPermission.objects.get_or_create(user=user)
-        else:
-            # Downgrade: remove staff flag
-            user.is_staff = False
+
+        # Handle explicit is_staff / is_admin flag overrides (independent of role)
+        is_staff_override = serializer.validated_data.get('is_staff')
+        is_admin_override = serializer.validated_data.get('is_admin')
+        if is_staff_override is not None:
+            user.is_staff = is_staff_override
+            if is_staff_override:
+                StaffPermission.objects.get_or_create(user=user)
+        if is_admin_override is not None:
+            user.is_admin = is_admin_override
 
         user.save()
         log_admin_action(
@@ -335,8 +342,8 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='set-permissions')
     def set_permissions(self, request, pk=None):
         user = self.get_object()
-        if user.role != 'staff' and not user.is_staff:
-            return Response({"error": "User is not staff. Set role to 'staff' first."}, status=status.HTTP_400_BAD_REQUEST)
+        if not user.is_staff and not user.is_admin and not user.is_superuser:
+            return Response({"error": "User does not have staff or admin status. Set is_staff or is_admin first."}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = AdminSetPermissionsRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

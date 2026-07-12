@@ -11,7 +11,7 @@ class PurchaseBeneficiaryListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        qs = PurchaseBeneficiary.objects.filter(user=self.request.user)
+        qs = PurchaseBeneficiary.objects.filter(user=self.request.user).order_by('-id')
         service_type = self.request.query_params.get('type')
         if service_type:
             qs = qs.filter(service_type=service_type)
@@ -44,4 +44,4 @@ class PurchaseBeneficiaryDeleteView(generics.DestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return PurchaseBeneficiary.objects.filter(user=self.request.user)
+        return PurchaseBeneficiary.objects.filter(user=self.request.user).order_by('-id')

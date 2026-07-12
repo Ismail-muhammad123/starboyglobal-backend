@@ -1,0 +1,930 @@
+{
+  "info": {
+    "_postman_id": "01b2a9e3-df4c-473d-88b9-8e6ca6fbf5d2",
+    "name": "Starboy Developer API",
+    "description": "Collection of developer-tier endpoints for the Starboy Data App, including Account Management, Service Discovery, and Transactions. Fully preconfigured for Local / Staging environments.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth & Account Management",
+      "item": [
+        {
+          "name": "Developer Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone_number\": \"2348000000001\",\n  \"password\": \"yourpassword\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/login/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "login",
+                ""
+              ]
+            },
+            "description": "Log in to retrieve standard JWT tokens (Access and Refresh) to perform developer account actions."
+          },
+          "response": []
+        },
+        {
+          "name": "Upgrade to Developer",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/upgrade/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "upgrade",
+                ""
+              ]
+            },
+            "description": "Upgrade a standard user account to the developer tier. Deducts the developer upgrade fee from the user's wallet."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Profile Details",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/profile/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "profile",
+                ""
+              ]
+            },
+            "description": "Retrieve the developer profile, including current status, wallet balance, webhook config, and generated API keys."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Wallet Funding Details",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text",
+                "disabled": true
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/funding-details/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "funding-details",
+                ""
+              ]
+            },
+            "description": "Fetch dedicated bank account details configured for funding developer wallets."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Webhook URL",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text",
+                "disabled": true
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"webhook_url\": \"https://yourserver.com/webhooks/starboy\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/webhook/update/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "webhook",
+                "update",
+                ""
+              ]
+            },
+            "description": "Configure or update the endpoint URL where Starboy will send transaction status webhooks."
+          },
+          "response": []
+        },
+        {
+          "name": "Regenerate API Key",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text",
+                "disabled": true
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mode\": \"live\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/keys/regenerate/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "keys",
+                "regenerate",
+                ""
+              ]
+            },
+            "description": "Regenerate API keys for either 'live' or 'sandbox' environments."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Service Discovery",
+      "item": [
+        {
+          "name": "Get Active Service Types",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/services/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "services",
+                ""
+              ]
+            },
+            "description": "Retrieve list of all active transaction modules (airtime, data, tv, electricity, etc.) and global system operational states."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Airtime Networks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/airtime/networks/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "airtime",
+                "networks",
+                ""
+              ]
+            },
+            "description": "List all active airtime networks with developer-tier discount rates, and minimum/maximum transaction amounts."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Data Networks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/data/networks/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "data",
+                "networks",
+                ""
+              ]
+            },
+            "description": "List all active data provider networks."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Data Plans by Network",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/data/networks/:network_id/plans/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "data",
+                "networks",
+                ":network_id",
+                "plans",
+                ""
+              ],
+              "variable": [
+                {
+                  "key": "network_id",
+                  "value": "1",
+                  "description": "Database ID of the Data Network/Service"
+                }
+              ]
+            },
+            "description": "Retrieve available data bundles and developer pricing packages for a specific network provider ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Get TV Services",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/tv/services/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "tv",
+                "services",
+                ""
+              ]
+            },
+            "description": "List active Cable TV subscription service providers (DSTV, GOTV, Startimes, etc.)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get TV Packages by Service",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/tv/services/:service_id/packages/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "tv",
+                "services",
+                ":service_id",
+                "packages",
+                ""
+              ],
+              "variable": [
+                {
+                  "key": "service_id",
+                  "value": "1",
+                  "description": "Database ID of the TV service"
+                }
+              ]
+            },
+            "description": "Retrieve available bouquet plans and developer pricing for a specific TV service provider."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Electricity Services",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/electricity/services/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "electricity",
+                "services",
+                ""
+              ]
+            },
+            "description": "Retrieve electricity distribution providers (DISCOs)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Electricity Variations by Service",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/electricity/services/:service_id/variations/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "electricity",
+                "services",
+                ":service_id",
+                "variations",
+                ""
+              ],
+              "variable": [
+                {
+                  "key": "service_id",
+                  "value": "1",
+                  "description": "Database ID of the Electricity Service (DISCO)"
+                }
+              ]
+            },
+            "description": "Get meter billing models (Prepaid / Postpaid) for a specific DISCO."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Internet Services",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/internet/services/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "internet",
+                "services",
+                ""
+              ]
+            },
+            "description": "Retrieve active Internet package providers."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Internet Plans by Service",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/internet/services/:service_id/plans/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "internet",
+                "services",
+                ":service_id",
+                "plans",
+                ""
+              ],
+              "variable": [
+                {
+                  "key": "service_id",
+                  "value": "1",
+                  "description": "Database ID of the Internet Service"
+                }
+              ]
+            },
+            "description": "Retrieve available data bundles and developer pricing packages for a specific Internet service provider."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Education Services",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/education/services/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "education",
+                "services",
+                ""
+              ]
+            },
+            "description": "Retrieve available exam pin providers (WAEC, NECO, etc.)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Education Variations by Service",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/education/services/:service_id/variations/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "education",
+                "services",
+                ":service_id",
+                "variations",
+                ""
+              ],
+              "variable": [
+                {
+                  "key": "service_id",
+                  "value": "1",
+                  "description": "Database ID of the Education service"
+                }
+              ]
+            },
+            "description": "Retrieve available package variations for a specific education board."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Transactions & Purchases",
+      "item": [
+        {
+          "name": "Purchase Airtime (Live or Sandbox)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service_type\": \"airtime\",\n  \"beneficiary\": \"08012345678\",\n  \"amount\": 500,\n  \"network_id\": 1\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/purchase/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "purchase",
+                ""
+              ]
+            },
+            "description": "Purchase Airtime. The mode (live/sandbox) is dynamically resolved based on the API Key used."
+          },
+          "response": []
+        },
+        {
+          "name": "Purchase Data Bundle",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service_type\": \"data\",\n  \"beneficiary\": \"08012345678\",\n  \"amount\": 500,\n  \"plan_id\": 221\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/purchase/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "purchase",
+                ""
+              ]
+            },
+            "description": "Purchase a Data Bundle variation."
+          },
+          "response": []
+        },
+        {
+          "name": "Purchase TV Subscription",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service_type\": \"tv\",\n  \"beneficiary\": \"1212121212\",\n  \"amount\": 3500,\n  \"variation_id\": \"1\",\n  \"subscription_type\": \"change\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/purchase/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "purchase",
+                ""
+              ]
+            },
+            "description": "Subscribe to a TV package variation."
+          },
+          "response": []
+        },
+        {
+          "name": "Purchase Electricity Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"service_type\": \"electricity\",\n  \"beneficiary\": \"11223344556\",\n  \"amount\": 2000,\n  \"variation_id\": \"prepaid\",\n  \"service_id\": \"ikedc\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/purchase/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "purchase",
+                ""
+              ]
+            },
+            "description": "Purchase electricity tokens."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Purchase by Reference",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/verify/:reference/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "verify",
+                ":reference",
+                ""
+              ],
+              "variable": [
+                {
+                  "key": "reference",
+                  "value": "DEV-A1B2C3D4E5",
+                  "description": "Unique transaction reference returned during purchase request"
+                }
+              ]
+            },
+            "description": "Query purchase status using the unique client-side transaction reference."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Purchase History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/purchase/history/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "purchase",
+                "history",
+                ""
+              ]
+            },
+            "description": "Retrieve a paginated listing of all historical transactions executed by the authenticated developer."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Purchase Details by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-API-KEY",
+                "value": "{{api_key}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/developer/purchase/:id/",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "developer",
+                "purchase",
+                ":id",
+                ""
+              ],
+              "variable": [
+                {
+                  "key": "id",
+                  "value": "1",
+                  "description": "Database ID of the transaction record"
+                }
+              ]
+            },
+            "description": "Retrieve comprehensive details of a specific purchase using its unique ID. Returns tokens, metadata, and service details."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "insert_jwt_token_here",
+      "type": "string"
+    },
+    {
+      "key": "api_key",
+      "value": "insert_ak_live_or_ak_test_here",
+      "type": "string"
+    }
+  ]
+}

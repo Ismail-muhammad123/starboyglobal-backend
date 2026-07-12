@@ -11,7 +11,10 @@ from .views.services import (
     DeveloperInternetServiceListView, DeveloperInternetPlanListView,
     DeveloperEducationServiceListView, DeveloperEducationVariationListView
 )
-from .views.purchase import DeveloperPurchaseView, DeveloperVerifyPurchaseView
+from .views.purchase import (
+    DeveloperPurchaseView, DeveloperVerifyPurchaseView,
+    DeveloperPurchaseHistoryView, DeveloperPurchaseDetailsView
+)
 
 urlpatterns = [
     # Auth & Account
@@ -38,6 +41,8 @@ urlpatterns = [
     
     # Transactions
     path('purchase/', DeveloperPurchaseView.as_view(), name='developer-purchase'),
+    path('purchase/history/', DeveloperPurchaseHistoryView.as_view(), name='developer-purchase-history'),
+    path('purchase/<int:pk>/', DeveloperPurchaseDetailsView.as_view(), name='developer-purchase-detail'),
     path('verify/<str:reference>/', DeveloperVerifyPurchaseView.as_view(), name='developer-verify'),
 ]
 

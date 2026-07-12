@@ -17,11 +17,10 @@ def resolve_price(obj, price_type, service_name):
         return float(obj.cost_price + margin)
     
     # defined pricing mode
-    val = getattr(obj, f"{price_type}_price", 0)
-    if price_type == 'developer':
-        if not val or float(val) == 0.0:
-            val = obj.selling_price
-    elif price_type == 'agent':
+    if price_type == 'customer':
+        val = obj.selling_price
+    else:
+        val = getattr(obj, f"{price_type}_price", 0)
         if not val or float(val) == 0.0:
             val = obj.selling_price
             

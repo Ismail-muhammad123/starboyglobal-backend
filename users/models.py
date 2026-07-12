@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.contrib.auth.hashers import make_password, check_password as django_check_password
 from django.db import models
@@ -230,7 +231,6 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('customer', 'Customer'),
         ('agent', 'Agent/Reseller'),
         ('developer', 'Developer'),
-        ('staff', 'Staff'),
     ]
 
     first_name=models.CharField(max_length=225, blank=True, null=True)
@@ -246,6 +246,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
+    is_admin = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     is_closed = models.BooleanField(default=False)
