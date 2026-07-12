@@ -1,5 +1,7 @@
 from rest_framework import status, generics, permissions, serializers
+from rest_framework.views import APIView
 from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema
 from django.db import transaction
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -21,6 +23,50 @@ class APIKeySerializer(serializers.ModelSerializer):
         model = APIKey
         fields = ['key', 'mode', 'is_active', 'created_at', 'last_used']
 
+class UpgradeToDeveloperResponseSerializer(serializers.Serializer):
+    message = serializers.CharField()
+    fee_deducted = serializers.FloatField()
+
+class DeveloperUserSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
+    phone_number = serializers.CharField()
+    email = serializers.EmailField()
+    role = serializers.CharField()
+    is_active = serializers.BooleanField()
+
+class DeveloperProfileResponseSerializer(serializers.Serializer):
+    webhook_url = serializers.CharField(allow_blank=True)
+    webhook_secret = serializers.CharField()
+    is_active = serializers.BooleanField()
+    created_at = serializers.DateTimeField()
+
+class DeveloperDetailsResponseSerializer(serializers.Serializer):
+    user = DeveloperUserSerializer()
+    wallet_balance = serializers.FloatField()
+    developer_profile = DeveloperProfileResponseSerializer()
+    api_keys = APIKeySerializer(many=True)
+
+class WalletFundingDetailsResponseSerializer(serializers.Serializer):
+    bank_name = serializers.CharField()
+    account_number = serializers.CharField()
+    account_name = serializers.CharField()
+
+class RegenerateAPIKeyRequestSerializer(serializers.Serializer):
+    mode = serializers.ChoiceField(choices=['live', 'sandbox'])
+
+class DeveloperWebhookUpdateRequestSerializer(serializers.Serializer):
+    webhook_url = serializers.CharField(allow_blank=True, help_text="Webhook URL (must start with http:// or https://, or empty string to disable)")
+
+class DeveloperWebhookUpdateResponseSerializer(serializers.Serializer):
+    message = serializers.CharField()
+    webhook_url = serializers.CharField(allow_blank=True)
+    webhook_secret = serializers.CharField()
+
+class UpgradeToDeveloperErrorResponseSerializer(serializers.Serializer):
+    error = serializers.CharField()
+
 class DeveloperLoginView(LoginView):
     """
     POST /login/
@@ -28,7 +74,12 @@ class DeveloperLoginView(LoginView):
     """
     pass
 
-class UpgradeToDeveloperView(generics.CreateAPIView):
+@extend_schema(
+    tags=["Developer - Auth"],
+    request=None,
+    responses={200: UpgradeToDeveloperResponseSerializer, 400: UpgradeToDeveloperErrorResponseSerializer}
+)
+class UpgradeToDeveloperView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
@@ -82,7 +133,11 @@ class UpgradeToDeveloperView(generics.CreateAPIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-class DeveloperDetailsView(generics.RetrieveAPIView):
+@extend_schema(
+    tags=["Developer - Auth"],
+    responses={200: DeveloperDetailsResponseSerializer}
+)
+class DeveloperDetailsView(APIView):
     authentication_classes = [JWTAuthentication, APIKeyAuthentication]
     permission_classes = [permissions.IsAuthenticated]
 
@@ -115,7 +170,11 @@ class DeveloperDetailsView(generics.RetrieveAPIView):
             "api_keys": APIKeySerializer(keys, many=True).data
         })
 
-class WalletFundingDetailsView(generics.RetrieveAPIView):
+@extend_schema(
+    tags=["Developer - Auth"],
+    responses={200: WalletFundingDetailsResponseSerializer}
+)
+class WalletFundingDetailsView(APIView):
     authentication_classes = [JWTAuthentication, APIKeyAuthentication]
     permission_classes = [permissions.IsAuthenticated]
 
@@ -130,7 +189,12 @@ class WalletFundingDetailsView(generics.RetrieveAPIView):
             "account_name": config.vtu_funding_account_name,
         })
 
-class RegenerateAPIKeyView(generics.CreateAPIView):
+@extend_schema(
+    tags=["Developer - Auth"],
+    request=RegenerateAPIKeyRequestSerializer,
+    responses={200: APIKeySerializer}
+)
+class RegenerateAPIKeyView(APIView):
     authentication_classes = [JWTAuthentication, APIKeyAuthentication]
     permission_classes = [permissions.IsAuthenticated]
 
@@ -152,7 +216,12 @@ class RegenerateAPIKeyView(generics.CreateAPIView):
         except DeveloperProfile.DoesNotExist:
             return Response({"error": "Developer profile not found."}, status=status.HTTP_403_FORBIDDEN)
 
-class DeveloperWebhookUpdateView(generics.UpdateAPIView):
+@extend_schema(
+    tags=["Developer - Auth"],
+    request=DeveloperWebhookUpdateRequestSerializer,
+    responses={200: DeveloperWebhookUpdateResponseSerializer}
+)
+class DeveloperWebhookUpdateView(APIView):
     authentication_classes = [JWTAuthentication, APIKeyAuthentication]
     permission_classes = [permissions.IsAuthenticated]
 

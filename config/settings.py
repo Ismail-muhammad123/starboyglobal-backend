@@ -34,6 +34,13 @@ if DEBUG:
     ALLOWED_HOSTS+=['*']
 
 CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_HEADERS = True   # Allow every request header (incl. X-API-KEY)
+
+# Explicit allow-list kept as a safety reference; CORS_ALLOW_ALL_HEADERS supersedes it.
+from corsheaders.defaults import default_headers
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "x-api-key",
+]
 
 CSRF_TRUSTED_ORIGINS = [
     'https://data-app-backend.onrender.com',

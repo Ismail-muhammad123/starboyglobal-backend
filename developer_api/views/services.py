@@ -1,5 +1,89 @@
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, status, serializers
+from rest_framework.views import APIView
 from rest_framework.response import Response
+from drf_spectacular.utils import extend_schema
+
+class DeveloperCategorySerializer(serializers.Serializer):
+    id = serializers.CharField()
+    name = serializers.CharField()
+    endpoint = serializers.CharField()
+
+class DeveloperCategoryListResponseSerializer(serializers.Serializer):
+    categories = DeveloperCategorySerializer(many=True)
+
+class DeveloperAirtimeNetworkResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    service_id = serializers.CharField()
+    name = serializers.CharField()
+    min_amount = serializers.FloatField()
+    max_amount = serializers.FloatField()
+    normal_discount = serializers.FloatField()
+    api_seller_discount = serializers.FloatField()
+    normal_price = serializers.FloatField()
+    api_seller_price = serializers.FloatField()
+
+class DeveloperDataNetworkResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    service_id = serializers.CharField()
+    name = serializers.CharField()
+
+class DeveloperDataPlanResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    variation_id = serializers.CharField()
+    name = serializers.CharField()
+    normal_price = serializers.FloatField()
+    api_seller_price = serializers.FloatField()
+    plan_type = serializers.CharField()
+
+class DeveloperTVServiceResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    service_id = serializers.CharField()
+    name = serializers.CharField()
+
+class DeveloperTVPackageResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    variation_id = serializers.CharField()
+    name = serializers.CharField()
+    normal_price = serializers.FloatField()
+    api_seller_price = serializers.FloatField()
+
+class DeveloperElectricityServiceResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    service_id = serializers.CharField()
+    name = serializers.CharField()
+
+class DeveloperElectricityVariationResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    variation_id = serializers.CharField()
+    name = serializers.CharField()
+    min_amount = serializers.FloatField()
+    max_amount = serializers.FloatField()
+    normal_price = serializers.FloatField()
+    api_seller_price = serializers.FloatField()
+
+class DeveloperInternetServiceResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    service_id = serializers.CharField()
+    name = serializers.CharField()
+
+class DeveloperInternetPlanResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    variation_id = serializers.CharField()
+    name = serializers.CharField()
+    normal_price = serializers.FloatField()
+    api_seller_price = serializers.FloatField()
+
+class DeveloperEducationServiceResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    service_id = serializers.CharField()
+    name = serializers.CharField()
+
+class DeveloperEducationVariationResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    variation_id = serializers.CharField()
+    name = serializers.CharField()
+    normal_price = serializers.FloatField()
+    api_seller_price = serializers.FloatField()
 from orders.models import (
     AirtimeNetwork, DataService, DataVariation, 
     ElectricityService, TVService, InternetService, 
@@ -16,7 +100,11 @@ def get_resolved_prices(obj, service_name):
         "api_seller_price": resolve_price(obj, 'developer', service_name),
     }
 
-class DeveloperServiceListView(generics.GenericAPIView):
+@extend_schema(
+    tags=["Developer - Services"],
+    responses={200: DeveloperCategoryListResponseSerializer}
+)
+class DeveloperServiceListView(APIView):
     authentication_classes = [APIKeyAuthentication]
     permission_classes = [IsDeveloperUser]
 
@@ -33,11 +121,15 @@ class DeveloperServiceListView(generics.GenericAPIView):
             ]
         })
 
-class DeveloperAirtimeNetworkListView(generics.ListAPIView):
+@extend_schema(
+    tags=["Developer - Services"],
+    responses={200: DeveloperAirtimeNetworkResponseSerializer(many=True)}
+)
+class DeveloperAirtimeNetworkListView(APIView):
     authentication_classes = [APIKeyAuthentication]
     permission_classes = [IsDeveloperUser]
 
-    def list(self, request):
+    def get(self, request):
         networks = AirtimeNetwork.objects.filter(is_active=True).order_by('id')
         data = [{
             "id": n.id,
@@ -52,11 +144,15 @@ class DeveloperAirtimeNetworkListView(generics.ListAPIView):
         } for n in networks]
         return Response(data)
 
-class DeveloperDataNetworkListView(generics.ListAPIView):
+@extend_schema(
+    tags=["Developer - Services"],
+    responses={200: DeveloperDataNetworkResponseSerializer(many=True)}
+)
+class DeveloperDataNetworkListView(APIView):
     authentication_classes = [APIKeyAuthentication]
     permission_classes = [IsDeveloperUser]
 
-    def list(self, request):
+    def get(self, request):
         services = DataService.objects.filter(is_active=True).order_by('id')
         data = [{
             "id": s.id,
@@ -65,7 +161,11 @@ class DeveloperDataNetworkListView(generics.ListAPIView):
         } for s in services]
         return Response(data)
 
-class DeveloperDataPlanListView(generics.ListAPIView):
+@extend_schema(
+    tags=["Developer - Services"],
+    responses={200: DeveloperDataPlanResponseSerializer(many=True)}
+)
+class DeveloperDataPlanListView(APIView):
     authentication_classes = [APIKeyAuthentication]
     permission_classes = [IsDeveloperUser]
 
@@ -84,16 +184,24 @@ class DeveloperDataPlanListView(generics.ListAPIView):
             })
         return Response(data)
 
-class DeveloperTVServiceListView(generics.ListAPIView):
+@extend_schema(
+    tags=["Developer - Services"],
+    responses={200: DeveloperTVServiceResponseSerializer(many=True)}
+)
+class DeveloperTVServiceListView(APIView):
     authentication_classes = [APIKeyAuthentication]
     permission_classes = [IsDeveloperUser]
 
-    def list(self, request):
+    def get(self, request):
         services = TVService.objects.filter(is_active=True).order_by('id')
         data = [{"id": s.id, "service_id": s.service_id, "name": s.service_name} for s in services]
         return Response(data)
 
-class DeveloperTVPackageListView(generics.ListAPIView):
+@extend_schema(
+    tags=["Developer - Services"],
+    responses={200: DeveloperTVPackageResponseSerializer(many=True)}
+)
+class DeveloperTVPackageListView(APIView):
     authentication_classes = [APIKeyAuthentication]
     permission_classes = [IsDeveloperUser]
 
@@ -111,16 +219,24 @@ class DeveloperTVPackageListView(generics.ListAPIView):
             })
         return Response(data)
 
-class DeveloperElectricityServiceListView(generics.ListAPIView):
+@extend_schema(
+    tags=["Developer - Services"],
+    responses={200: DeveloperElectricityServiceResponseSerializer(many=True)}
+)
+class DeveloperElectricityServiceListView(APIView):
     authentication_classes = [APIKeyAuthentication]
     permission_classes = [IsDeveloperUser]
 
-    def list(self, request):
+    def get(self, request):
         services = ElectricityService.objects.filter(is_active=True).order_by('id')
         data = [{"id": s.id, "service_id": s.service_id, "name": s.service_name} for s in services]
         return Response(data)
 
-class DeveloperElectricityVariationListView(generics.ListAPIView):
+@extend_schema(
+    tags=["Developer - Services"],
+    responses={200: DeveloperElectricityVariationResponseSerializer(many=True)}
+)
+class DeveloperElectricityVariationListView(APIView):
     authentication_classes = [APIKeyAuthentication]
     permission_classes = [IsDeveloperUser]
 
@@ -140,16 +256,24 @@ class DeveloperElectricityVariationListView(generics.ListAPIView):
             })
         return Response(data)
 
-class DeveloperInternetServiceListView(generics.ListAPIView):
+@extend_schema(
+    tags=["Developer - Services"],
+    responses={200: DeveloperInternetServiceResponseSerializer(many=True)}
+)
+class DeveloperInternetServiceListView(APIView):
     authentication_classes = [APIKeyAuthentication]
     permission_classes = [IsDeveloperUser]
 
-    def list(self, request):
+    def get(self, request):
         services = InternetService.objects.filter(is_active=True).order_by('id')
         data = [{"id": s.id, "service_id": s.service_id, "name": s.service_name} for s in services]
         return Response(data)
 
-class DeveloperInternetPlanListView(generics.ListAPIView):
+@extend_schema(
+    tags=["Developer - Services"],
+    responses={200: DeveloperInternetPlanResponseSerializer(many=True)}
+)
+class DeveloperInternetPlanListView(APIView):
     authentication_classes = [APIKeyAuthentication]
     permission_classes = [IsDeveloperUser]
 
@@ -167,16 +291,24 @@ class DeveloperInternetPlanListView(generics.ListAPIView):
             })
         return Response(data)
 
-class DeveloperEducationServiceListView(generics.ListAPIView):
+@extend_schema(
+    tags=["Developer - Services"],
+    responses={200: DeveloperEducationServiceResponseSerializer(many=True)}
+)
+class DeveloperEducationServiceListView(APIView):
     authentication_classes = [APIKeyAuthentication]
     permission_classes = [IsDeveloperUser]
 
-    def list(self, request):
+    def get(self, request):
         services = EducationService.objects.filter(is_active=True).order_by('id')
         data = [{"id": s.id, "service_id": s.service_id, "name": s.service_name} for s in services]
         return Response(data)
 
-class DeveloperEducationVariationListView(generics.ListAPIView):
+@extend_schema(
+    tags=["Developer - Services"],
+    responses={200: DeveloperEducationVariationResponseSerializer(many=True)}
+)
+class DeveloperEducationVariationListView(APIView):
     authentication_classes = [APIKeyAuthentication]
     permission_classes = [IsDeveloperUser]
 

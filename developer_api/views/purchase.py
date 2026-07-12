@@ -1,4 +1,5 @@
-from rest_framework import generics, status
+from rest_framework import generics, status, serializers
+from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from orders.models import (
@@ -9,9 +10,42 @@ from orders.models import (
 from orders.utils.purchase_logic import process_vtu_purchase
 from ..authentication import APIKeyAuthentication
 from ..permissions import IsDeveloperUser
+from drf_spectacular.utils import extend_schema
 import uuid
 
-class DeveloperPurchaseView(generics.CreateAPIView):
+class DeveloperPurchaseRequestSerializer(serializers.Serializer):
+    service_type = serializers.ChoiceField(choices=['airtime', 'data', 'tv', 'electricity', 'internet', 'education'])
+    beneficiary = serializers.CharField(help_text="Phone number, smart card number, meter number, etc.")
+    amount = serializers.FloatField(help_text="Amount to purchase (for airtime/electricity)")
+    network_id = serializers.IntegerField(required=False, help_text="For airtime")
+    plan_id = serializers.IntegerField(required=False, help_text="For data/internet")
+    variation_id = serializers.IntegerField(required=False, help_text="For tv/electricity/internet/education")
+    quantity = serializers.IntegerField(required=False, default=1, help_text="For education")
+    reference = serializers.CharField(required=False, help_text="Unique client transaction reference")
+
+class DeveloperPurchaseResponseSerializer(serializers.Serializer):
+    status = serializers.CharField()
+    reference = serializers.CharField()
+    purchase_id = serializers.IntegerField(required=False)
+    message = serializers.CharField()
+    error = serializers.CharField(required=False)
+
+class DeveloperVerifyPurchaseResponseSerializer(serializers.Serializer):
+    reference = serializers.CharField()
+    status = serializers.CharField()
+    amount = serializers.FloatField()
+    beneficiary = serializers.CharField()
+    type = serializers.CharField()
+    created_at = serializers.DateTimeField()
+    remarks = serializers.CharField(required=False)
+
+
+@extend_schema(
+    tags=["Developer - Purchases"],
+    request=DeveloperPurchaseRequestSerializer,
+    responses={201: DeveloperPurchaseResponseSerializer, 400: DeveloperPurchaseResponseSerializer}
+)
+class DeveloperPurchaseView(APIView):
     authentication_classes = [APIKeyAuthentication]
     permission_classes = [IsDeveloperUser]
 
@@ -152,7 +186,11 @@ class DeveloperPurchaseView(generics.CreateAPIView):
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
-class DeveloperVerifyPurchaseView(generics.RetrieveAPIView):
+@extend_schema(
+    tags=["Developer - Purchases"],
+    responses={200: DeveloperVerifyPurchaseResponseSerializer}
+)
+class DeveloperVerifyPurchaseView(APIView):
     authentication_classes = [APIKeyAuthentication]
     permission_classes = [IsDeveloperUser]
 
