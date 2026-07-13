@@ -110,6 +110,11 @@ class SummaryDashboard(Wallet):
         today = now.date()
         week_ago = today - timedelta(days=7)
         month_ago = today - timedelta(days=30)
+        
+        from datetime import datetime as dt_class
+        week_ago_dt = timezone.make_aware(dt_class.combine(week_ago, dt_class.min.time()))
+        month_ago_dt = timezone.make_aware(dt_class.combine(month_ago, dt_class.min.time()))
+
 
         # ── DATE-FILTERED BASE QUERYSETS ──────────────────────────────
         all_purchases = Purchase.objects.all()
@@ -119,15 +124,20 @@ class SummaryDashboard(Wallet):
         withdrawals_qs = Withdrawal.objects.all()
 
         if start:
+            if timezone.is_naive(start):
+                start = timezone.make_aware(start)
             filtered_purchases_all = filtered_purchases_all.filter(time__gte=start)
             filtered_wallet_tx = filtered_wallet_tx.filter(timestamp__gte=start)
             deposits_qs = deposits_qs.filter(timestamp__gte=start)
             withdrawals_qs = withdrawals_qs.filter(created_at__gte=start)
         if end:
+            if timezone.is_naive(end):
+                end = timezone.make_aware(end)
             filtered_purchases_all = filtered_purchases_all.filter(time__lte=end)
             filtered_wallet_tx = filtered_wallet_tx.filter(timestamp__lte=end)
             deposits_qs = deposits_qs.filter(timestamp__lte=end)
             withdrawals_qs = withdrawals_qs.filter(created_at__lte=end)
+
 
         filtered_success = filtered_purchases_all.filter(status="success")
 
@@ -237,11 +247,12 @@ class SummaryDashboard(Wallet):
             Purchase.objects.filter(status="success", time__date=today)
         )
         weekly_profit = cls._calculate_profit(
-            Purchase.objects.filter(status="success", time__gte=week_ago)
+            Purchase.objects.filter(status="success", time__gte=week_ago_dt)
         )
         monthly_profit = cls._calculate_profit(
-            Purchase.objects.filter(status="success", time__gte=month_ago)
+            Purchase.objects.filter(status="success", time__gte=month_ago_dt)
         )
+
 
         purchases = {
             "success_count": purchase_success_count,

@@ -1,3 +1,4 @@
+from django.utils import timezone
 from datetime import datetime
 from rest_framework import views, status
 from rest_framework.response import Response
@@ -32,13 +33,16 @@ class AdminDashboardStatsView(views.APIView):
         try:
             if start_str:
                 start = datetime.strptime(start_str, '%Y-%m-%d')
+                start = timezone.make_aware(start)
             if end_str:
                 end = datetime.strptime(end_str, '%Y-%m-%d')
+                end = timezone.make_aware(end)
         except (ValueError, TypeError):
             pass
 
         stats = SummaryDashboard.summary(start=start, end=end)
         return Response(stats)
+
 
 
 class AdminMaintenanceModeView(views.APIView):

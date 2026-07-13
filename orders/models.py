@@ -76,6 +76,10 @@ class DataService(models.Model):
     def __str__(self):
         return self.service_name
 
+    class Meta:
+        ordering = ['id']
+
+
 class AirtimeNetwork(models.Model):
     objects = RestrictedSyncManager()
     service_name = models.CharField(max_length=200)
@@ -94,6 +98,10 @@ class AirtimeNetwork(models.Model):
 
     def __str__(self):
         return self.service_name
+
+    class Meta:
+        ordering = ['id']
+
     
 class ElectricityService(models.Model):
     service_name=models.CharField(max_length=100)
@@ -106,8 +114,10 @@ class ElectricityService(models.Model):
         return self.service_name
     
     class Meta:
+        ordering = ['id']
         verbose_name = "Electricity Service"
         verbose_name_plural = "Electricity Services"
+
 
 class ElectricityVariation(models.Model):
     objects = RestrictedSyncManager()
@@ -147,8 +157,10 @@ class TVService(models.Model):
         return self.service_name
     
     class Meta:
+        ordering = ['id']
         verbose_name = "TV Service"
         verbose_name_plural = "TV Services"
+
 
 class TVVariation(models.Model):
     objects = RestrictedSyncManager()
@@ -183,6 +195,10 @@ class InternetService(models.Model):
 
     def __str__(self):
         return self.service_name
+
+    class Meta:
+        ordering = ['id']
+
 
 class InternetVariation(models.Model):
     objects = RestrictedSyncManager()
@@ -238,6 +254,10 @@ class EducationService(models.Model):
 
     def __str__(self):
         return self.service_name
+
+    class Meta:
+        ordering = ['id']
+
 
 class EducationVariation(models.Model):
     objects = RestrictedSyncManager()
