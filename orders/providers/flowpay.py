@@ -210,7 +210,7 @@ class FlowPayProvider(BaseVTUProvider):
 
     @classmethod
     def get_supported_services(cls) -> List[str]:
-        return ['data']
+        return ['airtime', 'data', 'tv', 'electricity', 'education']
 
     @classmethod
     def get_config_requirements(cls) -> List[Dict[str, Any]]:
@@ -238,64 +238,174 @@ class FlowPayProvider(BaseVTUProvider):
             print("===========================================")
             print(f"FlowPay POST {url} - Payload: {data} - Status: {response.status_code} - Response: {response.json()}")
             print("===========================================")
-            # response.raise_for_status()
             return response.json()
         except Exception as e:
             logger.error(f"FlowPay request error: {str(e)}")
             raise Exception(f"FlowPay API error: {str(e)}")
 
+    def _get(self, endpoint: str, params: dict) -> Dict[str, Any]:
+        url = f"{self.base_url}{endpoint}"
+        try:
+            response = requests.get(url, params=params, headers=self.headers, timeout=50)
+            print("===========================================")
+            print(f"FlowPay GET {url} - Params: {params} - Status: {response.status_code} - Response: {response.json()}")
+            print("===========================================")
+            return response.json()
+        except Exception as e:
+            logger.error(f"FlowPay GET request error: {str(e)}")
+            raise Exception(f"FlowPay API error: {str(e)}")
+
     def buy_airtime(self, phone: str, network: str, amount: float, reference: str) -> Dict[str, Any]:
-        # network_map = {'mtn': 1, 'airtel': 2, 'glo': 3, '9mobile': 4}
-        # network_id = network_map.get(network.lower(), 1)
+        # Database: "1" = MTN, "2" = Airtel, "3" = Glo, "4" = 9mobile
+        # FlowPay API: 1 = MTN, 2 = Glo, 3 = 9mobile, 4 = Airtel
+        db_to_api_map = {
+            "1": 1,   # MTN -> MTN
+            "2": 4,   # Airtel -> Airtel
+            "3": 2,   # Glo -> Glo
+            "4": 3,   # 9mobile -> 9mobile
+        }
+        api_network = db_to_api_map.get(str(network), 1)
 
         payload = {
             "mobile_number": phone,
-            "amount": str(int(amount)),
-            "network": network,
+            "amount": int(amount),
+            "network": api_network,
         }
         
-        res = self._post("/api/airtime", payload)
+        res = self._post("/api/topup", payload)
         
-        # Based on example response: "status": "success"
-        status = "SUCCESS" if res.get('status') == 'success' else "FAILED"
+        inner_data = res.get('data') or {}
+        api_status = inner_data.get('Status') or res.get('status') or ''
+        status = "SUCCESS" if str(api_status).lower() in ["success", "successful"] else "FAILED"
+        
         return {
             "status": status,
-            "provider_reference": res.get('reference', reference),
-            "message": res.get('api_response'),
+            "provider_reference": inner_data.get('ident') or res.get('reference') or reference,
+            "message": res.get('api_response') or res.get('message'),
             "raw_response": res
         }
 
     def buy_data(self, phone: str, network: str, plan_id: str, amount: float, reference: str) -> Dict[str, Any]:
-        # network_map = {'mtn': 1, 'airtel': 2, 'glo': 3, '9mobile': 4}
-        # network_id = network_map.get(network.lower(), 1)
+        db_to_api_map = {
+            "1": 1,   # MTN -> MTN
+            "2": 4,   # Airtel -> Airtel
+            "3": 2,   # Glo -> Glo
+            "4": 3,   # 9mobile -> 9mobile
+        }
+        api_network = db_to_api_map.get(str(network), 1)
 
         payload = {
             "mobile_number": phone,
-            "plan": plan_id,
-            "network": network,
+            "plan": int(plan_id),
+            "network": api_network,
         }
         
         res = self._post("/api/data", payload)
         
-        status = "SUCCESS" if res.get('Status') == 'successful' or res.get('status') == 'successful' or (res.get("Status") and "success" in res.get("Status").lower()) or (res.get("status") and "success" in res.get("status").lower()) else "FAILED"
+        inner_data = res.get('data') or {}
+        api_status = inner_data.get('Status') or res.get('status') or ''
+        status = "SUCCESS" if str(api_status).lower() in ["success", "successful"] else "FAILED"
+        
         return {
             "status": status,
-            "provider_reference": res.get('reference', reference),
-            "message": res.get('api_response'),
+            "provider_reference": inner_data.get('ident') or res.get('reference') or reference,
+            "message": res.get('api_response') or res.get('message'),
             "raw_response": res
         }
 
-    def buy_tv(self, *args, **kwargs) -> Dict[str, Any]:
-        return {"status": "FAILED", "message": "TV not supported"}
+    def buy_tv(self, tv_id: str, package_id: str, smart_card_number: str, phone: str, amount: float, reference: str, **kwargs) -> Dict[str, Any]:
+        CABLE_NAME_MAP = {"dstv": "DSTV", "gotv": "GOTV", "startime": "STARTIME", "startimes": "STARTIME"}
+        cable_name = CABLE_NAME_MAP.get(str(tv_id).lower(), str(tv_id).upper())
 
-    def buy_electricity(self, *args, **kwargs) -> Dict[str, Any]:
-        return {"status": "FAILED", "message": "Electricity not supported"}
+        resolved_plan_id = self._resolve_cable_plan_id(package_id)
+
+        payload = {
+            "cable_name": cable_name,
+            "cable_subscription_plan_id": resolved_plan_id,
+            "smart_card_number": smart_card_number,
+        }
+
+        res = self._post("/api/cable_subscription", payload)
+        
+        inner_data = res.get('data') or {}
+        api_status = inner_data.get('Status') or res.get('status') or ''
+        status = "SUCCESS" if str(api_status).lower() in ["success", "successful"] else "FAILED"
+        
+        return {
+            "status": status,
+            "provider_reference": inner_data.get('ident') or res.get('reference') or reference,
+            "message": res.get('api_response') or res.get('message'),
+            "raw_response": res
+        }
+
+    def buy_electricity(self, disco_id: str, plan_id: str, meter_number: str, phone: str, amount: float, reference: str, **kwargs) -> Dict[str, Any]:
+        distributor_id = self._resolve_disco_id(disco_id)
+        
+        meter_type = str(plan_id).lower()
+        if meter_type not in ["prepaid", "postpaid"]:
+            meter_type = "prepaid"
+            
+        customer_name = kwargs.get("customer_name") or kwargs.get("name")
+        if not customer_name:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            user_obj = User.objects.filter(phone_number=phone).first()
+            if user_obj:
+                customer_name = user_obj.full_name or user_obj.phone_number
+            else:
+                customer_name = "Customer"
+
+        payload = {
+            "meter_type": meter_type,
+            "phone_number": phone,
+            "name": customer_name,
+            "meter_number": meter_number,
+            "electricity_distributor_id": distributor_id,
+            "amount": float(amount),
+        }
+
+        res = self._post("/api/electricity_bill_payments", payload)
+        
+        inner_data = res.get('data') or {}
+        api_status = inner_data.get('status') or res.get('status') or ''
+        status = "SUCCESS" if str(api_status).lower() in ["success", "successful"] else "FAILED"
+        
+        result = {
+            "status": status,
+            "provider_reference": inner_data.get('reference') or res.get('reference') or reference,
+            "message": res.get('api_response') or res.get('message'),
+            "raw_response": res
+        }
+        token = inner_data.get('token')
+        if token:
+            result["token"] = token
+            
+        return result
 
     def buy_internet(self, *args, **kwargs) -> Dict[str, Any]:
         return {"status": "FAILED", "message": "Internet not supported"}
 
-    def buy_education(self, *args, **kwargs) -> Dict[str, Any]:
-        return {"status": "FAILED", "message": "Education not supported"}
+    def buy_education(self, exam_type: str, variation_id: str, quantity: int, amount: float, reference: str, **kwargs) -> Dict[str, Any]:
+        EXAM_NAME_MAP = {"waec": "WAEC", "neco": "NECO", "nabteb": "NABTEB"}
+        exam_name = EXAM_NAME_MAP.get(str(exam_type).lower(), str(exam_type).upper())
+        
+        payload = {
+            "exam_name": exam_name,
+            "quantity": int(quantity),
+        }
+        
+        res = self._post("/api/epin", payload)
+        
+        inner_data = res.get('data') or {}
+        api_status = inner_data.get('Status') or res.get('status') or ''
+        status = "SUCCESS" if str(api_status).lower() in ["success", "successful"] else "FAILED"
+        
+        return {
+            "status": status,
+            "provider_reference": inner_data.get('ident') or res.get('reference') or reference,
+            "message": res.get('api_response') or res.get('message'),
+            "raw_response": res
+        }
 
     def query_transaction(self, reference: str) -> Dict[str, Any]:
         return {"status": "UNKNOWN", "message": "Query not implemented"}
@@ -304,25 +414,86 @@ class FlowPayProvider(BaseVTUProvider):
         return {"status": "FAILED", "message": "Cancellation not supported"}
 
     def handle_webhook(self, data: Dict[str, Any]) -> bool:
-        return data.get("status") == "success"
+        from orders.models import Purchase
+        
+        logger.info(f"FlowPay webhook payload: {data}")
+        
+        inner_data = data.get("data") or {}
+        reference = inner_data.get("reference")
+        
+        if not reference:
+            logger.warning("FlowPay Webhook: No reference in payload data.")
+            return False
+            
+        status_val = inner_data.get("status")
+        
+        try:
+            purchase = Purchase.objects.filter(reference=reference).first()
+            if not purchase:
+                logger.warning(f"FlowPay Webhook: Purchase not found for reference {reference}")
+                return False
+                
+            purchase.provider_response = data
+            
+            if status_val == "successful":
+                purchase.status = "success"
+                purchase.save()
+            elif status_val == "failed":
+                purchase.status = "failed"
+                purchase.save()
+                from orders.utils.purchase_logic import handle_vtu_async_failure
+                handle_vtu_async_failure(purchase)
+            elif status_val == "refunded":
+                purchase.status = "refunded"
+                purchase.save()
+            
+            return True
+        except Exception as e:
+            logger.error(f"FlowPay Webhook Error: {e}")
+            return False
 
     def handle_callback(self, data: Dict[str, Any]) -> bool:
         return self.handle_webhook(data)
 
     def validate_meter(self, meter_number: str, service: str) -> Dict[str, Any]:
-        return {"status": "FAILED", "account_name": "N/A", "raw_response": {}}
+        params = {
+            "meter_number": meter_number,
+            "disco_name": service,      # e.g. "ikeja-electric"
+            "meter_type": "prepaid",    # default prepaid, can be overridden if needed
+        }
+        res = self._get("/api/validate_meter", params)
+        account_name = res.get('name')
+        return {
+            "status": "SUCCESS" if res.get("status") == "success" and account_name else "FAILED",
+            "account_name": account_name,
+            "raw_response": res
+        }
 
     def validate_cable_id(self, card_number: str, service: str) -> Dict[str, Any]:
-        return {"status": "FAILED", "account_name": "N/A", "raw_response": {}}
+        CABLE_NAME_MAP = {"dstv": "DSTV", "gotv": "GOTV", "startime": "STARTIME", "startimes": "STARTIME"}
+        cable_name = CABLE_NAME_MAP.get(str(service).lower(), str(service).upper())
+        params = {
+            "smart_card_number": card_number,
+            "cable_name": cable_name,
+        }
+        res = self._get("/api/validate_icu", params)
+        account_name = res.get('name')
+        return {
+            "status": "SUCCESS" if res.get("status") == "success" and account_name else "FAILED",
+            "account_name": account_name,
+            "raw_response": res
+        }
 
     def get_wallet_balance(self) -> float:
-        # Documentation didn't specify balance endpoint, returning 0
         return 0.0
 
     def get_available_services(self) -> List[Dict[str, Any]]:
         return [
-            {"type": "airtime", "endpoint": "/api/airtime"},
+            {"type": "airtime", "endpoint": "/api/topup"},
             {"type": "data", "endpoint": "/api/data"},
+            {"type": "tv", "endpoint": "/api/cable_subscription"},
+            {"type": "electricity", "endpoint": "/api/electricity_bill_payments"},
+            {"type": "education", "endpoint": "/api/epin"},
         ]
 
     def sync_airtime(self) -> int:
@@ -356,17 +527,72 @@ class FlowPayProvider(BaseVTUProvider):
         from decimal import Decimal
         config = SiteConfig.objects.first()
         margin = config.data_margin if config else Decimal('0.00')
+        provider_config = getattr(self, "provider_config", None)
 
-        networks_to_sync = DATA_PLANS_BY_NETWORK
+        try:
+            plans_data = self._get("/api/data_plans", {})
+            if isinstance(plans_data, list) and len(plans_data) > 0:
+                created_variations = []
+                services_by_db_id = {}
+                for item in plans_data:
+                    if not isinstance(item, dict):
+                        continue
+                    net_str = str(item.get("network", "")).lower()
+                    if "1" == net_str or "mtn" in net_str:
+                        db_service_id = "1"
+                        net_name = "MTN"
+                    elif "2" == net_str or "airtel" in net_str:
+                        db_service_id = "2"
+                        net_name = "Airtel"
+                    elif "3" == net_str or "glo" in net_str:
+                        db_service_id = "3"
+                        net_name = "Glo"
+                    elif "4" == net_str or "9mobile" in net_str or "nine" in net_str or "9 mob" in net_str:
+                        db_service_id = "4"
+                        net_name = "9mobile"
+                    else:
+                        continue
 
+                    if db_service_id not in services_by_db_id:
+                        service, _ = DataService.objects.update_or_create(
+                            service_id=db_service_id,
+                            provider=provider_config,
+                            defaults={"service_name": net_name}
+                        )
+                        services_by_db_id[db_service_id] = service
+                    
+                    service = services_by_db_id[db_service_id]
+                    plan_id = str(item.get("id"))
+                    name = f"{net_name} {item.get('type', 'Gifting').upper()} {item.get('size')}{item.get('volume')} ({item.get('validity')})"
+                    cost_price = Decimal(str(item.get("amount", 0)))
+
+                    variation, _ = DataVariation.objects.update_or_create(
+                        variation_id=plan_id,
+                        service=service,
+                        defaults={
+                            "name": name,
+                            "cost_price": cost_price,
+                            "selling_price": cost_price + margin,
+                            "agent_price": cost_price,
+                            "plan_type": str(item.get("type", "gifting")).lower(),
+                            "is_active": True,
+                        }
+                    )
+                    created_variations.append(variation)
+
+                logger.info(f"FlowPay: synced {len(created_variations)} data variations from live API")
+                if len(created_variations) > 0:
+                    return len(created_variations)
+        except Exception as e:
+            logger.warning(f"FlowPay live data sync failed ({e}), falling back to catalog")
+
+        # Fallback to catalog
         created_variations = []
-        for net_id, net_info in networks_to_sync.items():
+        for net_id, net_info in DATA_PLANS_BY_NETWORK.items():
             service, _ = DataService.objects.update_or_create(
                 service_id=net_id,
-                provider=getattr(self, "provider_config", None),
-                defaults={
-                    "service_name": net_info["name"],
-                }
+                provider=provider_config,
+                defaults={"service_name": net_info["name"]}
             )
             for plan in net_info["plans"]:
                 p_amount = Decimal(str(plan["selling_price"]))
@@ -384,10 +610,224 @@ class FlowPayProvider(BaseVTUProvider):
                 )
                 created_variations.append(variation)
 
-        logger.info(f"FlowPay: synced {len(created_variations)} data variations")
+        logger.info(f"FlowPay: synced {len(created_variations)} data variations from catalog")
         return len(created_variations)
 
-    def sync_cable(self) -> int: return 0
-    def sync_electricity(self) -> int: return 0
-    def sync_internet(self) -> int: return 0
-    def sync_education(self) -> int: return 0
+    def sync_cable(self) -> int:
+        from orders.models import TVService, TVVariation
+        from summary.models import SiteConfig
+        from decimal import Decimal
+        config = SiteConfig.objects.first()
+        margin = config.tv_margin if config else Decimal('0.00')
+        provider_config = getattr(self, "provider_config", None)
+
+        TV_SERVICES = {
+            "dstv": {
+                "name": "DSTV",
+                "plans": [
+                    {"name": "DStv Padi", "selling_price": 2500, "package_id": "Padi"},
+                    {"name": "DStv Yanga", "selling_price": 3500, "package_id": "Yanga"},
+                    {"name": "DStv Confam", "selling_price": 6200, "package_id": "Confam"},
+                    {"name": "DStv Premium", "selling_price": 24500, "package_id": "Premium"},
+                ]
+            },
+            "gotv": {
+                "name": "GOTV",
+                "plans": [
+                    {"name": "GOtv Smallie", "selling_price": 1100, "package_id": "Smallie"},
+                    {"name": "GOtv Jinja", "selling_price": 2250, "package_id": "Jinja"},
+                    {"name": "GOtv Jolli", "selling_price": 3300, "package_id": "Jolli"},
+                    {"name": "GOtv Max", "selling_price": 4850, "package_id": "Max"},
+                ]
+            },
+            "startime": {
+                "name": "STARTIME",
+                "plans": [
+                    {"name": "Startimes Nova", "selling_price": 1500, "package_id": "Nova"},
+                    {"name": "Startimes Basic", "selling_price": 3000, "package_id": "Basic"},
+                    {"name": "Startimes Smart", "selling_price": 4500, "package_id": "Smart"},
+                    {"name": "Startimes Classic", "selling_price": 6000, "package_id": "Classic"},
+                    {"name": "Startimes Super", "selling_price": 9000, "package_id": "Super"},
+                ]
+            }
+        }
+
+        created_variations = []
+        for service_id, service_info in TV_SERVICES.items():
+            service, _ = TVService.objects.get_or_create(
+                service_id=service_id,
+                provider=provider_config,
+                defaults={"service_name": service_info["name"]}
+            )
+            for plan in service_info["plans"]:
+                cost_price = Decimal(str(plan["selling_price"]))
+                variation, _ = TVVariation.objects.update_or_create(
+                    variation_id=plan["package_id"],
+                    service=service,
+                    defaults={
+                        "name": plan["name"],
+                        "cost_price": cost_price,
+                        "selling_price": cost_price + margin,
+                        "agent_price": cost_price,
+                        "package_bouquet": plan["name"],
+                        "is_active": True,
+                    }
+                )
+                created_variations.append(variation)
+
+        logger.info(f"FlowPay: synced {len(created_variations)} cable variations")
+        return len(created_variations)
+
+    def sync_electricity(self) -> int:
+        from orders.models import ElectricityService, ElectricityVariation
+        from summary.models import SiteConfig
+        from decimal import Decimal
+        config = SiteConfig.objects.first()
+        margin = config.electricity_margin if config else Decimal('0.00')
+        provider_config = getattr(self, "provider_config", None)
+
+        DISCOS = [
+            {"id": "ikeja-electric", "name": "Ikeja Electric"},
+            {"id": "eko-electric", "name": "Eko Electric"},
+            {"id": "abuja-electric", "name": "Abuja Electric"},
+            {"id": "kano-electric", "name": "Kano Electric"},
+            {"id": "enugu-electric", "name": "Enugu Electric"},
+            {"id": "port-harcourt-electric", "name": "Port Harcourt Electric"},
+            {"id": "ibadan-electric", "name": "Ibadan Electric"},
+            {"id": "kaduna-electric", "name": "Kaduna Electric"},
+            {"id": "jos-electric", "name": "Jos Electric"},
+            {"id": "benin-electric", "name": "Benin Electric"},
+            {"id": "yola-electric", "name": "Yola Electric"},
+        ]
+
+        created_variations = []
+        for disco in DISCOS:
+            service, _ = ElectricityService.objects.get_or_create(
+                service_id=disco["id"],
+                provider=provider_config,
+                defaults={"service_name": disco["name"]}
+            )
+            for v_type in ["prepaid", "postpaid"]:
+                variation, _ = ElectricityVariation.objects.update_or_create(
+                    variation_id=v_type,
+                    service=service,
+                    defaults={
+                        "name": f"{disco['name']} {v_type.capitalize()}",
+                        "min_amount": "1000",
+                        "max_amount": "200000",
+                        "discount": "0",
+                        "cost_price": Decimal('0.00'),
+                        "selling_price": Decimal('0.00'),
+                        "agent_price": Decimal('0.00'),
+                        "is_active": True,
+                    }
+                )
+                created_variations.append(variation)
+
+        logger.info(f"FlowPay: synced {len(created_variations)} electricity variations")
+        return len(created_variations)
+
+    def sync_internet(self) -> int:
+        return 0
+
+    def sync_education(self) -> int:
+        from orders.models import EducationService, EducationVariation
+        from summary.models import SiteConfig
+        from decimal import Decimal
+        config = SiteConfig.objects.first()
+        margin = config.education_margin if config else Decimal('0.00')
+        provider_config = getattr(self, "provider_config", None)
+
+        EXAMS = [
+            {"id": "waec", "name": "WAEC Pin", "cost_price": 1000, "variation_id": "WAEC"},
+            {"id": "neco", "name": "NECO Pin", "cost_price": 500, "variation_id": "NECO"},
+            {"id": "nabteb", "name": "NABTEB Pin", "cost_price": 800, "variation_id": "NABTEB"},
+        ]
+
+        created_variations = []
+        for exam in EXAMS:
+            service, _ = EducationService.objects.get_or_create(
+                service_id=exam["id"],
+                provider=provider_config,
+                defaults={"service_name": exam["id"].upper()}
+            )
+            cost_price = Decimal(str(exam["cost_price"]))
+            variation, _ = EducationVariation.objects.update_or_create(
+                variation_id=exam["variation_id"],
+                service=service,
+                defaults={
+                    "name": exam["name"],
+                    "cost_price": cost_price,
+                    "selling_price": cost_price + margin,
+                    "agent_price": cost_price,
+                    "is_active": True,
+                }
+            )
+            created_variations.append(variation)
+
+        logger.info(f"FlowPay: synced {len(created_variations)} education variations")
+        return len(created_variations)
+
+    def _resolve_cable_plan_id(self, package_id: str) -> int:
+        try:
+            return int(package_id)
+        except ValueError:
+            name_map = {
+                "smallie": 1,
+                "jinja": 2,
+                "jolli": 3,
+                "max": 4,
+                "padi": 5,
+                "yanga": 6,
+                "confam": 5,  # example in docs used 5
+                "premium": 8,
+                "nova": 21,
+                "basic": 22,
+                "smart": 23,
+                "classic": 24,
+                "super": 25,
+            }
+            val = str(package_id).strip().lower()
+            for k, v in name_map.items():
+                if k in val:
+                    return v
+            return 1
+
+    def _resolve_disco_id(self, disco_id: str) -> int:
+        DISCO_ID_MAP = {
+            "ikeja-electric": 1,
+            "eko-electric": 2,
+            "abuja-electric": 3,
+            "kano-electric": 4,
+            "enugu-electric": 5,
+            "port-harcourt-electric": 6,
+            "ibadan-electric": 7,
+            "kaduna-electric": 8,
+            "jos-electric": 9,
+            "benin-electric": 10,
+            "yola-electric": 11,
+        }
+        normalized = str(disco_id).lower().replace(" ", "-").replace("_", "-")
+        if "ikeja" in normalized:
+            return 1
+        elif "eko" in normalized:
+            return 2
+        elif "abuja" in normalized or "aedc" in normalized:
+            return 3
+        elif "kano" in normalized or "kedco" in normalized:
+            return 4
+        elif "enugu" in normalized or "eedc" in normalized:
+            return 5
+        elif "port" in normalized or "ph" in normalized:
+            return 6
+        elif "ibadan" in normalized or "ibedc" in normalized:
+            return 7
+        elif "kaduna" in normalized:
+            return 8
+        elif "jos" in normalized or "jed" in normalized:
+            return 9
+        elif "benin" in normalized or "bedc" in normalized:
+            return 10
+        elif "yola" in normalized:
+            return 11
+        return DISCO_ID_MAP.get(normalized, 1)
