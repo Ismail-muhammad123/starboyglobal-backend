@@ -52,3 +52,25 @@ class APIRequestLog(models.Model):
 
     class Meta:
         ordering = ['-timestamp']
+
+
+def ensure_developer_profile(user):
+    if user.role == 'developer':
+        profile, created = DeveloperProfile.objects.get_or_create(user=user)
+        if not APIKey.objects.filter(profile=profile, mode='live').exists():
+            APIKey.objects.create(
+                profile=profile,
+                key=APIKey.generate_key('live'),
+                mode='live',
+                is_active=True
+            )
+        if not APIKey.objects.filter(profile=profile, mode='sandbox').exists():
+            APIKey.objects.create(
+                profile=profile,
+                key=APIKey.generate_key('sandbox'),
+                mode='sandbox',
+                is_active=True
+            )
+        return profile
+    return None
+

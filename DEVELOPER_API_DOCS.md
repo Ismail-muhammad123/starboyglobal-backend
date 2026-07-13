@@ -327,15 +327,14 @@ Lists all active airtime networks with pricing.
     "name": "MTN Nigeria",
     "min_amount": 50,
     "max_amount": 50000,
-    "normal_discount": 3.0,
-    "api_seller_discount": 4.5,
     "normal_price": null,
-    "api_seller_price": null
+    "api_seller_price": null,
+    "api_discount": 4.5
   }
 ]
 ```
 
-> For airtime, pricing is percentage-based. The `api_seller_discount` is the cashback/discount percentage you receive.  
+> For airtime, pricing is percentage-based. The `api_discount` is the cashback/discount percentage you receive.  
 > **Amount charged = face_value - (face_value × discount / 100)**
 
 ---
@@ -366,7 +365,9 @@ Lists data plans for a given network provider.
     "name": "1GB — 30 Days",
     "normal_price": 350.00,
     "api_seller_price": 320.00,
-    "plan_type": "data"
+    "api_discount": null,
+    "plan_type": "data",
+    "last_updated": "2026-07-13T22:15:30Z"
   }
 ]
 ```
@@ -398,7 +399,9 @@ Lists cable TV subscription packages for a provider.
     "variation_id": "dstv-compact",
     "name": "DStv Compact",
     "normal_price": 9000.00,
-    "api_seller_price": 8750.00
+    "api_seller_price": 8750.00,
+    "api_discount": null,
+    "last_updated": "2026-07-13T22:15:30Z"
   }
 ]
 ```
@@ -432,7 +435,9 @@ Lists meter types/variations for a DISCO (e.g. prepaid, postpaid).
     "min_amount": 500,
     "max_amount": 100000,
     "normal_price": null,
-    "api_seller_price": null
+    "api_seller_price": null,
+    "api_discount": 1.5,
+    "last_updated": "2026-07-13T22:15:30Z"
   }
 ]
 ```
@@ -466,7 +471,9 @@ Lists internet subscription plans.
     "variation_id": "smile-10gb",
     "name": "10GB Monthly Bundle",
     "normal_price": 4000.00,
-    "api_seller_price": 3800.00
+    "api_seller_price": 3800.00,
+    "api_discount": null,
+    "last_updated": "2026-07-13T22:15:30Z"
   }
 ]
 ```
@@ -498,7 +505,9 @@ Lists education pin variations (scratch card types/quantities).
     "variation_id": "waec-pins",
     "name": "WAEC Result Checker PIN",
     "normal_price": 3500.00,
-    "api_seller_price": 3300.00
+    "api_seller_price": 3300.00,
+    "api_discount": null,
+    "last_updated": "2026-07-13T22:15:30Z"
   }
 ]
 ```

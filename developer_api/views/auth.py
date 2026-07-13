@@ -179,14 +179,28 @@ class WalletFundingDetailsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
+        # Prefer the user's personal virtual account if one exists
+        try:
+            va = request.user.virtual_account
+            return Response({
+                "bank_name": va.bank_name,
+                "account_number": va.account_number,
+                "account_name": va.account_name,
+                "source": "virtual_account",
+            })
+        except Exception:
+            pass
+
+        # Fallback to site-wide platform funding account
         config = SiteConfig.objects.first()
         if not config:
-            return Response({"error": "Site configuration not found."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+            return Response({"error": "No funding details available."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         return Response({
             "bank_name": config.vtu_funding_bank_name,
             "account_number": config.vtu_funding_account_number,
             "account_name": config.vtu_funding_account_name,
+            "source": "platform_account",
         })
 
 @extend_schema(
@@ -205,7 +219,7 @@ class RegenerateAPIKeyView(APIView):
             
         try:
             profile = request.user.developer_profile
-            APIKey.objects.filter(profile=profile, mode=mode, is_active=True).update(is_active=False)
+            APIKey.objects.filter(profile=profile, mode=mode).delete()
             new_key = APIKey.objects.create(
                 profile=profile, 
                 key=APIKey.generate_key(mode=mode), 

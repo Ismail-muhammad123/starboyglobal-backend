@@ -7,6 +7,7 @@ User = get_user_model()
 class ProfileSerializer(serializers.ModelSerializer):
     groups = serializers.SerializerMethodField()
     all_permissions = serializers.SerializerMethodField()
+    developer_profile = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -15,7 +16,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             "email", "is_verified", "email_verified", "phone_number_verified", "is_active",
             "role", "referral_code", "profile_image",
             "transaction_pin_set", "created_at",
-            "groups", "all_permissions",
+            "groups", "all_permissions", "developer_profile",
         ]
         read_only_fields = fields
 
@@ -26,6 +27,16 @@ class ProfileSerializer(serializers.ModelSerializer):
         if obj.is_staff or obj.is_superuser:
             return sorted(list(obj.get_all_permissions()))
         return []
+
+    def get_developer_profile(self, obj):
+        if obj.role == 'developer' and hasattr(obj, 'developer_profile'):
+            from developer_api.views.auth import DeveloperProfileSerializer, APIKeySerializer
+            profile = obj.developer_profile
+            profile_data = DeveloperProfileSerializer(profile).data
+            api_keys = profile.api_keys.all()
+            profile_data['api_keys'] = APIKeySerializer(api_keys, many=True).data
+            return profile_data
+        return None
 
 class UpdateProfileSerializer(serializers.ModelSerializer):
     class Meta:

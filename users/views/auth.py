@@ -54,6 +54,8 @@ class LoginView(APIView):
                 "identifier": user.phone_number,
             }, status=status.HTTP_202_ACCEPTED)
         
+        from developer_api.models import ensure_developer_profile
+        ensure_developer_profile(user)
         refresh = RefreshToken.for_user(user)
         return Response({"refresh": str(refresh), "access": str(refresh.access_token), "user": ProfileSerializer(user).data})
 
@@ -136,6 +138,8 @@ class GoogleAuthView(APIView):
                     "identifier": user.phone_number,
                 }, status=status.HTTP_202_ACCEPTED)
             
+            from developer_api.models import ensure_developer_profile
+            ensure_developer_profile(user)
             refresh = RefreshToken.for_user(user)
             return Response({
                 "refresh": str(refresh), 
@@ -179,6 +183,8 @@ class Verify2FAView(APIView):
         
         otp.is_used = True
         otp.save()
+        from developer_api.models import ensure_developer_profile
+        ensure_developer_profile(user)
         refresh = RefreshToken.for_user(user)
         return Response({"refresh": str(refresh), "access": str(refresh.access_token), "user": ProfileSerializer(user).data})
 

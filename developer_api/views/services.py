@@ -2,103 +2,59 @@ from rest_framework import generics, permissions, status, serializers
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema
-
-class DeveloperCategorySerializer(serializers.Serializer):
-    id = serializers.CharField()
-    name = serializers.CharField()
-    endpoint = serializers.CharField()
-
-class DeveloperCategoryListResponseSerializer(serializers.Serializer):
-    categories = DeveloperCategorySerializer(many=True)
-
-class DeveloperAirtimeNetworkResponseSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    service_id = serializers.CharField()
-    name = serializers.CharField()
-    min_amount = serializers.FloatField()
-    max_amount = serializers.FloatField()
-    normal_discount = serializers.FloatField()
-    api_seller_discount = serializers.FloatField()
-    normal_price = serializers.FloatField()
-    api_seller_price = serializers.FloatField()
-
-class DeveloperDataNetworkResponseSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    service_id = serializers.CharField()
-    name = serializers.CharField()
-
-class DeveloperDataPlanResponseSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    variation_id = serializers.CharField()
-    name = serializers.CharField()
-    normal_price = serializers.FloatField()
-    api_seller_price = serializers.FloatField()
-    plan_type = serializers.CharField()
-
-class DeveloperTVServiceResponseSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    service_id = serializers.CharField()
-    name = serializers.CharField()
-
-class DeveloperTVPackageResponseSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    variation_id = serializers.CharField()
-    name = serializers.CharField()
-    normal_price = serializers.FloatField()
-    api_seller_price = serializers.FloatField()
-
-class DeveloperElectricityServiceResponseSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    service_id = serializers.CharField()
-    name = serializers.CharField()
-
-class DeveloperElectricityVariationResponseSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    variation_id = serializers.CharField()
-    name = serializers.CharField()
-    min_amount = serializers.FloatField()
-    max_amount = serializers.FloatField()
-    normal_price = serializers.FloatField()
-    api_seller_price = serializers.FloatField()
-
-class DeveloperInternetServiceResponseSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    service_id = serializers.CharField()
-    name = serializers.CharField()
-
-class DeveloperInternetPlanResponseSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    variation_id = serializers.CharField()
-    name = serializers.CharField()
-    normal_price = serializers.FloatField()
-    api_seller_price = serializers.FloatField()
-
-class DeveloperEducationServiceResponseSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    service_id = serializers.CharField()
-    name = serializers.CharField()
-
-class DeveloperEducationVariationResponseSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    variation_id = serializers.CharField()
-    name = serializers.CharField()
-    normal_price = serializers.FloatField()
-    api_seller_price = serializers.FloatField()
 from orders.models import (
     AirtimeNetwork, DataService, DataVariation, 
     ElectricityService, TVService, InternetService, 
     EducationService, EducationVariation, TVVariation,
     InternetVariation, ElectricityVariation
 )
+from .serializers import (
+    DeveloperCategoryListResponseSerializer,
+    DeveloperAirtimeNetworkResponseSerializer,
+    DeveloperDataNetworkResponseSerializer,
+    DeveloperDataPlanResponseSerializer,
+    DeveloperTVServiceResponseSerializer,
+    DeveloperTVPackageResponseSerializer,
+    DeveloperElectricityServiceResponseSerializer,
+    DeveloperElectricityVariationResponseSerializer,
+    DeveloperInternetServiceResponseSerializer,
+    DeveloperInternetPlanResponseSerializer,
+    DeveloperEducationServiceResponseSerializer,
+    DeveloperEducationVariationResponseSerializer
+)
 from orders.serializers.variations import resolve_price
 from ..authentication import APIKeyAuthentication
 from ..permissions import IsDeveloperUser
 
-def get_resolved_prices(obj, service_name):
-    return {
-        "normal_price": resolve_price(obj, 'customer', service_name),
-        "api_seller_price": resolve_price(obj, 'developer', service_name),
-    }
+
+def get_routed_provider(service):
+    """Returns the primary provider for the given service type from ServiceRouting, or None."""
+    from orders.models import ServiceRouting
+    routing = ServiceRouting.objects.filter(service=service).select_related('primary_provider').first()
+    if routing and routing.primary_provider:
+        return routing.primary_provider
+    return None
+
+
+def get_api_prices(obj, service_name):
+    """
+    Returns api_seller_price and api_discount with conditional priority:
+    - If developer_price (api_seller_price) is set and non-zero, show it and null out api_discount.
+    - Otherwise, show api_discount only.
+    """
+    api_seller_price = resolve_price(obj, 'developer', service_name)
+    raw_discount = getattr(obj, 'agent_discount', None) or getattr(obj, 'discount', None)
+    try:
+        api_discount = float(raw_discount) if raw_discount is not None else None
+    except (TypeError, ValueError):
+        api_discount = None
+
+    if api_seller_price and float(api_seller_price) != 0.0:
+        return {"api_seller_price": api_seller_price, "api_discount": None}
+    elif api_discount:
+        return {"api_seller_price": None, "api_discount": api_discount}
+    return {"api_seller_price": api_seller_price, "api_discount": None}
+
 
 @extend_schema(
     tags=["Developer - Services"],
@@ -130,18 +86,23 @@ class DeveloperAirtimeNetworkListView(APIView):
     permission_classes = [IsDeveloperUser]
 
     def get(self, request):
-        networks = AirtimeNetwork.objects.filter(is_active=True).order_by('id')
-        data = [{
-            "id": n.id,
-            "service_id": n.service_id,
-            "name": n.service_name,
-            "min_amount": n.min_amount,
-            "max_amount": n.max_amount,
-            "normal_discount": float(n.discount),
-            "api_seller_discount": float(n.agent_discount),
-            "normal_price": resolve_price(n, 'customer', 'airtime'),
-            "api_seller_price": resolve_price(n, 'developer', 'airtime'),
-        } for n in networks]
+        qs = AirtimeNetwork.objects.filter(is_active=True)
+        provider = get_routed_provider('airtime')
+        if provider:
+            qs = qs.filter(provider=provider)
+        data = []
+        for n in qs.order_by('id'):
+            prices = get_api_prices(n, 'airtime')
+            data.append({
+                "id": n.id,
+                "service_id": n.service_id,
+                "name": n.service_name,
+                "min_amount": n.min_amount,
+                "max_amount": n.max_amount,
+                "normal_price": resolve_price(n, 'customer', 'airtime'),
+                "api_seller_price": prices["api_seller_price"],
+                "api_discount": prices["api_discount"],
+            })
         return Response(data)
 
 @extend_schema(
@@ -153,12 +114,11 @@ class DeveloperDataNetworkListView(APIView):
     permission_classes = [IsDeveloperUser]
 
     def get(self, request):
-        services = DataService.objects.filter(is_active=True).order_by('id')
-        data = [{
-            "id": s.id,
-            "service_id": s.service_id,
-            "name": s.service_name,
-        } for s in services]
+        qs = DataService.objects.filter(is_active=True)
+        provider = get_routed_provider('data')
+        if provider:
+            qs = qs.filter(provider=provider)
+        data = [{"id": s.id, "service_id": s.service_id, "name": s.service_name} for s in qs.order_by('id')]
         return Response(data)
 
 @extend_schema(
@@ -170,17 +130,22 @@ class DeveloperDataPlanListView(APIView):
     permission_classes = [IsDeveloperUser]
 
     def get(self, request, network_id):
-        plans = DataVariation.objects.filter(service_id=network_id, is_active=True).order_by('id')
+        qs = DataVariation.objects.filter(service_id=network_id, is_active=True)
+        provider = get_routed_provider('data')
+        if provider:
+            qs = qs.filter(service__provider=provider)
         data = []
-        for p in plans:
-            prices = get_resolved_prices(p, 'data')
+        for p in qs.order_by('id'):
+            prices = get_api_prices(p, 'data')
             data.append({
                 "id": p.id,
                 "variation_id": p.variation_id,
                 "name": p.name,
-                "normal_price": prices["normal_price"],
+                "normal_price": resolve_price(p, 'customer', 'data'),
                 "api_seller_price": prices["api_seller_price"],
-                "plan_type": p.plan_type
+                "api_discount": prices["api_discount"],
+                "plan_type": p.plan_type,
+                "last_updated": p.updated_at,
             })
         return Response(data)
 
@@ -193,8 +158,11 @@ class DeveloperTVServiceListView(APIView):
     permission_classes = [IsDeveloperUser]
 
     def get(self, request):
-        services = TVService.objects.filter(is_active=True).order_by('id')
-        data = [{"id": s.id, "service_id": s.service_id, "name": s.service_name} for s in services]
+        qs = TVService.objects.filter(is_active=True)
+        provider = get_routed_provider('tv')
+        if provider:
+            qs = qs.filter(provider=provider)
+        data = [{"id": s.id, "service_id": s.service_id, "name": s.service_name} for s in qs.order_by('id')]
         return Response(data)
 
 @extend_schema(
@@ -206,16 +174,21 @@ class DeveloperTVPackageListView(APIView):
     permission_classes = [IsDeveloperUser]
 
     def get(self, request, service_id):
-        variations = TVVariation.objects.filter(service_id=service_id, is_active=True).order_by('id')
+        qs = TVVariation.objects.filter(service_id=service_id, is_active=True)
+        provider = get_routed_provider('tv')
+        if provider:
+            qs = qs.filter(service__provider=provider)
         data = []
-        for v in variations:
-            prices = get_resolved_prices(v, 'tv')
+        for v in qs.order_by('id'):
+            prices = get_api_prices(v, 'tv')
             data.append({
                 "id": v.id,
                 "variation_id": v.variation_id,
                 "name": v.name,
-                "normal_price": prices["normal_price"],
-                "api_seller_price": prices["api_seller_price"]
+                "normal_price": resolve_price(v, 'customer', 'tv'),
+                "api_seller_price": prices["api_seller_price"],
+                "api_discount": prices["api_discount"],
+                "last_updated": v.updated_at,
             })
         return Response(data)
 
@@ -228,8 +201,11 @@ class DeveloperElectricityServiceListView(APIView):
     permission_classes = [IsDeveloperUser]
 
     def get(self, request):
-        services = ElectricityService.objects.filter(is_active=True).order_by('id')
-        data = [{"id": s.id, "service_id": s.service_id, "name": s.service_name} for s in services]
+        qs = ElectricityService.objects.filter(is_active=True)
+        provider = get_routed_provider('electricity')
+        if provider:
+            qs = qs.filter(provider=provider)
+        data = [{"id": s.id, "service_id": s.service_id, "name": s.service_name} for s in qs.order_by('id')]
         return Response(data)
 
 @extend_schema(
@@ -241,18 +217,23 @@ class DeveloperElectricityVariationListView(APIView):
     permission_classes = [IsDeveloperUser]
 
     def get(self, request, service_id):
-        variations = ElectricityVariation.objects.filter(service_id=service_id, is_active=True).order_by('id')
+        qs = ElectricityVariation.objects.filter(service_id=service_id, is_active=True)
+        provider = get_routed_provider('electricity')
+        if provider:
+            qs = qs.filter(service__provider=provider)
         data = []
-        for v in variations:
-            prices = get_resolved_prices(v, 'electricity')
+        for v in qs.order_by('id'):
+            prices = get_api_prices(v, 'electricity')
             data.append({
                 "id": v.id,
                 "variation_id": v.variation_id,
                 "name": v.name,
                 "min_amount": v.min_amount,
                 "max_amount": v.max_amount,
-                "normal_price": prices["normal_price"],
-                "api_seller_price": prices["api_seller_price"]
+                "normal_price": resolve_price(v, 'customer', 'electricity'),
+                "api_seller_price": prices["api_seller_price"],
+                "api_discount": prices["api_discount"],
+                "last_updated": v.updated_at,
             })
         return Response(data)
 
@@ -265,8 +246,11 @@ class DeveloperInternetServiceListView(APIView):
     permission_classes = [IsDeveloperUser]
 
     def get(self, request):
-        services = InternetService.objects.filter(is_active=True).order_by('id')
-        data = [{"id": s.id, "service_id": s.service_id, "name": s.service_name} for s in services]
+        qs = InternetService.objects.filter(is_active=True)
+        provider = get_routed_provider('internet')
+        if provider:
+            qs = qs.filter(provider=provider)
+        data = [{"id": s.id, "service_id": s.service_id, "name": s.service_name} for s in qs.order_by('id')]
         return Response(data)
 
 @extend_schema(
@@ -278,16 +262,21 @@ class DeveloperInternetPlanListView(APIView):
     permission_classes = [IsDeveloperUser]
 
     def get(self, request, service_id):
-        variations = InternetVariation.objects.filter(service_id=service_id, is_active=True).order_by('id')
+        qs = InternetVariation.objects.filter(service_id=service_id, is_active=True)
+        provider = get_routed_provider('internet')
+        if provider:
+            qs = qs.filter(service__provider=provider)
         data = []
-        for v in variations:
-            prices = get_resolved_prices(v, 'internet')
+        for v in qs.order_by('id'):
+            prices = get_api_prices(v, 'internet')
             data.append({
                 "id": v.id,
                 "variation_id": v.variation_id,
                 "name": v.name,
-                "normal_price": prices["normal_price"],
-                "api_seller_price": prices["api_seller_price"]
+                "normal_price": resolve_price(v, 'customer', 'internet'),
+                "api_seller_price": prices["api_seller_price"],
+                "api_discount": prices["api_discount"],
+                "last_updated": v.updated_at,
             })
         return Response(data)
 
@@ -300,8 +289,11 @@ class DeveloperEducationServiceListView(APIView):
     permission_classes = [IsDeveloperUser]
 
     def get(self, request):
-        services = EducationService.objects.filter(is_active=True).order_by('id')
-        data = [{"id": s.id, "service_id": s.service_id, "name": s.service_name} for s in services]
+        qs = EducationService.objects.filter(is_active=True)
+        provider = get_routed_provider('education')
+        if provider:
+            qs = qs.filter(provider=provider)
+        data = [{"id": s.id, "service_id": s.service_id, "name": s.service_name} for s in qs.order_by('id')]
         return Response(data)
 
 @extend_schema(
@@ -313,15 +305,21 @@ class DeveloperEducationVariationListView(APIView):
     permission_classes = [IsDeveloperUser]
 
     def get(self, request, service_id):
-        variations = EducationVariation.objects.filter(service_id=service_id, is_active=True).order_by('id')
+        qs = EducationVariation.objects.filter(service_id=service_id, is_active=True)
+        provider = get_routed_provider('education')
+        if provider:
+            qs = qs.filter(service__provider=provider)
         data = []
-        for v in variations:
-            prices = get_resolved_prices(v, 'education')
+        for v in qs.order_by('id'):
+            prices = get_api_prices(v, 'education')
             data.append({
                 "id": v.id,
                 "variation_id": v.variation_id,
                 "name": v.name,
-                "normal_price": prices["normal_price"],
-                "api_seller_price": prices["api_seller_price"]
+                "normal_price": resolve_price(v, 'customer', 'education'),
+                "api_seller_price": prices["api_seller_price"],
+                "api_discount": prices["api_discount"],
+                "last_updated": v.updated_at,
             })
         return Response(data)
+

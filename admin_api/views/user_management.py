@@ -125,7 +125,15 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             target=user
         )
 
+        from developer_api.models import ensure_developer_profile
+        ensure_developer_profile(user)
+
         return Response(AdminUserDetailSerializer(user).data, status=status.HTTP_201_CREATED)
+
+    def perform_update(self, serializer):
+        user = serializer.save()
+        from developer_api.models import ensure_developer_profile
+        ensure_developer_profile(user)
 
     # ─── Activate / Deactivate ───
 
@@ -322,6 +330,8 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             user.is_admin = is_admin_override
 
         user.save()
+        from developer_api.models import ensure_developer_profile
+        ensure_developer_profile(user)
         log_admin_action(
             user=request.user,
             action_type="SET_USER_ROLE",

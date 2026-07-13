@@ -43,6 +43,29 @@ PLAN_TYPES = [
     ('general', 'General'),
 ]
 
+class RestrictedSyncManager(models.Manager):
+    def update_or_create(self, defaults=None, **kwargs):
+        defaults = defaults or {}
+        try:
+            obj = self.get(**kwargs)
+            name_field = 'service_name' if self.model.__name__ == 'AirtimeNetwork' else 'name'
+            filtered_defaults = {}
+            if name_field in defaults:
+                filtered_defaults[name_field] = defaults[name_field]
+            if 'cost_price' in defaults:
+                filtered_defaults['cost_price'] = defaults['cost_price']
+            
+            for k, v in filtered_defaults.items():
+                setattr(obj, k, v)
+            obj.save(using=self._db)
+            return obj, False
+        except self.model.DoesNotExist:
+            params = {k: v for k, v in defaults.items()}
+            params.update(kwargs)
+            obj = self.model(**params)
+            obj.save(force_insert=True, using=self._db)
+            return obj, True
+
 class DataService(models.Model):
     service_name=models.CharField(max_length=100)
     service_id= models.CharField(max_length=100)
@@ -54,6 +77,7 @@ class DataService(models.Model):
         return self.service_name
 
 class AirtimeNetwork(models.Model):
+    objects = RestrictedSyncManager()
     service_name = models.CharField(max_length=200)
     service_id = models.CharField(max_length=100)
     provider = models.ForeignKey('VTUProviderConfig', on_delete=models.SET_NULL, null=True, blank=True, related_name='airtime_networks')
@@ -86,6 +110,7 @@ class ElectricityService(models.Model):
         verbose_name_plural = "Electricity Services"
 
 class ElectricityVariation(models.Model):
+    objects = RestrictedSyncManager()
     name = models.CharField(max_length=255)   
     service = models.ForeignKey(ElectricityService, on_delete=models.CASCADE, related_name="variations", null=True)
     variation_id = models.CharField(max_length=100)
@@ -126,6 +151,7 @@ class TVService(models.Model):
         verbose_name_plural = "TV Services"
 
 class TVVariation(models.Model):
+    objects = RestrictedSyncManager()
     name = models.CharField(max_length=255)   
     service = models.ForeignKey(TVService, on_delete=models.CASCADE, related_name="variations", null=True)
     variation_id = models.CharField(max_length=100)
@@ -159,6 +185,7 @@ class InternetService(models.Model):
         return self.service_name
 
 class InternetVariation(models.Model):
+    objects = RestrictedSyncManager()
     name = models.CharField(max_length=255)   
     service = models.ForeignKey(InternetService, on_delete=models.CASCADE, related_name="variations", null=True)
     variation_id = models.CharField(max_length=100)
@@ -180,6 +207,7 @@ class InternetVariation(models.Model):
         return self.name
 
 class DataVariation(models.Model):
+    objects = RestrictedSyncManager()
     name = models.CharField(max_length=255)   
     service = models.ForeignKey(DataService, on_delete=models.CASCADE, related_name="variations", null=True)
     variation_id = models.CharField(max_length=100)
@@ -212,6 +240,7 @@ class EducationService(models.Model):
         return self.service_name
 
 class EducationVariation(models.Model):
+    objects = RestrictedSyncManager()
     service = models.ForeignKey(EducationService, on_delete=models.CASCADE, related_name='variations')
     name = models.CharField(max_length=255)
     variation_id = models.CharField(max_length=100)
@@ -221,6 +250,8 @@ class EducationVariation(models.Model):
     developer_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     plan_type = models.CharField(max_length=20, choices=PLAN_TYPES, default='general')
     is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.service.service_name} - {self.name}"

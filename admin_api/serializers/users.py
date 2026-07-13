@@ -49,6 +49,7 @@ class AdminUserDetailSerializer(serializers.ModelSerializer):
     total_debits = serializers.SerializerMethodField()
     groups = serializers.SerializerMethodField()
     all_permissions = serializers.SerializerMethodField()
+    developer_profile = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -60,7 +61,7 @@ class AdminUserDetailSerializer(serializers.ModelSerializer):
             "transaction_pin_set", "two_factor_enabled", "profile_image", "wallet_balance", 
             "kyc", "staff_permissions", "virtual_account", "beneficiaries", "purchase_beneficiaries", 
             "transfer_beneficiaries", "recent_transactions", "recent_purchases", "total_credits", 
-            "total_debits", "groups", "all_permissions", "created_at", "upgraded_at"
+            "total_debits", "groups", "all_permissions", "created_at", "upgraded_at", "developer_profile"
         ]
 
     @extend_schema_field(serializers.DictField(allow_null=True))
@@ -121,6 +122,17 @@ class AdminUserDetailSerializer(serializers.ModelSerializer):
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
     def get_all_permissions(self, obj):
         return sorted(list(obj.get_all_permissions()))
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_developer_profile(self, obj):
+        if obj.role == 'developer' and hasattr(obj, 'developer_profile'):
+            from developer_api.views.auth import DeveloperProfileSerializer, APIKeySerializer
+            profile = obj.developer_profile
+            profile_data = DeveloperProfileSerializer(profile).data
+            api_keys = profile.api_keys.all()
+            profile_data['api_keys'] = APIKeySerializer(api_keys, many=True).data
+            return profile_data
+        return None
 
 class AdminCreateUserRequestSerializer(serializers.Serializer):
     phone_number = serializers.CharField()
