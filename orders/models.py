@@ -48,23 +48,31 @@ class RestrictedSyncManager(models.Manager):
         defaults = defaults or {}
         try:
             obj = self.get(**kwargs)
-            name_field = 'service_name' if self.model.__name__ == 'AirtimeNetwork' else 'name'
-            filtered_defaults = {}
-            if name_field in defaults:
-                filtered_defaults[name_field] = defaults[name_field]
-            if 'cost_price' in defaults:
-                filtered_defaults['cost_price'] = defaults['cost_price']
-            
-            for k, v in filtered_defaults.items():
-                setattr(obj, k, v)
-            obj.save(using=self._db)
-            return obj, False
         except self.model.DoesNotExist:
             params = {k: v for k, v in defaults.items()}
             params.update(kwargs)
             obj = self.model(**params)
             obj.save(force_insert=True, using=self._db)
             return obj, True
+        except self.model.MultipleObjectsReturned:
+            # Duplicate rows exist (data integrity issue from a previous sync).
+            # Keep the oldest record, delete the rest, then fall through to update.
+            qs = self.filter(**kwargs).order_by('id')
+            obj = qs.first()
+            qs.exclude(pk=obj.pk).delete()
+
+        # Apply the restricted field updates (name/service_name + cost_price only)
+        name_field = 'service_name' if self.model.__name__ == 'AirtimeNetwork' else 'name'
+        filtered_defaults = {}
+        if name_field in defaults:
+            filtered_defaults[name_field] = defaults[name_field]
+        if 'cost_price' in defaults:
+            filtered_defaults['cost_price'] = defaults['cost_price']
+
+        for k, v in filtered_defaults.items():
+            setattr(obj, k, v)
+        obj.save(using=self._db)
+        return obj, False
 
 class DataService(models.Model):
     service_name=models.CharField(max_length=100)
