@@ -245,6 +245,7 @@ class FlowPayProvider(BaseVTUProvider):
 
     def _get(self, endpoint: str, params: dict) -> Dict[str, Any]:
         url = f"{self.base_url}{endpoint}"
+        print(f"FlowPay GET {url} - Params: {params} - Headers: {self.headers}")
         try:
             response = requests.get(url, params=params, headers=self.headers, timeout=50)
             print("===========================================")
@@ -522,6 +523,32 @@ class FlowPayProvider(BaseVTUProvider):
         return len(created)
 
     def sync_data(self) -> int:
+        """
+        Sync data plans from FlowPay.
+
+        Live API response shape:
+            {
+                "mobile_networks": [
+                    {
+                        "id": 1, "name": "MTN", "code": "mtn", ...
+                        "plan_types": [
+                            {
+                                "id": 1, "name": "SME", "code": "sme", "active": 1, ...
+                                "data_plans": [
+                                    {
+                                        "id": 82, "size": 500, "volume": "mb",
+                                        "validity": "30 DAYS", "amount": "300.00", ...
+                                    },
+                                    ...
+                                ]
+                            },
+                            ...
+                        ]
+                    },
+                    ...
+                ]
+            }
+        """
         from orders.models import DataService, DataVariation
         from summary.models import SiteConfig
         from decimal import Decimal
@@ -529,30 +556,51 @@ class FlowPayProvider(BaseVTUProvider):
         margin = config.data_margin if config else Decimal('0.00')
         provider_config = getattr(self, "provider_config", None)
 
+        # ── Network name → our internal service_id mapping ────────────────
+        NETWORK_CODE_MAP = {
+            "mtn":    ("1", "MTN"),
+            "airtel": ("2", "Airtel"),
+            "glo":    ("3", "Glo"),
+            "9mobile":("4", "9mobile"),
+            "etisalat":("4", "9mobile"),
+        }
+
         try:
-            plans_data = self._get("/api/data_plans", {})
-            if isinstance(plans_data, list) and len(plans_data) > 0:
+            res = self._get("/api/data_plans", {})
+
+            # ── Parse nested structure ─────────────────────────────────────
+            mobile_networks = None
+            if isinstance(res, dict):
+                mobile_networks = res.get("mobile_networks")
+            elif isinstance(res, list):
+                # Unexpected flat list — old path, skip to fallback
+                mobile_networks = None
+
+            if mobile_networks and isinstance(mobile_networks, list):
                 created_variations = []
-                services_by_db_id = {}
-                for item in plans_data:
-                    if not isinstance(item, dict):
-                        continue
-                    net_str = str(item.get("network", "")).lower()
-                    if "1" == net_str or "mtn" in net_str:
-                        db_service_id = "1"
-                        net_name = "MTN"
-                    elif "2" == net_str or "airtel" in net_str:
-                        db_service_id = "2"
-                        net_name = "Airtel"
-                    elif "3" == net_str or "glo" in net_str:
-                        db_service_id = "3"
-                        net_name = "Glo"
-                    elif "4" == net_str or "9mobile" in net_str or "nine" in net_str or "9 mob" in net_str:
-                        db_service_id = "4"
-                        net_name = "9mobile"
-                    else:
+                services_by_db_id: Dict[str, Any] = {}
+
+                for network in mobile_networks:
+                    if not isinstance(network, dict):
                         continue
 
+                    # Resolve network → internal service_id
+                    net_code = str(network.get("code", "")).lower().strip()
+                    net_name_raw = str(network.get("name", "")).lower().strip()
+                    mapping = NETWORK_CODE_MAP.get(net_code) or NETWORK_CODE_MAP.get(net_name_raw)
+                    if not mapping:
+                        # Try partial match on name
+                        for key, val in NETWORK_CODE_MAP.items():
+                            if key in net_name_raw or key in net_code:
+                                mapping = val
+                                break
+                    if not mapping:
+                        logger.debug(f"FlowPay sync_data: unknown network '{network.get('name')}', skipping")
+                        continue
+
+                    db_service_id, net_name = mapping
+
+                    # Ensure DataService exists
                     if db_service_id not in services_by_db_id:
                         service, _ = DataService.objects.update_or_create(
                             service_id=db_service_id,
@@ -560,33 +608,65 @@ class FlowPayProvider(BaseVTUProvider):
                             defaults={"service_name": net_name}
                         )
                         services_by_db_id[db_service_id] = service
-                    
                     service = services_by_db_id[db_service_id]
-                    plan_id = str(item.get("id"))
-                    name = f"{net_name} {item.get('type', 'Gifting').upper()} {item.get('size')}{item.get('volume')} ({item.get('validity')})"
-                    cost_price = Decimal(str(item.get("amount", 0)))
 
-                    variation, _ = DataVariation.objects.update_or_create(
-                        variation_id=plan_id,
-                        service=service,
-                        defaults={
-                            "name": name,
-                            "cost_price": cost_price,
-                            "selling_price": cost_price + margin,
-                            "agent_price": cost_price,
-                            "plan_type": str(item.get("type", "gifting")).lower(),
-                            "is_active": True,
-                        }
-                    )
-                    created_variations.append(variation)
+                    # Loop plan_types
+                    for plan_type in network.get("plan_types", []):
+                        if not isinstance(plan_type, dict):
+                            continue
+                        if not plan_type.get("active", 1):
+                            continue  # skip inactive plan types
+
+                        pt_name = str(plan_type.get("name", "General")).strip()   # e.g. "SME", "GIFTING"
+                        pt_code = str(plan_type.get("code", pt_name)).strip().lower()  # e.g. "sme", "gifting"
+
+                        # Loop data_plans inside this plan type
+                        for plan in plan_type.get("data_plans", []):
+                            if not isinstance(plan, dict):
+                                continue
+                            if not plan.get("active", 1):
+                                continue  # skip inactive plans
+
+                            plan_id   = str(plan.get("id", ""))
+                            size      = plan.get("size", "")
+                            volume    = str(plan.get("volume", "")).upper()   # "MB" / "GB"
+                            validity  = str(plan.get("validity", "")).strip()
+                            amount    = plan.get("amount", "0")
+
+                            # Build a human-readable name:
+                            # e.g. "MTN SME 500 MB (30 DAYS)"
+                            size_str = f"{size} {volume}" if volume else str(size)
+                            name = f"{net_name} {pt_name} {size_str}"
+                            if validity:
+                                name += f" ({validity})"
+
+                            cost_price = Decimal(str(amount))
+
+                            variation, _ = DataVariation.objects.update_or_create(
+                                variation_id=plan_id,
+                                service=service,
+                                defaults={
+                                    "name": name,
+                                    "cost_price": cost_price,
+                                    "selling_price": cost_price + margin,
+                                    "agent_price": cost_price,
+                                    "plan_type": pt_code,
+                                    "is_active": True,
+                                }
+                            )
+                            created_variations.append(variation)
 
                 logger.info(f"FlowPay: synced {len(created_variations)} data variations from live API")
-                if len(created_variations) > 0:
+                if created_variations:
                     return len(created_variations)
+
+            # No usable data from live API
+            logger.warning("FlowPay sync_data: live API returned no mobile_networks, falling back to catalog")
+
         except Exception as e:
             logger.warning(f"FlowPay live data sync failed ({e}), falling back to catalog")
 
-        # Fallback to catalog
+        # ── Fallback to hardcoded catalog ─────────────────────────────────
         created_variations = []
         for net_id, net_info in DATA_PLANS_BY_NETWORK.items():
             service, _ = DataService.objects.update_or_create(
