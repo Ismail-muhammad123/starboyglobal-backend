@@ -274,14 +274,15 @@ class FlowPayProvider(BaseVTUProvider):
         }
         
         res = self._post("/api/topup", payload)
-        
-        inner_data = res.get('data') or {}
-        api_status = inner_data.get('Status') or res.get('status') or ''
+
+        # FlowPay returns a flat response (no 'data' wrapper).
+        # Status field uses capital S; success text is in 'api_response'.
+        api_status = res.get('Status') or res.get('status') or ''
         status = "SUCCESS" if str(api_status).lower() in ["success", "successful"] else "FAILED"
-        
+
         return {
             "status": status,
-            "provider_reference": inner_data.get('ident') or res.get('reference') or reference,
+            "provider_reference": res.get('ident') or res.get('reference') or reference,
             "message": res.get('api_response') or res.get('message'),
             "raw_response": res
         }
@@ -302,14 +303,13 @@ class FlowPayProvider(BaseVTUProvider):
         }
         
         res = self._post("/api/data", payload)
-        
-        inner_data = res.get('data') or {}
-        api_status = inner_data.get('Status') or res.get('status') or ''
+
+        api_status = res.get('Status') or res.get('status') or ''
         status = "SUCCESS" if str(api_status).lower() in ["success", "successful"] else "FAILED"
-        
+
         return {
             "status": status,
-            "provider_reference": inner_data.get('ident') or res.get('reference') or reference,
+            "provider_reference": res.get('ident') or res.get('reference') or reference,
             "message": res.get('api_response') or res.get('message'),
             "raw_response": res
         }
@@ -327,14 +327,13 @@ class FlowPayProvider(BaseVTUProvider):
         }
 
         res = self._post("/api/cable_subscription", payload)
-        
-        inner_data = res.get('data') or {}
-        api_status = inner_data.get('Status') or res.get('status') or ''
+
+        api_status = res.get('Status') or res.get('status') or ''
         status = "SUCCESS" if str(api_status).lower() in ["success", "successful"] else "FAILED"
-        
+
         return {
             "status": status,
-            "provider_reference": inner_data.get('ident') or res.get('reference') or reference,
+            "provider_reference": res.get('ident') or res.get('reference') or reference,
             "message": res.get('api_response') or res.get('message'),
             "raw_response": res
         }
@@ -366,21 +365,21 @@ class FlowPayProvider(BaseVTUProvider):
         }
 
         res = self._post("/api/electricity_bill_payments", payload)
-        
-        inner_data = res.get('data') or {}
-        api_status = inner_data.get('status') or res.get('status') or ''
+
+        # Electricity endpoint may use lowercase 'status'
+        api_status = res.get('Status') or res.get('status') or ''
         status = "SUCCESS" if str(api_status).lower() in ["success", "successful"] else "FAILED"
-        
+
         result = {
             "status": status,
-            "provider_reference": inner_data.get('reference') or res.get('reference') or reference,
+            "provider_reference": res.get('ident') or res.get('reference') or reference,
             "message": res.get('api_response') or res.get('message'),
             "raw_response": res
         }
-        token = inner_data.get('token')
+        token = res.get('token')
         if token:
             result["token"] = token
-            
+
         return result
 
     def buy_internet(self, *args, **kwargs) -> Dict[str, Any]:
@@ -396,14 +395,13 @@ class FlowPayProvider(BaseVTUProvider):
         }
         
         res = self._post("/api/epin", payload)
-        
-        inner_data = res.get('data') or {}
-        api_status = inner_data.get('Status') or res.get('status') or ''
+
+        api_status = res.get('Status') or res.get('status') or ''
         status = "SUCCESS" if str(api_status).lower() in ["success", "successful"] else "FAILED"
-        
+
         return {
             "status": status,
-            "provider_reference": inner_data.get('ident') or res.get('reference') or reference,
+            "provider_reference": res.get('ident') or res.get('reference') or reference,
             "message": res.get('api_response') or res.get('message'),
             "raw_response": res
         }
