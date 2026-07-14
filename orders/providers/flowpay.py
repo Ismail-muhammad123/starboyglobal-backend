@@ -249,7 +249,7 @@ class FlowPayProvider(BaseVTUProvider):
         try:
             response = requests.get(url, params=params, headers=self.headers, timeout=50)
             print("===========================================")
-            print(f"FlowPay GET {url} - Params: {params} - Status: {response.status_code} - Response: {response.json()}")
+            print(f"FlowPay GET {url} - Params: {params} - Status: {response.status_code}")
             print("===========================================")
             return response.json()
         except Exception as e:
