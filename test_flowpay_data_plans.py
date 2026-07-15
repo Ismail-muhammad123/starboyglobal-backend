@@ -26,10 +26,10 @@ logger = logging.getLogger(__name__)
 # ── Network code → (internal service_id, display name) ────────────────────────
 NETWORK_CODE_MAP = {
     "mtn":     ("1", "MTN"),
-    "airtel":  ("2", "Airtel"),
-    "glo":     ("3", "Glo"),
-    "9mobile": ("4", "9mobile"),
-    "etisalat":("4", "9mobile"),
+    "airtel":  ("4", "Airtel"),
+    "glo":     ("2", "Glo"),
+    "9mobile": ("3", "9mobile"),
+    "etisalat":("3", "9mobile"),
 }
 
 BASE_URL = "https://app.flowpay.ng"

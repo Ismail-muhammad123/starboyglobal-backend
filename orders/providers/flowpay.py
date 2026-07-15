@@ -11,179 +11,179 @@ logger = logging.getLogger(__name__)
 
 AIRTIME_NETWORKS_DATA = [
     {"service_id": "1", "service_name": "MTN", "min_amount": "50", "max_amount": "50000"},
-    {"service_id": "2", "service_name": "Airtel", "min_amount": "50", "max_amount": "50000"},
-    {"service_id": "3", "service_name": "Glo", "min_amount": "50", "max_amount": "50000"},
-    {"service_id": "4", "service_name": "9mobile", "min_amount": "50", "max_amount": "50000"},
+    {"service_id": "2", "service_name": "Glo", "min_amount": "50", "max_amount": "50000"},
+    {"service_id": "3", "service_name": "9mobile", "min_amount": "50", "max_amount": "50000"},
+    {"service_id": "4", "service_name": "Airtel", "min_amount": "50", "max_amount": "50000"},
 ]
 
-DATA_PLANS_BY_NETWORK = {
-    # ── MTN (network id "1") ────────────────────────────────────────────
-    "1": {
-        "name": "MTN",
-        "plans": [
-            # SME
-            {"plan_id": "82", "name": "MTN SME 500 MB", "selling_price": 300, "plan_type": "sme", "validity": "30 DAYS"},
-            {"plan_id": "83", "name": "MTN SME 1 GB", "selling_price": 400, "plan_type": "sme", "validity": "30 DAYS"},
-            {"plan_id": "84", "name": "MTN SME 2 GB", "selling_price": 800, "plan_type": "sme", "validity": "30 DAYS"},
-            {"plan_id": "86", "name": "MTN SME 3 GB", "selling_price": 1200, "plan_type": "sme", "validity": "30 DAYS"},
-            {"plan_id": "87", "name": "MTN SME 5 GB", "selling_price": 1700, "plan_type": "sme", "validity": "30 DAYS"},
-            {"plan_id": "88", "name": "MTN SME 10 GB", "selling_price": 4500, "plan_type": "sme", "validity": "30 DAYS"},
-            {"plan_id": "89", "name": "MTN SME 20 GB", "selling_price": 9000, "plan_type": "sme", "validity": "30 DAYS"},
-            {"plan_id": "215", "name": "MTN SME 25 GB", "selling_price": 12000, "plan_type": "sme", "validity": "30 DAYS"},
-            # GIFTING
-            {"plan_id": "91", "name": "MTN GIFTING 500 MB", "selling_price": 280, "plan_type": "gifting", "validity": "2 DAYS"},
-            {"plan_id": "92", "name": "MTN GIFTING 1 GB", "selling_price": 400, "plan_type": "gifting", "validity": "7 DAYS"},
-            {"plan_id": "93", "name": "MTN GIFTING 2 GB", "selling_price": 750, "plan_type": "gifting", "validity": "2 DAYS"},
-            {"plan_id": "94", "name": "MTN GIFTING 2.5 GB", "selling_price": 900, "plan_type": "gifting", "validity": "2 DAYS"},
-            {"plan_id": "95", "name": "MTN GIFTING 3.2 GB", "selling_price": 1000, "plan_type": "gifting", "validity": "2 DAYS"},
-            {"plan_id": "96", "name": "MTN GIFTING 5 GB", "selling_price": 1750, "plan_type": "gifting", "validity": "7 DAYS"},
-            {"plan_id": "97", "name": "MTN GIFTING 6 GB", "selling_price": 2500, "plan_type": "gifting", "validity": "7 DAYS"},
-            {"plan_id": "98", "name": "MTN GIFTING 11 GB", "selling_price": 3500, "plan_type": "gifting", "validity": "7 DAYS"},
-            {"plan_id": "99", "name": "MTN GIFTING 20 GB", "selling_price": 5000, "plan_type": "gifting", "validity": "7 DAYS"},
-            {"plan_id": "100", "name": "MTN GIFTING 25 GB", "selling_price": 9000, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "101", "name": "MTN GIFTING 30 GB", "selling_price": 9500, "plan_type": "gifting", "validity": "BROADBAND 30 DAYS"},
-            {"plan_id": "102", "name": "MTN GIFTING 35 GB", "selling_price": 7500, "plan_type": "gifting", "validity": "POSTPAID 30 DAYS"},
-            {"plan_id": "103", "name": "MTN GIFTING 40 GB", "selling_price": 10000, "plan_type": "gifting", "validity": "POSTPAID 60 DAYS"},
-            {"plan_id": "104", "name": "MTN GIFTING 60 GB", "selling_price": 14500, "plan_type": "gifting", "validity": "BROADBAND 30 DAYS"},
-            {"plan_id": "105", "name": "MTN GIFTING 65 GB", "selling_price": 16000, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "106", "name": "MTN GIFTING 75 GB", "selling_price": 18000, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "107", "name": "MTN GIFTING 90 GB", "selling_price": 25000, "plan_type": "gifting", "validity": "60 DAYS"},
-            {"plan_id": "108", "name": "MTN GIFTING 150 GB", "selling_price": 40000, "plan_type": "gifting", "validity": "60 DAYS"},
-            {"plan_id": "109", "name": "MTN GIFTING 165 GB", "selling_price": 45000, "plan_type": "gifting", "validity": "60 DAYS"},
-            {"plan_id": "110", "name": "MTN GIFTING 200 GB", "selling_price": 50000, "plan_type": "gifting", "validity": "60 DAYS"},
-            {"plan_id": "111", "name": "MTN GIFTING 250 GB", "selling_price": 60000, "plan_type": "gifting", "validity": "60 DAYS"},
-            {"plan_id": "112", "name": "MTN GIFTING 450 GB", "selling_price": 75000, "plan_type": "gifting", "validity": "BROADBAND 90 DAYS"},
-            {"plan_id": "113", "name": "MTN GIFTING 800 GB", "selling_price": 130000, "plan_type": "gifting", "validity": "60 DAYS"},
-            # DATA SHARE
-            {"plan_id": "234", "name": "MTN DATA SHARE 1 GB", "selling_price": 375, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "231", "name": "MTN DATA SHARE 2 GB", "selling_price": 760, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "232", "name": "MTN DATA SHARE 3 GB", "selling_price": 1100, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "233", "name": "MTN DATA SHARE 5 GB", "selling_price": 1400, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "235", "name": "MTN DATA SHARE 10 GB", "selling_price": 4490, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "236", "name": "MTN DATA SHARE 20 GB", "selling_price": 5500, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "246", "name": "MTN DATA SHARE 500 MB", "selling_price": 300, "plan_type": "gifting", "validity": "30 DAYS"},
-            # OFFERS
-            {"plan_id": "122", "name": "MTN OFFERS 3.2 GB", "selling_price": 980, "plan_type": "gifting", "validity": "2 DAYS"},
-            {"plan_id": "123", "name": "MTN OFFERS 3.5 GB", "selling_price": 1000, "plan_type": "gifting", "validity": "2 DAYS"},
-            {"plan_id": "125", "name": "MTN OFFERS 4 GB", "selling_price": 1200, "plan_type": "gifting", "validity": "2 DAYS"},
-            {"plan_id": "126", "name": "MTN OFFERS 5.5 GB", "selling_price": 1500, "plan_type": "gifting", "validity": "2 DAYS"},
-            {"plan_id": "230", "name": "MTN OFFERS 7 GB", "selling_price": 1800, "plan_type": "gifting", "validity": "2 DAYS"},
-        ]
-    },
-    # ── Airtel (network id "2") ─────────────────────────────────────────
-    "2": {
-        "name": "Airtel",
-        "plans": [
-            # CORPORATE
-            {"plan_id": "162", "name": "Airtel CORPORATE 500 MB", "selling_price": 485, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "164", "name": "Airtel CORPORATE 1 GB", "selling_price": 780, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "165", "name": "Airtel CORPORATE 2 GB", "selling_price": 1480, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "166", "name": "Airtel CORPORATE 3 GB", "selling_price": 1950, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "167", "name": "Airtel CORPORATE 4 GB", "selling_price": 2500, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "168", "name": "Airtel CORPORATE 5 GB", "selling_price": 3500, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "169", "name": "Airtel CORPORATE 6 GB", "selling_price": 4000, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "170", "name": "Airtel CORPORATE 8 GB", "selling_price": 4500, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "171", "name": "Airtel CORPORATE 10 GB", "selling_price": 5000, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "175", "name": "Airtel CORPORATE 12 GB", "selling_price": 5500, "plan_type": "corporate", "validity": "(Coll 100 mins + 5 SMS) 30 DAYS"},
-            {"plan_id": "176", "name": "Airtel CORPORATE 13 GB", "selling_price": 6000, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "177", "name": "Airtel CORPORATE 18 GB", "selling_price": 7500, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "178", "name": "Airtel CORPORATE 25 GB", "selling_price": 9500, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "179", "name": "Airtel CORPORATE 35 GB", "selling_price": 11000, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "180", "name": "Airtel CORPORATE 60 GB", "selling_price": 15000, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "181", "name": "Airtel CORPORATE 100 GB", "selling_price": 20000, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "182", "name": "Airtel CORPORATE 160 GB", "selling_price": 30000, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "183", "name": "Airtel CORPORATE 210 GB", "selling_price": 40000, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "184", "name": "Airtel CORPORATE 300 GB", "selling_price": 50000, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "185", "name": "Airtel CORPORATE 350 GB", "selling_price": 60000, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "188", "name": "Airtel CORPORATE 650 GB", "selling_price": 100000, "plan_type": "corporate", "validity": "90 DAYS"},
-            # CORPORATE 1
-            {"plan_id": "237", "name": "Airtel CORPORATE 1 500 MB", "selling_price": 485, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "238", "name": "Airtel CORPORATE 1 1 GB", "selling_price": 780, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "239", "name": "Airtel CORPORATE 1 1.5 GB", "selling_price": 1000, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "240", "name": "Airtel CORPORATE 1 2 GB", "selling_price": 1479, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "241", "name": "Airtel CORPORATE 1 3 GB", "selling_price": 2000, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "242", "name": "Airtel CORPORATE 1 5 GB", "selling_price": 2500, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "243", "name": "Airtel CORPORATE 1 6 GB", "selling_price": 3000, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "244", "name": "Airtel CORPORATE 1 7 GB", "selling_price": 3400, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "245", "name": "Airtel CORPORATE 1 10 GB", "selling_price": 4000, "plan_type": "corporate", "validity": "30 DAYS"},
-            # GIFTING
-            {"plan_id": "190", "name": "Airtel GIFTING 300 MB", "selling_price": 100, "plan_type": "gifting", "validity": "2 DAYS"},
-            {"plan_id": "191", "name": "Airtel GIFTING 600 MB", "selling_price": 230, "plan_type": "gifting", "validity": "2 DAYS"},
-            {"plan_id": "194", "name": "Airtel GIFTING 1.5 GB", "selling_price": 500, "plan_type": "gifting", "validity": "1 DAY"},
-            {"plan_id": "195", "name": "Airtel GIFTING 2 GB", "selling_price": 600, "plan_type": "gifting", "validity": "2 DAYS"},
-            {"plan_id": "196", "name": "Airtel GIFTING 3 GB", "selling_price": 750, "plan_type": "gifting", "validity": "2 DAYS"},
-            {"plan_id": "197", "name": "Airtel GIFTING 3.2 GB", "selling_price": 850, "plan_type": "gifting", "validity": "3 DAYS"},
-            {"plan_id": "198", "name": "Airtel GIFTING 4 GB", "selling_price": 2450, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "199", "name": "Airtel GIFTING 5 GB", "selling_price": 3400, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "200", "name": "Airtel GIFTING 6 GB", "selling_price": 3950, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "201", "name": "Airtel GIFTING 8 GB", "selling_price": 4400, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "202", "name": "Airtel GIFTING 10 GB", "selling_price": 4900, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "203", "name": "Airtel GIFTING 12 GB", "selling_price": 5300, "plan_type": "gifting", "validity": "| Coll 100 mins | 30 DAYS"},
-            {"plan_id": "204", "name": "Airtel GIFTING 13 GB", "selling_price": 5500, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "205", "name": "Airtel GIFTING 18 GB", "selling_price": 7500, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "206", "name": "Airtel GIFTING 25 GB", "selling_price": 9500, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "207", "name": "Airtel GIFTING 35 GB", "selling_price": 11000, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "208", "name": "Airtel GIFTING 60 GB", "selling_price": 15000, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "209", "name": "Airtel GIFTING 100 GB", "selling_price": 20000, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "210", "name": "Airtel GIFTING 160 GB", "selling_price": 30000, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "211", "name": "Airtel GIFTING 210 GB", "selling_price": 40000, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "212", "name": "Airtel GIFTING 300 GB", "selling_price": 50000, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "213", "name": "Airtel GIFTING 350 GB", "selling_price": 60000, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "214", "name": "Airtel GIFTING 650 GB", "selling_price": 100000, "plan_type": "gifting", "validity": "90 DAYS"},
-        ]
-    },
-    # ── GLO (network id "3") ────────────────────────────────────────────
-    "3": {
-        "name": "Glo",
-        "plans": [
-            # CORPORATE
-            {"plan_id": "127", "name": "Glo CORPORATE 200 MB", "selling_price": 100, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "128", "name": "Glo CORPORATE 500 MB", "selling_price": 200, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "129", "name": "Glo CORPORATE 1 GB", "selling_price": 400, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "130", "name": "Glo CORPORATE 2 GB", "selling_price": 850, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "131", "name": "Glo CORPORATE 3 GB", "selling_price": 1200, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "132", "name": "Glo CORPORATE 5 GB", "selling_price": 2000, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "133", "name": "Glo CORPORATE 10 GB", "selling_price": 4000, "plan_type": "corporate", "validity": "30 DAYS"},
-            # GIFTING
-            {"plan_id": "134", "name": "Glo GIFTING 200 MB", "selling_price": 95, "plan_type": "gifting", "validity": "1 DAY"},
-            {"plan_id": "135", "name": "Glo GIFTING 750 MB", "selling_price": 200, "plan_type": "gifting", "validity": "1 DAY"},
-            {"plan_id": "136", "name": "Glo GIFTING 1 GB", "selling_price": 350, "plan_type": "gifting", "validity": "1 DAY"},
-            {"plan_id": "137", "name": "Glo GIFTING 1.5 GB", "selling_price": 380, "plan_type": "gifting", "validity": "1 DAY"},
-            {"plan_id": "138", "name": "Glo GIFTING 2 GB", "selling_price": 500, "plan_type": "gifting", "validity": "1 DAY"},
-            {"plan_id": "139", "name": "Glo GIFTING 2.5 GB", "selling_price": 550, "plan_type": "gifting", "validity": "2 DAYS"},
-            {"plan_id": "140", "name": "Glo GIFTING 5.1 GB", "selling_price": 1000, "plan_type": "gifting", "validity": "SOCIAL 2 DAYS"},
-            {"plan_id": "141", "name": "Glo GIFTING 7.7 GB", "selling_price": 2500, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "142", "name": "Glo GIFTING 10 GB", "selling_price": 1950, "plan_type": "gifting", "validity": "7 DAYS"},
-            {"plan_id": "143", "name": "Glo GIFTING 14 GB", "selling_price": 3900, "plan_type": "gifting", "validity": "30 DAYS"},
-        ]
-    },
-    # ── 9mobile (network id "4") ────────────────────────────────────────
-    "4": {
-        "name": "9mobile",
-        "plans": [
-            # CORPORATE
-            {"plan_id": "144", "name": "9mobile CORPORATE 300 MB", "selling_price": 100, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "145", "name": "9mobile CORPORATE 500 MB", "selling_price": 200, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "146", "name": "9mobile CORPORATE 1 GB", "selling_price": 400, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "147", "name": "9mobile CORPORATE 2 GB", "selling_price": 800, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "148", "name": "9mobile CORPORATE 3 GB", "selling_price": 1200, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "149", "name": "9mobile CORPORATE 5 GB", "selling_price": 2000, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "150", "name": "9mobile CORPORATE 10 GB", "selling_price": 4000, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "151", "name": "9mobile CORPORATE 15 GB", "selling_price": 6000, "plan_type": "corporate", "validity": "30 DAYS"},
-            {"plan_id": "152", "name": "9mobile CORPORATE 20 GB", "selling_price": 8000, "plan_type": "corporate", "validity": "30 DAYS"},
-            # GIFTING
-            {"plan_id": "153", "name": "9mobile GIFTING 300 MB", "selling_price": 100, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "154", "name": "9mobile GIFTING 500 MB", "selling_price": 200, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "155", "name": "9mobile GIFTING 1 GB", "selling_price": 400, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "156", "name": "9mobile GIFTING 2 GB", "selling_price": 800, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "157", "name": "9mobile GIFTING 3 GB", "selling_price": 1200, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "158", "name": "9mobile GIFTING 5 GB", "selling_price": 2000, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "159", "name": "9mobile GIFTING 10 GB", "selling_price": 4000, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "160", "name": "9mobile GIFTING 15 GB", "selling_price": 6000, "plan_type": "gifting", "validity": "30 DAYS"},
-            {"plan_id": "161", "name": "9mobile GIFTING 20 GB", "selling_price": 8000, "plan_type": "gifting", "validity": "30 DAYS"},
-        ]
-    },
-}
+# DATA_PLANS_BY_NETWORK = {
+#     # ── MTN (network id "1") ────────────────────────────────────────────
+#     "1": {
+#         "name": "MTN",
+#         "plans": [
+#             # SME
+#             {"plan_id": "82", "name": "MTN SME 500 MB", "selling_price": 300, "plan_type": "sme", "validity": "30 DAYS"},
+#             {"plan_id": "83", "name": "MTN SME 1 GB", "selling_price": 400, "plan_type": "sme", "validity": "30 DAYS"},
+#             {"plan_id": "84", "name": "MTN SME 2 GB", "selling_price": 800, "plan_type": "sme", "validity": "30 DAYS"},
+#             {"plan_id": "86", "name": "MTN SME 3 GB", "selling_price": 1200, "plan_type": "sme", "validity": "30 DAYS"},
+#             {"plan_id": "87", "name": "MTN SME 5 GB", "selling_price": 1700, "plan_type": "sme", "validity": "30 DAYS"},
+#             {"plan_id": "88", "name": "MTN SME 10 GB", "selling_price": 4500, "plan_type": "sme", "validity": "30 DAYS"},
+#             {"plan_id": "89", "name": "MTN SME 20 GB", "selling_price": 9000, "plan_type": "sme", "validity": "30 DAYS"},
+#             {"plan_id": "215", "name": "MTN SME 25 GB", "selling_price": 12000, "plan_type": "sme", "validity": "30 DAYS"},
+#             # GIFTING
+#             {"plan_id": "91", "name": "MTN GIFTING 500 MB", "selling_price": 280, "plan_type": "gifting", "validity": "2 DAYS"},
+#             {"plan_id": "92", "name": "MTN GIFTING 1 GB", "selling_price": 400, "plan_type": "gifting", "validity": "7 DAYS"},
+#             {"plan_id": "93", "name": "MTN GIFTING 2 GB", "selling_price": 750, "plan_type": "gifting", "validity": "2 DAYS"},
+#             {"plan_id": "94", "name": "MTN GIFTING 2.5 GB", "selling_price": 900, "plan_type": "gifting", "validity": "2 DAYS"},
+#             {"plan_id": "95", "name": "MTN GIFTING 3.2 GB", "selling_price": 1000, "plan_type": "gifting", "validity": "2 DAYS"},
+#             {"plan_id": "96", "name": "MTN GIFTING 5 GB", "selling_price": 1750, "plan_type": "gifting", "validity": "7 DAYS"},
+#             {"plan_id": "97", "name": "MTN GIFTING 6 GB", "selling_price": 2500, "plan_type": "gifting", "validity": "7 DAYS"},
+#             {"plan_id": "98", "name": "MTN GIFTING 11 GB", "selling_price": 3500, "plan_type": "gifting", "validity": "7 DAYS"},
+#             {"plan_id": "99", "name": "MTN GIFTING 20 GB", "selling_price": 5000, "plan_type": "gifting", "validity": "7 DAYS"},
+#             {"plan_id": "100", "name": "MTN GIFTING 25 GB", "selling_price": 9000, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "101", "name": "MTN GIFTING 30 GB", "selling_price": 9500, "plan_type": "gifting", "validity": "BROADBAND 30 DAYS"},
+#             {"plan_id": "102", "name": "MTN GIFTING 35 GB", "selling_price": 7500, "plan_type": "gifting", "validity": "POSTPAID 30 DAYS"},
+#             {"plan_id": "103", "name": "MTN GIFTING 40 GB", "selling_price": 10000, "plan_type": "gifting", "validity": "POSTPAID 60 DAYS"},
+#             {"plan_id": "104", "name": "MTN GIFTING 60 GB", "selling_price": 14500, "plan_type": "gifting", "validity": "BROADBAND 30 DAYS"},
+#             {"plan_id": "105", "name": "MTN GIFTING 65 GB", "selling_price": 16000, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "106", "name": "MTN GIFTING 75 GB", "selling_price": 18000, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "107", "name": "MTN GIFTING 90 GB", "selling_price": 25000, "plan_type": "gifting", "validity": "60 DAYS"},
+#             {"plan_id": "108", "name": "MTN GIFTING 150 GB", "selling_price": 40000, "plan_type": "gifting", "validity": "60 DAYS"},
+#             {"plan_id": "109", "name": "MTN GIFTING 165 GB", "selling_price": 45000, "plan_type": "gifting", "validity": "60 DAYS"},
+#             {"plan_id": "110", "name": "MTN GIFTING 200 GB", "selling_price": 50000, "plan_type": "gifting", "validity": "60 DAYS"},
+#             {"plan_id": "111", "name": "MTN GIFTING 250 GB", "selling_price": 60000, "plan_type": "gifting", "validity": "60 DAYS"},
+#             {"plan_id": "112", "name": "MTN GIFTING 450 GB", "selling_price": 75000, "plan_type": "gifting", "validity": "BROADBAND 90 DAYS"},
+#             {"plan_id": "113", "name": "MTN GIFTING 800 GB", "selling_price": 130000, "plan_type": "gifting", "validity": "60 DAYS"},
+#             # DATA SHARE
+#             {"plan_id": "234", "name": "MTN DATA SHARE 1 GB", "selling_price": 375, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "231", "name": "MTN DATA SHARE 2 GB", "selling_price": 760, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "232", "name": "MTN DATA SHARE 3 GB", "selling_price": 1100, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "233", "name": "MTN DATA SHARE 5 GB", "selling_price": 1400, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "235", "name": "MTN DATA SHARE 10 GB", "selling_price": 4490, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "236", "name": "MTN DATA SHARE 20 GB", "selling_price": 5500, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "246", "name": "MTN DATA SHARE 500 MB", "selling_price": 300, "plan_type": "gifting", "validity": "30 DAYS"},
+#             # OFFERS
+#             {"plan_id": "122", "name": "MTN OFFERS 3.2 GB", "selling_price": 980, "plan_type": "gifting", "validity": "2 DAYS"},
+#             {"plan_id": "123", "name": "MTN OFFERS 3.5 GB", "selling_price": 1000, "plan_type": "gifting", "validity": "2 DAYS"},
+#             {"plan_id": "125", "name": "MTN OFFERS 4 GB", "selling_price": 1200, "plan_type": "gifting", "validity": "2 DAYS"},
+#             {"plan_id": "126", "name": "MTN OFFERS 5.5 GB", "selling_price": 1500, "plan_type": "gifting", "validity": "2 DAYS"},
+#             {"plan_id": "230", "name": "MTN OFFERS 7 GB", "selling_price": 1800, "plan_type": "gifting", "validity": "2 DAYS"},
+#         ]
+#     },
+#     # ── Airtel (network id "2") ─────────────────────────────────────────
+#     "2": {
+#         "name": "Airtel",
+#         "plans": [
+#             # CORPORATE
+#             {"plan_id": "162", "name": "Airtel CORPORATE 500 MB", "selling_price": 485, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "164", "name": "Airtel CORPORATE 1 GB", "selling_price": 780, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "165", "name": "Airtel CORPORATE 2 GB", "selling_price": 1480, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "166", "name": "Airtel CORPORATE 3 GB", "selling_price": 1950, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "167", "name": "Airtel CORPORATE 4 GB", "selling_price": 2500, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "168", "name": "Airtel CORPORATE 5 GB", "selling_price": 3500, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "169", "name": "Airtel CORPORATE 6 GB", "selling_price": 4000, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "170", "name": "Airtel CORPORATE 8 GB", "selling_price": 4500, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "171", "name": "Airtel CORPORATE 10 GB", "selling_price": 5000, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "175", "name": "Airtel CORPORATE 12 GB", "selling_price": 5500, "plan_type": "corporate", "validity": "(Coll 100 mins + 5 SMS) 30 DAYS"},
+#             {"plan_id": "176", "name": "Airtel CORPORATE 13 GB", "selling_price": 6000, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "177", "name": "Airtel CORPORATE 18 GB", "selling_price": 7500, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "178", "name": "Airtel CORPORATE 25 GB", "selling_price": 9500, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "179", "name": "Airtel CORPORATE 35 GB", "selling_price": 11000, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "180", "name": "Airtel CORPORATE 60 GB", "selling_price": 15000, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "181", "name": "Airtel CORPORATE 100 GB", "selling_price": 20000, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "182", "name": "Airtel CORPORATE 160 GB", "selling_price": 30000, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "183", "name": "Airtel CORPORATE 210 GB", "selling_price": 40000, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "184", "name": "Airtel CORPORATE 300 GB", "selling_price": 50000, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "185", "name": "Airtel CORPORATE 350 GB", "selling_price": 60000, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "188", "name": "Airtel CORPORATE 650 GB", "selling_price": 100000, "plan_type": "corporate", "validity": "90 DAYS"},
+#             # CORPORATE 1
+#             {"plan_id": "237", "name": "Airtel CORPORATE 1 500 MB", "selling_price": 485, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "238", "name": "Airtel CORPORATE 1 1 GB", "selling_price": 780, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "239", "name": "Airtel CORPORATE 1 1.5 GB", "selling_price": 1000, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "240", "name": "Airtel CORPORATE 1 2 GB", "selling_price": 1479, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "241", "name": "Airtel CORPORATE 1 3 GB", "selling_price": 2000, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "242", "name": "Airtel CORPORATE 1 5 GB", "selling_price": 2500, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "243", "name": "Airtel CORPORATE 1 6 GB", "selling_price": 3000, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "244", "name": "Airtel CORPORATE 1 7 GB", "selling_price": 3400, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "245", "name": "Airtel CORPORATE 1 10 GB", "selling_price": 4000, "plan_type": "corporate", "validity": "30 DAYS"},
+#             # GIFTING
+#             {"plan_id": "190", "name": "Airtel GIFTING 300 MB", "selling_price": 100, "plan_type": "gifting", "validity": "2 DAYS"},
+#             {"plan_id": "191", "name": "Airtel GIFTING 600 MB", "selling_price": 230, "plan_type": "gifting", "validity": "2 DAYS"},
+#             {"plan_id": "194", "name": "Airtel GIFTING 1.5 GB", "selling_price": 500, "plan_type": "gifting", "validity": "1 DAY"},
+#             {"plan_id": "195", "name": "Airtel GIFTING 2 GB", "selling_price": 600, "plan_type": "gifting", "validity": "2 DAYS"},
+#             {"plan_id": "196", "name": "Airtel GIFTING 3 GB", "selling_price": 750, "plan_type": "gifting", "validity": "2 DAYS"},
+#             {"plan_id": "197", "name": "Airtel GIFTING 3.2 GB", "selling_price": 850, "plan_type": "gifting", "validity": "3 DAYS"},
+#             {"plan_id": "198", "name": "Airtel GIFTING 4 GB", "selling_price": 2450, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "199", "name": "Airtel GIFTING 5 GB", "selling_price": 3400, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "200", "name": "Airtel GIFTING 6 GB", "selling_price": 3950, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "201", "name": "Airtel GIFTING 8 GB", "selling_price": 4400, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "202", "name": "Airtel GIFTING 10 GB", "selling_price": 4900, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "203", "name": "Airtel GIFTING 12 GB", "selling_price": 5300, "plan_type": "gifting", "validity": "| Coll 100 mins | 30 DAYS"},
+#             {"plan_id": "204", "name": "Airtel GIFTING 13 GB", "selling_price": 5500, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "205", "name": "Airtel GIFTING 18 GB", "selling_price": 7500, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "206", "name": "Airtel GIFTING 25 GB", "selling_price": 9500, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "207", "name": "Airtel GIFTING 35 GB", "selling_price": 11000, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "208", "name": "Airtel GIFTING 60 GB", "selling_price": 15000, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "209", "name": "Airtel GIFTING 100 GB", "selling_price": 20000, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "210", "name": "Airtel GIFTING 160 GB", "selling_price": 30000, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "211", "name": "Airtel GIFTING 210 GB", "selling_price": 40000, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "212", "name": "Airtel GIFTING 300 GB", "selling_price": 50000, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "213", "name": "Airtel GIFTING 350 GB", "selling_price": 60000, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "214", "name": "Airtel GIFTING 650 GB", "selling_price": 100000, "plan_type": "gifting", "validity": "90 DAYS"},
+#         ]
+#     },
+#     # ── GLO (network id "3") ────────────────────────────────────────────
+#     "3": {
+#         "name": "Glo",
+#         "plans": [
+#             # CORPORATE
+#             {"plan_id": "127", "name": "Glo CORPORATE 200 MB", "selling_price": 100, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "128", "name": "Glo CORPORATE 500 MB", "selling_price": 200, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "129", "name": "Glo CORPORATE 1 GB", "selling_price": 400, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "130", "name": "Glo CORPORATE 2 GB", "selling_price": 850, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "131", "name": "Glo CORPORATE 3 GB", "selling_price": 1200, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "132", "name": "Glo CORPORATE 5 GB", "selling_price": 2000, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "133", "name": "Glo CORPORATE 10 GB", "selling_price": 4000, "plan_type": "corporate", "validity": "30 DAYS"},
+#             # GIFTING
+#             {"plan_id": "134", "name": "Glo GIFTING 200 MB", "selling_price": 95, "plan_type": "gifting", "validity": "1 DAY"},
+#             {"plan_id": "135", "name": "Glo GIFTING 750 MB", "selling_price": 200, "plan_type": "gifting", "validity": "1 DAY"},
+#             {"plan_id": "136", "name": "Glo GIFTING 1 GB", "selling_price": 350, "plan_type": "gifting", "validity": "1 DAY"},
+#             {"plan_id": "137", "name": "Glo GIFTING 1.5 GB", "selling_price": 380, "plan_type": "gifting", "validity": "1 DAY"},
+#             {"plan_id": "138", "name": "Glo GIFTING 2 GB", "selling_price": 500, "plan_type": "gifting", "validity": "1 DAY"},
+#             {"plan_id": "139", "name": "Glo GIFTING 2.5 GB", "selling_price": 550, "plan_type": "gifting", "validity": "2 DAYS"},
+#             {"plan_id": "140", "name": "Glo GIFTING 5.1 GB", "selling_price": 1000, "plan_type": "gifting", "validity": "SOCIAL 2 DAYS"},
+#             {"plan_id": "141", "name": "Glo GIFTING 7.7 GB", "selling_price": 2500, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "142", "name": "Glo GIFTING 10 GB", "selling_price": 1950, "plan_type": "gifting", "validity": "7 DAYS"},
+#             {"plan_id": "143", "name": "Glo GIFTING 14 GB", "selling_price": 3900, "plan_type": "gifting", "validity": "30 DAYS"},
+#         ]
+#     },
+#     # ── 9mobile (network id "4") ────────────────────────────────────────
+#     "4": {
+#         "name": "9mobile",
+#         "plans": [
+#             # CORPORATE
+#             {"plan_id": "144", "name": "9mobile CORPORATE 300 MB", "selling_price": 100, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "145", "name": "9mobile CORPORATE 500 MB", "selling_price": 200, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "146", "name": "9mobile CORPORATE 1 GB", "selling_price": 400, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "147", "name": "9mobile CORPORATE 2 GB", "selling_price": 800, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "148", "name": "9mobile CORPORATE 3 GB", "selling_price": 1200, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "149", "name": "9mobile CORPORATE 5 GB", "selling_price": 2000, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "150", "name": "9mobile CORPORATE 10 GB", "selling_price": 4000, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "151", "name": "9mobile CORPORATE 15 GB", "selling_price": 6000, "plan_type": "corporate", "validity": "30 DAYS"},
+#             {"plan_id": "152", "name": "9mobile CORPORATE 20 GB", "selling_price": 8000, "plan_type": "corporate", "validity": "30 DAYS"},
+#             # GIFTING
+#             {"plan_id": "153", "name": "9mobile GIFTING 300 MB", "selling_price": 100, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "154", "name": "9mobile GIFTING 500 MB", "selling_price": 200, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "155", "name": "9mobile GIFTING 1 GB", "selling_price": 400, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "156", "name": "9mobile GIFTING 2 GB", "selling_price": 800, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "157", "name": "9mobile GIFTING 3 GB", "selling_price": 1200, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "158", "name": "9mobile GIFTING 5 GB", "selling_price": 2000, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "159", "name": "9mobile GIFTING 10 GB", "selling_price": 4000, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "160", "name": "9mobile GIFTING 15 GB", "selling_price": 6000, "plan_type": "gifting", "validity": "30 DAYS"},
+#             {"plan_id": "161", "name": "9mobile GIFTING 20 GB", "selling_price": 8000, "plan_type": "gifting", "validity": "30 DAYS"},
+#         ]
+#     },
+# }
 
 class FlowPayProvider(BaseVTUProvider):
     """
@@ -257,20 +257,10 @@ class FlowPayProvider(BaseVTUProvider):
             raise Exception(f"FlowPay API error: {str(e)}")
 
     def buy_airtime(self, phone: str, network: str, amount: float, reference: str) -> Dict[str, Any]:
-        # Database: "1" = MTN, "2" = Airtel, "3" = Glo, "4" = 9mobile
-        # FlowPay API: 1 = MTN, 2 = Glo, 3 = 9mobile, 4 = Airtel
-        db_to_api_map = {
-            "1": 1,   # MTN -> MTN
-            "2": 4,   # Airtel -> Airtel
-            "3": 2,   # Glo -> Glo
-            "4": 3,   # 9mobile -> 9mobile
-        }
-        api_network = db_to_api_map.get(str(network), 1)
-
         payload = {
             "mobile_number": phone,
             "amount": int(amount),
-            "network": api_network,
+            "network": int(network),
         }
         
         res = self._post("/api/topup", payload)
@@ -288,18 +278,10 @@ class FlowPayProvider(BaseVTUProvider):
         }
 
     def buy_data(self, phone: str, network: str, plan_id: str, amount: float, reference: str) -> Dict[str, Any]:
-        db_to_api_map = {
-            "1": 1,   # MTN -> MTN
-            "2": 4,   # Airtel -> Airtel
-            "3": 2,   # Glo -> Glo
-            "4": 3,   # 9mobile -> 9mobile
-        }
-        api_network = db_to_api_map.get(str(network), 1)
-
         payload = {
             "mobile_number": phone,
             "plan": int(plan_id),
-            "network": api_network,
+            "network": int(network),
         }
         
         res = self._post("/api/data", payload)
@@ -556,11 +538,11 @@ class FlowPayProvider(BaseVTUProvider):
 
         # ── Network name → our internal service_id mapping ────────────────
         NETWORK_CODE_MAP = {
-            "mtn":    ("1", "MTN"),
-            "airtel": ("2", "Airtel"),
-            "glo":    ("3", "Glo"),
-            "9mobile":("4", "9mobile"),
-            "etisalat":("4", "9mobile"),
+            "mtn":      ("1", "MTN"),
+            "glo":      ("2", "Glo"),
+            "9mobile":  ("3", "9mobile"),
+            "etisalat": ("3", "9mobile"),
+            "airtel":   ("4", "Airtel"),
         }
 
         try:
@@ -664,29 +646,29 @@ class FlowPayProvider(BaseVTUProvider):
         except Exception as e:
             logger.warning(f"FlowPay live data sync failed ({e}), falling back to catalog")
 
-        # ── Fallback to hardcoded catalog ─────────────────────────────────
-        created_variations = []
-        for net_id, net_info in DATA_PLANS_BY_NETWORK.items():
-            service, _ = DataService.objects.update_or_create(
-                service_id=net_id,
-                provider=provider_config,
-                defaults={"service_name": net_info["name"]}
-            )
-            for plan in net_info["plans"]:
-                p_amount = Decimal(str(plan["selling_price"]))
-                variation, _ = DataVariation.objects.update_or_create(
-                    variation_id=plan["plan_id"],
-                    service=service,
-                    defaults={
-                        "name": plan["name"],
-                        "cost_price": p_amount,
-                        "selling_price": p_amount + margin,
-                        "agent_price": p_amount,
-                        "plan_type": plan.get("plan_type", "general"),
-                        "is_active": True,
-                    }
-                )
-                created_variations.append(variation)
+        # # ── Fallback to hardcoded catalog ─────────────────────────────────
+        # created_variations = []
+        # for net_id, net_info in DATA_PLANS_BY_NETWORK.items():
+        #     service, _ = DataService.objects.update_or_create(
+        #         service_id=net_id,
+        #         provider=provider_config,
+        #         defaults={"service_name": net_info["name"]}
+        #     )
+        #     for plan in net_info["plans"]:
+        #         p_amount = Decimal(str(plan["selling_price"]))
+        #         variation, _ = DataVariation.objects.update_or_create(
+        #             variation_id=plan["plan_id"],
+        #             service=service,
+        #             defaults={
+        #                 "name": plan["name"],
+        #                 "cost_price": p_amount,
+        #                 "selling_price": p_amount + margin,
+        #                 "agent_price": p_amount,
+        #                 "plan_type": plan.get("plan_type", "general"),
+        #                 "is_active": True,
+        #             }
+        #         )
+        #         created_variations.append(variation)
 
         logger.info(f"FlowPay: synced {len(created_variations)} data variations from catalog")
         return len(created_variations)
