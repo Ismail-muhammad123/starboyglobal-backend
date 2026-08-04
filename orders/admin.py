@@ -7,8 +7,10 @@ from .models import (
     InternetVariation, ServiceRouting, VTUProviderConfig, ServiceFallback,
     InternetService, EducationService, EducationVariation,
     DynamicVTUProvider, DynamicOperationConfig,
-    DynamicProviderHeader, DynamicOperationHeader, DynamicOperationPayload
+    DynamicProviderHeader, DynamicOperationHeader, DynamicOperationPayload,
+    ProviderServiceConfig
 )
+
 from django.db.models import Sum, Count, F
 from django.contrib.admin import SimpleListFilter
 from django.db import transaction as db_transaction
@@ -692,3 +694,11 @@ class ServiceRoutingAdmin(admin.ModelAdmin):
     def primary_provider_name(self, obj):
         return obj.primary_provider.get_name_display() if obj.primary_provider else "None"
     primary_provider_name.short_description = "Primary Provider"
+
+
+@admin.register(ProviderServiceConfig)
+class ProviderServiceConfigAdmin(admin.ModelAdmin):
+    list_display = ('provider', 'service_type', 'catalogue_source', 'customer_margin_value', 'agent_margin_value', 'developer_margin_value')
+    list_filter = ('service_type', 'catalogue_source', 'provider')
+    search_fields = ('provider__name',)
+

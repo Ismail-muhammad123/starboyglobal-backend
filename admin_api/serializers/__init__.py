@@ -11,8 +11,10 @@ from .vtu import (
     AdminTVServiceSerializer, AdminTVVariationSerializer, AdminInternetServiceSerializer, 
     AdminInternetVariationSerializer, AdminEducationServiceSerializer, 
     AdminEducationVariationSerializer, AdminElectricityServiceSerializer, 
-    AdminElectricityVariationSerializer
+    AdminElectricityVariationSerializer, ProviderServiceConfigSerializer,
+    AutoSyncConfigSerializer
 )
+
 from .financial import (
     AdminPaystackConfigSerializer, AdminPurchaseSerializer, AdminDepositSerializer, 
     AdminWithdrawalSerializer, AdminWalletTransactionSerializer, 

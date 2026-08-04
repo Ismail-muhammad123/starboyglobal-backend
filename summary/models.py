@@ -549,6 +549,14 @@ class SiteConfig(models.Model):
     delayed_tx_detection_enabled = models.BooleanField(default=True)
     delayed_tx_timeout_minutes = models.PositiveIntegerField(default=15)
 
+    # Auto-Sync Scheduler Settings
+    auto_sync_enabled = models.BooleanField(default=False, help_text="Automatically sync plans/networks from all active providers.")
+    auto_sync_frequency = models.PositiveIntegerField(default=24, help_text="Sync every N hours.")
+    auto_sync_time = models.TimeField(default='02:00', help_text="Preferred daily start time (server local time).")
+    auto_sync_last_run = models.DateTimeField(null=True, blank=True, editable=False)
+    auto_sync_next_run = models.DateTimeField(null=True, blank=True, editable=False)
+
+
     # Maintenance and health
     maintenance_mode = models.BooleanField(default=False)
     airtime_active = models.BooleanField(default=True)

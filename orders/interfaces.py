@@ -133,3 +133,28 @@ class BaseVTUProvider(ABC):
     def sync_education(self) -> int:
         """Fetch and sync education variations"""
         pass
+
+    def fetch_airtime_live(self) -> List[Dict[str, Any]]:
+        """Fetch live airtime networks from provider API without saving to DB"""
+        return []
+
+    def fetch_data_live(self) -> List[Dict[str, Any]]:
+        """Fetch live data variations from provider API without saving to DB"""
+        return []
+
+    def fetch_tv_live(self) -> List[Dict[str, Any]]:
+        """Fetch live cable TV variations from provider API without saving to DB"""
+        return []
+
+    def fetch_electricity_live(self) -> List[Dict[str, Any]]:
+        """Fetch live electricity variations from provider API without saving to DB"""
+        return []
+
+    def fetch_internet_live(self) -> List[Dict[str, Any]]:
+        """Fetch live internet variations from provider API without saving to DB"""
+        return []
+
+    def fetch_education_live(self) -> List[Dict[str, Any]]:
+        """Fetch live education variations from provider API without saving to DB"""
+        return []
+

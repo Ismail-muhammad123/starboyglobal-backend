@@ -184,3 +184,64 @@ class DetectDelayedTransactionsView(APIView):
             })
             
         return Response(results)
+
+
+from rest_framework import viewsets
+from orders.models import ProviderServiceConfig
+from admin_api.serializers import ProviderServiceConfigSerializer, AutoSyncConfigSerializer
+
+class ProviderServiceConfigViewSet(viewsets.ModelViewSet):
+    """Manage per-provider, per-service catalogue source and margins."""
+    queryset = ProviderServiceConfig.objects.all()
+    serializer_class = ProviderServiceConfigSerializer
+    permission_classes = [CanManageSiteConfig]
+    filterset_fields = ['provider', 'service_type', 'catalogue_source']
+
+
+class AutoSyncConfigView(APIView):
+    permission_classes = [CanManageSiteConfig]
+
+    @extend_schema(
+        tags=["Admin Automation"],
+        summary="Get auto-sync configuration and status",
+        responses={200: AutoSyncConfigSerializer}
+    )
+    def get(self, request):
+        config, _ = SiteConfig.objects.get_or_create(pk=1)
+        return Response(AutoSyncConfigSerializer(config).data)
+
+    @extend_schema(
+        tags=["Admin Automation"],
+        summary="Update auto-sync configuration",
+        request=AutoSyncConfigSerializer,
+        responses={200: AdminStatusResponseSerializer}
+    )
+    def post(self, request):
+        config, _ = SiteConfig.objects.get_or_create(pk=1)
+        serializer = AutoSyncConfigSerializer(config, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        # Update running scheduler dynamically
+        from orders.scheduler import update_scheduler_config
+        update_scheduler_config()
+
+        return Response({"status": "SUCCESS", "message": "Auto-sync configuration updated."})
+
+
+class AutoSyncRunNowView(APIView):
+    permission_classes = [CanManageSiteConfig]
+
+    @extend_schema(
+        tags=["Admin Automation"],
+        summary="Manually trigger immediate plans/networks sync for active providers",
+        responses={200: AdminStatusResponseSerializer}
+    )
+    def post(self, request):
+        from django.core.management import call_command
+        try:
+            call_command('sync_provider_plans')
+            return Response({"status": "SUCCESS", "message": "Provider plans sync completed."})
+        except Exception as e:
+            return Response({"status": "FAILED", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

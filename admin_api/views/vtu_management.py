@@ -1,4 +1,5 @@
-from rest_framework import viewsets, status, filters
+from rest_framework import viewsets, status, filters, serializers
+
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -275,7 +276,66 @@ class FetchFromProviderView(APIView):
         
         return Response({"status": "SUCCESS", "message": f"Successfully synced {count} {service_type} from {provider.name}"})
 
+
+class LiveCataloguePreviewView(APIView):
+    permission_classes = [CanManageVTU]
+
+    @extend_schema(
+        tags=["Admin VTU Control"],
+        summary="Preview live catalogue items from provider API with margin calculation per role",
+        responses={200: serializers.ListField(child=serializers.DictField())}
+    )
+    def get(self, request):
+        provider_id = request.query_params.get('provider_id')
+        service_type = request.query_params.get('service_type')
+        user_role = request.query_params.get('role', 'customer')
+
+        if not provider_id or not service_type:
+            return Response({"error": "provider_id and service_type query params are required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            provider = VTUProviderConfig.objects.get(id=provider_id)
+        except VTUProviderConfig.DoesNotExist:
+            return Response({"error": "Provider not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        impl = ProviderRouter.get_provider_implementation(provider.name)
+        if not impl:
+            return Response({"error": "Provider implementation not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+        method_name = f"fetch_{service_type}_live"
+        fetch_func = getattr(impl, method_name, None)
+        if not fetch_func:
+            return Response({"error": f"Live fetch not supported for service_type {service_type}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        from orders.utils.pricing import get_provider_service_config, resolve_margin_for_role, apply_margin
+        config = get_provider_service_config(provider, service_type)
+        margin_type, margin_value = resolve_margin_for_role(config, user_role)
+
+        raw_items = fetch_func()
+        priced_items = []
+        for item in raw_items:
+            item_copy = dict(item)
+            cost_price = item_copy.get('cost_price', 0.0)
+            selling_price = float(apply_margin(cost_price, margin_value, margin_type))
+            item_copy['cost_price'] = float(cost_price)
+            item_copy['selling_price'] = selling_price
+            item_copy['customer_price'] = float(apply_margin(cost_price, config.get('customer_margin_value', 0), config.get('customer_margin_type', 'flat')))
+            item_copy['agent_price'] = float(apply_margin(cost_price, config.get('agent_margin_value', 0), config.get('agent_margin_type', 'flat')))
+            item_copy['developer_price'] = float(apply_margin(cost_price, config.get('developer_margin_value', 0), config.get('developer_margin_type', 'flat')))
+            priced_items.append(item_copy)
+
+        return Response({
+            "provider": provider.get_name_display(),
+            "service_type": service_type,
+            "role_preview": user_role,
+            "margin_applied": {"type": margin_type, "value": float(margin_value)},
+            "total_items": len(priced_items),
+            "items": priced_items
+        })
+
+
 class VariationUpdatePriceView(APIView):
+
     permission_classes = [CanManageVTU]
 
     @extend_schema(

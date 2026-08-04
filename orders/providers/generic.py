@@ -365,3 +365,112 @@ class GenericLocalProvider(BaseVTUProvider):
             )
             created.append(variation)
         return created
+
+    def fetch_airtime_live(self) -> List[Dict[str, Any]]:
+        try:
+            url = f"{self.base_url}/networks/"
+            response = requests.get(url, headers=self._get_headers(), timeout=10)
+            data = response.json()
+            items = []
+            for item in data:
+                items.append({
+                    "id": item.get("id"),
+                    "service_id": str(item.get("id")),
+                    "service_name": item.get("name"),
+                    "name": item.get("name"),
+                    "cost_price": 100.00,
+                    "min_amount": item.get("min_amount", "50"),
+                    "max_amount": item.get("max_amount", "200000"),
+                    "is_active": True
+                })
+            return items
+        except Exception:
+            return []
+
+    def fetch_data_live(self) -> List[Dict[str, Any]]:
+        try:
+            url = f"{self.base_url}/dataplans/"
+            response = requests.get(url, headers=self._get_headers(), timeout=10)
+            data = response.json()
+            items = []
+            for item in data:
+                network_name = item.get("network_name") or item.get("network") or ""
+                items.append({
+                    "id": item.get("id"),
+                    "variation_id": str(item.get("id")),
+                    "name": item.get("plan_name") or item.get("name"),
+                    "service_id": str(item.get("network_id") or network_name),
+                    "network_name": network_name,
+                    "cost_price": float(item.get("amount") or 0),
+                    "plan_type": item.get("plan_type", "general"),
+                    "is_active": True
+                })
+            return items
+        except Exception:
+            return []
+
+    def fetch_tv_live(self) -> List[Dict[str, Any]]:
+        try:
+            url = f"{self.base_url}/cableplans/"
+            response = requests.get(url, headers=self._get_headers(), timeout=10)
+            data = response.json()
+            items = []
+            for item in data:
+                service_name = item.get("cablename") or item.get("name") or ""
+                items.append({
+                    "id": item.get("id"),
+                    "variation_id": str(item.get("id")),
+                    "name": item.get("plan_name") or item.get("name"),
+                    "service_id": str(item.get("cable_id") or service_name),
+                    "service_name": service_name,
+                    "cost_price": float(item.get("amount") or 0),
+                    "is_active": True
+                })
+            return items
+        except Exception:
+            return []
+
+    def fetch_electricity_live(self) -> List[Dict[str, Any]]:
+        try:
+            url = f"{self.base_url}/discos/"
+            response = requests.get(url, headers=self._get_headers(), timeout=10)
+            data = response.json()
+            items = []
+            for item in data:
+                items.append({
+                    "id": item.get("id"),
+                    "variation_id": f"{item.get('id')}-general",
+                    "name": item.get("name") or "General",
+                    "service_id": str(item.get("id") or item.get("name")),
+                    "service_name": item.get("name"),
+                    "cost_price": 0.00,
+                    "is_active": True
+                })
+            return items
+        except Exception:
+            return []
+
+    def fetch_internet_live(self) -> List[Dict[str, Any]]:
+        return []
+
+    def fetch_education_live(self) -> List[Dict[str, Any]]:
+        try:
+            url = f"{self.base_url}/education/"
+            response = requests.get(url, headers=self._get_headers(), timeout=10)
+            data = response.json()
+            items = []
+            for item in data:
+                name = item.get("name") or item.get("exam_name") or ""
+                items.append({
+                    "id": item.get("id"),
+                    "variation_id": str(item.get("id")),
+                    "name": item.get("plan_name") or name,
+                    "service_id": str(item.get("id") or name),
+                    "service_name": name,
+                    "cost_price": float(item.get("amount") or 0),
+                    "is_active": True
+                })
+            return items
+        except Exception:
+            return []
+

@@ -5,6 +5,19 @@ from django.conf import settings
 from django.db import migrations, models
 
 
+def drop_index_sql(apps, schema_editor):
+    if schema_editor.connection.vendor == 'postgresql':
+        schema_editor.execute('DROP INDEX IF EXISTS "users_user_referral_code_b937ce54_like";')
+
+def drop_column_sql(apps, schema_editor):
+    if schema_editor.connection.vendor == 'postgresql':
+        schema_editor.execute('ALTER TABLE "users_user" DROP COLUMN IF EXISTS "referral_code";')
+
+def create_index_sql(apps, schema_editor):
+    if schema_editor.connection.vendor == 'postgresql':
+        schema_editor.execute('CREATE INDEX IF NOT EXISTS "users_user_referral_code_b937ce54_like" ON "users_user" ("referral_code" varchar_pattern_ops);')
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -12,14 +25,9 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunSQL(
-            sql='DROP INDEX IF EXISTS "users_user_referral_code_b937ce54_like";',
-            reverse_sql='CREATE INDEX IF NOT EXISTS "users_user_referral_code_b937ce54_like" ON "users_user" ("referral_code" varchar_pattern_ops);'
-        ),
-        migrations.RunSQL(
-            sql='ALTER TABLE "users_user" DROP COLUMN IF EXISTS "referral_code";',
-            reverse_sql='ALTER TABLE "users_user" ADD COLUMN IF NOT EXISTS "referral_code" varchar(20);'
-        ),
+        migrations.RunPython(drop_index_sql, reverse_code=migrations.RunPython.noop),
+        migrations.RunPython(drop_column_sql, reverse_code=migrations.RunPython.noop),
+
         migrations.CreateModel(
             name='ReferralConfig',
             fields=[
@@ -129,8 +137,6 @@ class Migration(migrations.Migration):
                 'unique_together': {('user', 'service_type', 'identifier')},
             },
         ),
-        migrations.RunSQL(
-            sql='CREATE INDEX IF NOT EXISTS "users_user_referral_code_b937ce54_like" ON "users_user" ("referral_code" varchar_pattern_ops);',
-            reverse_sql='DROP INDEX IF EXISTS "users_user_referral_code_b937ce54_like";'
-        ),
+        migrations.RunPython(create_index_sql, reverse_code=migrations.RunPython.noop),
     ]
+

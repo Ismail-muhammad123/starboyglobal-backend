@@ -35,8 +35,8 @@ from .views import (
     # New Views
     AutomationConfigView, AutomationGlobalSettingsView, ServiceRetryConfigView,
     ServiceFallbackToggleView, ServiceAutoRefundView, ServicePricingModeView,
-    DetectDelayedTransactionsView,
-    VariationToggleView, ServiceTypeToggleView, AdminAvailableVTUProvidersView,
+    DetectDelayedTransactionsView, ProviderServiceConfigViewSet, AutoSyncConfigView, AutoSyncRunNowView,
+    VariationToggleView, ServiceTypeToggleView, AdminAvailableVTUProvidersView, LiveCataloguePreviewView,
     # New views added today
     AdminWalletViewSet, AdminTransferViewSet, AdminTransferBeneficiaryViewSet,
     AdminPaystackDataViewSet, AdminReferralViewSet, AdminSiteConfigViewSet, AdminServiceCashbackViewSet,
@@ -45,6 +45,7 @@ from .views import (
     AdminPermissionViewSet, AdminGroupViewSet, AdminUserPermissionView, AdminUserGroupView,
     AdminActionLogViewSet
 )
+
 
 router = DefaultRouter()
 router.register(r'users', AdminUserViewSet, basename='admin-users')
@@ -75,7 +76,10 @@ router.register(r'notifications/announcements', AdminAnnouncementViewSet, basena
 router.register(r'notifications/templates', AdminNotificationTemplateViewSet, basename='admin-notification-templates')
 router.register(r'notifications/logs', AdminNotificationViewSet, basename='admin-notifications')
 
+router.register(r'vtu/provider-service-configs', ProviderServiceConfigViewSet, basename='admin-provider-service-configs')
+
 # Comprehensive Admin Control Sets
+
 router.register(r'wallets/all', AdminWalletViewSet, basename='admin-global-wallets')
 router.register(r'admin-transfers/beneficiaries', AdminTransferBeneficiaryViewSet, basename='admin-transfers-beneficiaries')
 router.register(r'admin-transfers/transactions', AdminTransferViewSet, basename='admin-transfers-transactions')
@@ -99,6 +103,8 @@ urlpatterns = [
     # Automation
     path('automation/config/', AutomationConfigView.as_view(), name='admin-automation-config'),
     path('automation/global-settings/', AutomationGlobalSettingsView.as_view(), name='admin-automation-global'),
+    path('automation/auto-sync/', AutoSyncConfigView.as_view(), name='admin-auto-sync-config'),
+    path('automation/auto-sync/run-now/', AutoSyncRunNowView.as_view(), name='admin-auto-sync-run-now'),
     path('automation/service/<str:service>/retry/', ServiceRetryConfigView.as_view(), name='admin-service-retry'),
     path('automation/service/<str:service>/fallback/', ServiceFallbackToggleView.as_view(), name='admin-service-fallback'),
     path('automation/service/<str:service>/auto-refund/', ServiceAutoRefundView.as_view(), name='admin-service-auto-refund'),
@@ -107,6 +113,8 @@ urlpatterns = [
 
     # VTU Control Panel
     path('vtu/overview/', VTUOverviewView.as_view(), name='admin-vtu-overview'),
+    path('vtu/live-catalogue/', LiveCataloguePreviewView.as_view(), name='admin-vtu-live-catalogue'),
+
     path('vtu/providers/<int:pk>/balance/', ProviderBalanceView.as_view(), name='admin-provider-balance'),
     path('vtu/fetch-from-provider/', FetchFromProviderView.as_view(), name='admin-vtu-fetch'),
     path('vtu/variations/<int:pk>/update-price/<str:service_type>/', VariationUpdatePriceView.as_view(), name='admin-vtu-variation-price'),

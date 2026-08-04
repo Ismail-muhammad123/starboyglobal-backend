@@ -91,7 +91,9 @@ INSTALLED_APPS = [
     'support',
     'developer_api',
     'django_filters',
+    'django_apscheduler',
 ]
+
 
 
 REST_FRAMEWORK = {

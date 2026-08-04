@@ -416,7 +416,76 @@ class VTUProviderConfig(models.Model):
         return self.get_name_display()
 
 
+class ProviderServiceConfig(models.Model):
+    """
+    Per-provider, per-service configuration for catalogue sourcing and pricing margins.
+    Each row = one provider × one service type combination.
+    """
+    SERVICE_CHOICES = [
+        ('airtime', 'Airtime'),
+        ('data', 'Data'),
+        ('tv', 'Cable TV'),
+        ('electricity', 'Electricity'),
+        ('internet', 'Internet'),
+        ('education', 'Education'),
+    ]
+    CATALOGUE_SOURCE_CHOICES = [
+        ('db', 'Local Database'),
+        ('live', 'Live from Provider API'),
+    ]
+    MARGIN_TYPE_CHOICES = [
+        ('flat', 'Flat Amount (₦)'),
+        ('percentage', 'Percentage (%)'),
+    ]
+
+    provider = models.ForeignKey(
+        'VTUProviderConfig', on_delete=models.CASCADE,
+        related_name='service_configs'
+    )
+    service_type = models.CharField(max_length=20, choices=SERVICE_CHOICES)
+
+    # --- Catalogue source ---
+    catalogue_source = models.CharField(
+        max_length=10, choices=CATALOGUE_SOURCE_CHOICES, default='db',
+        help_text="Where to source plans/networks on API requests for this service."
+    )
+    live_cache_ttl_seconds = models.PositiveIntegerField(
+        default=300,
+        help_text="How long (seconds) to cache live-fetched data. 0 = no cache."
+    )
+
+    # --- Customer pricing ---
+    customer_margin_type = models.CharField(max_length=15, choices=MARGIN_TYPE_CHOICES, default='flat')
+    customer_margin_value = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0.00,
+        help_text="Add this flat amount or percentage on top of cost for regular users."
+    )
+
+    # --- Agent / Affiliate pricing ---
+    agent_margin_type = models.CharField(max_length=15, choices=MARGIN_TYPE_CHOICES, default='flat')
+    agent_margin_value = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0.00,
+        help_text="Add this flat amount or percentage on top of cost for agents/affiliates."
+    )
+
+    # --- Developer / API pricing ---
+    developer_margin_type = models.CharField(max_length=15, choices=MARGIN_TYPE_CHOICES, default='flat')
+    developer_margin_value = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0.00,
+        help_text="Add this flat amount or percentage on top of cost for API developers."
+    )
+
+    class Meta:
+        verbose_name = "Provider Service Config"
+        verbose_name_plural = "Provider Service Configs"
+        unique_together = ('provider', 'service_type')
+
+    def __str__(self):
+        return f"{self.provider.get_name_display()} – {self.get_service_type_display()}"
+
+
 class ServiceRouting(models.Model):
+
     SERVICE_CHOICES = [
         ('airtime', 'Airtime'),
         ('data', 'Data'),

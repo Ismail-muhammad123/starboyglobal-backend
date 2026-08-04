@@ -3,8 +3,11 @@ from drf_spectacular.utils import extend_schema_field
 from orders.models import (
     VTUProviderConfig, ServiceRouting, ServiceFallback, DataService, DataVariation, 
     AirtimeNetwork, TVService, TVVariation, InternetService, InternetVariation, 
-    EducationService, EducationVariation, ElectricityService, ElectricityVariation
+    EducationService, EducationVariation, ElectricityService, ElectricityVariation,
+    ProviderServiceConfig
 )
+from summary.models import SiteConfig
+
 
 class VTUProviderConfigSerializer(serializers.ModelSerializer):
     webhook_url = serializers.ReadOnlyField()
@@ -129,3 +132,28 @@ class AdminElectricityVariationSerializer(serializers.ModelSerializer):
     provider_name = serializers.ReadOnlyField(source='service.provider.name')
     service_details = AdminElectricityServiceSerializer(source='service', read_only=True)
     class Meta: model = ElectricityVariation; fields = '__all__'
+
+
+class ProviderServiceConfigSerializer(serializers.ModelSerializer):
+    provider_name = serializers.CharField(source='provider.get_name_display', read_only=True)
+
+    class Meta:
+        model = ProviderServiceConfig
+        fields = [
+            'id', 'provider', 'provider_name', 'service_type',
+            'catalogue_source', 'live_cache_ttl_seconds',
+            'customer_margin_type', 'customer_margin_value',
+            'agent_margin_type', 'agent_margin_value',
+            'developer_margin_type', 'developer_margin_value',
+        ]
+
+
+class AutoSyncConfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SiteConfig
+        fields = [
+            'auto_sync_enabled', 'auto_sync_frequency', 'auto_sync_time',
+            'auto_sync_last_run', 'auto_sync_next_run'
+        ]
+        read_only_fields = ['auto_sync_last_run', 'auto_sync_next_run']
+
