@@ -1,0 +1,85 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Add Service Routing - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Add Service Routing Rule{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <a href="{% url 'portal:service_routings' %}" class="text-xs text-blue-400 hover:underline flex items-center gap-1 w-fit">
+    <span>←</span> Back to Service Routings
+  </a>
+
+  <div class="portal-card p-6 max-w-xl mx-auto space-y-5">
+    <div class="border-b border-slate-800 pb-3">
+      <h3 class="font-bold text-white text-base">Create Service Routing Rule</h3>
+      <p class="text-xs text-slate-400">Configure primary provider, pricing mode, and default margins for a service type.</p>
+    </div>
+
+    <form method="POST" action="{% url 'portal:service_routing_create' %}" data-ajax="true" data-reload="true" class="space-y-4 text-xs">
+      {% csrf_token %}
+
+      <div>
+        <label class="block font-semibold text-slate-300 mb-1 uppercase tracking-wider">Service Type</label>
+        <select name="service" required class="portal-input w-full text-sm">
+          <option value="">-- Select Service --</option>
+          {% for code, label in service_choices %}
+            <option value="{{ code }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block font-semibold text-slate-300 mb-1 uppercase tracking-wider">Primary Provider</label>
+        <select name="primary_provider_id" required class="portal-input w-full text-sm">
+          <option value="">-- Select Primary Provider --</option>
+          {% for p in providers %}
+            <option value="{{ p.pk }}">{{ p.get_name_display }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block font-semibold text-slate-300 mb-1 uppercase tracking-wider">Pricing Mode</label>
+        <select name="pricing_mode" class="portal-input w-full text-sm">
+          <option value="defined">Defined Pricing (Catalogue Selling Price)</option>
+          <option value="fixed_margin">Fixed Margin Markup</option>
+        </select>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1">Customer Margin (₦)</label>
+          <input type="number" step="0.01" name="customer_margin" value="0.00" class="portal-input w-full font-mono">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1">Agent Margin (₦)</label>
+          <input type="number" step="0.01" name="agent_margin" value="0.00" class="portal-input w-full font-mono">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1">Developer Margin (₦)</label>
+          <input type="number" step="0.01" name="developer_margin" value="0.00" class="portal-input w-full font-mono">
+        </div>
+      </div>
+
+      <div class="p-3 bg-slate-950 rounded-lg border border-slate-800 space-y-2">
+        <label class="flex items-center gap-2 cursor-pointer text-slate-300 font-semibold">
+          <input type="checkbox" name="retry_enabled" checked class="rounded border-slate-700 bg-slate-800 text-blue-600 focus:ring-0">
+          <span>Enable Automatic Provider Retry</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer text-slate-300 font-semibold">
+          <input type="checkbox" name="fallback_enabled" checked class="rounded border-slate-700 bg-slate-800 text-blue-600 focus:ring-0">
+          <span>Enable Automatic Fallback Switching</span>
+        </label>
+      </div>
+
+      <div class="pt-3 flex justify-end gap-2 border-t border-slate-800">
+        <a href="{% url 'portal:service_routings' %}" class="px-4 py-2 bg-slate-800 text-slate-300 rounded text-xs">Cancel</a>
+        <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs shadow">
+          Create Routing Rule
+        </button>
+      </div>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

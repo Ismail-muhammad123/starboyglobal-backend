@@ -3,11 +3,32 @@
 {% block page_title %}Provider Service Margins & Catalogue Source{% endblock %}
 {% block content %}
 <div class="space-y-6">
-  <div class="portal-card p-4 flex items-center justify-between">
+  <div class="portal-card p-4 flex flex-col md:flex-row items-center justify-between gap-4">
     <div>
       <h3 class="font-bold text-white text-sm">Provider Service Margins</h3>
       <p class="text-xs text-slate-400">Configure markup margins and data source mode per provider × service type.</p>
     </div>
+
+    <!-- Provider & Service Filters -->
+    <form method="GET" class="flex items-center gap-2 w-full md:w-auto">
+      <select name="provider" onchange="this.form.submit()" class="portal-input text-xs">
+        <option value="">All Providers</option>
+        {% for p in providers %}
+          <option value="{{ p.id }}" {% if selected_provider == p.id|stringformat:"s" %}selected{% endif %}>{{ p.get_name_display }}</option>
+        {% endfor %}
+      </select>
+
+      <select name="service_type" onchange="this.form.submit()" class="portal-input text-xs">
+        <option value="">All Service Types</option>
+        {% for code, label in service_types %}
+          <option value="{{ code }}" {% if selected_service_type == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+
+      {% if selected_provider or selected_service_type %}
+        <a href="{% url 'portal:provider_service_configs' %}" class="px-3 py-1.5 bg-slate-800 text-slate-300 hover:text-white rounded text-xs">Clear</a>
+      {% endif %}
+    </form>
   </div>
 
   <div class="portal-card overflow-hidden">

@@ -1,3 +1,4 @@
+from decimal import Decimal, InvalidOperation
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
 from django.http import JsonResponse
@@ -99,10 +100,10 @@ class ManualTransactionView(PortalPermissionMixin, View):
             return JsonResponse({'status': 'error', 'message': 'Invalid Admin Security PIN.'}, status=403)
 
         try:
-            amount = float(amount_str)
+            amount = Decimal(amount_str)
             if amount <= 0:
                 raise ValueError
-        except ValueError:
+        except (ValueError, InvalidOperation):
             return JsonResponse({'status': 'error', 'message': 'Amount must be greater than 0.'}, status=400)
 
         if tx_type not in ['credit', 'debit']:
@@ -151,3 +152,33 @@ class ManualTransactionView(PortalPermissionMixin, View):
             'status': 'success',
             'message': f"Successfully {tx_type}ed ₦{amount} to {user_obj.phone_number}. New balance: ₦{bal_after}."
         })
+
+
+class WalletUserLookupView(PortalPermissionMixin, View):
+    required_permission = ('wallet.Wallet', 'view')
+
+    def get(self, request):
+        phone = request.GET.get('phone', '').strip() or request.GET.get('phone_number', '').strip()
+        if not phone:
+            return JsonResponse({'status': 'error', 'message': 'Phone number is required.'}, status=400)
+
+        user_obj = User.objects.filter(phone_number=phone).first()
+        if not user_obj:
+            return JsonResponse({'status': 'error', 'message': f'User with phone number "{phone}" not found.'}, status=404)
+
+        wallet, _ = Wallet.objects.get_or_create(user=user_obj)
+        full_name_val = user_obj.full_name() if callable(getattr(user_obj, 'full_name', None)) else getattr(user_obj, 'full_name', f"{user_obj.first_name} {user_obj.last_name}".strip())
+
+        return JsonResponse({
+            'status': 'success',
+            'user': {
+                'id': user_obj.pk,
+                'phone_number': user_obj.phone_number,
+                'full_name': full_name_val or user_obj.phone_number,
+                'email': user_obj.email or '',
+                'wallet_balance': float(wallet.balance),
+                'formatted_balance': f"₦{wallet.balance:,.2f}",
+                'is_active': user_obj.is_active,
+            }
+        })
+

@@ -5,34 +5,52 @@
 {% block content %}
 <div class="space-y-6">
 
-  <a href="{% url 'portal:wallets_list' %}" class="text-xs text-blue-400 hover:underline">← Back to Wallets</a>
+  <a href="{% url 'portal:wallets_list' %}" class="text-xs text-blue-400 hover:underline flex items-center gap-1 w-fit">
+    <span>←</span> Back to Wallets
+  </a>
 
   <div class="portal-card p-6 max-w-xl mx-auto space-y-5">
     <div class="border-b border-slate-800 pb-3">
       <h3 class="font-bold text-white text-base">Credit or Debit User Wallet</h3>
-      <p class="text-xs text-slate-400">Perform an administrative wallet adjustment. All actions are logged into AdminActionLog.</p>
+      <p class="text-xs text-slate-400">Perform an administrative wallet adjustment. User account will be validated in real-time before proceeding.</p>
     </div>
 
     <form method="POST" action="{% url 'portal:manual_transaction' %}" data-ajax="true" data-reload="true" class="space-y-4 text-xs">
       {% csrf_token %}
 
-      <div>
-        <label class="block font-semibold text-slate-300 mb-1 uppercase tracking-wider">User Phone Number</label>
-        <input type="text" name="phone_number" value="{{ target_phone }}" required placeholder="e.g. 08012345678" class="portal-input w-full text-sm font-mono">
+      <!-- Phone Number & User Verification -->
+      <div class="space-y-2">
+        <label class="block font-semibold text-slate-300 uppercase tracking-wider">User Phone Number</label>
+        <div class="flex gap-2">
+          <input type="text" id="id_phone_number" name="phone_number" value="{{ target_phone }}" required placeholder="e.g. 08012345678" class="portal-input w-full text-sm font-mono">
+          <button type="button" id="btn-verify-user" class="px-3.5 py-2 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 shadow">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            Verify User
+          </button>
+        </div>
+
+        <!-- Verification Result Box -->
+        <div id="user-verification-card" class="hidden p-3 rounded-lg border text-xs transition-all"></div>
       </div>
 
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="block font-semibold text-slate-300 mb-1 uppercase tracking-wider">Action Type</label>
-          <select name="transaction_type" required class="portal-input w-full text-sm">
+          <select id="id_transaction_type" name="transaction_type" required class="portal-input w-full text-sm">
             <option value="credit">Credit (+) Add Balance</option>
             <option value="debit">Debit (-) Deduct Balance</option>
           </select>
         </div>
         <div>
           <label class="block font-semibold text-slate-300 mb-1 uppercase tracking-wider">Amount (₦)</label>
-          <input type="number" step="0.01" min="0.01" name="amount" required placeholder="0.00" class="portal-input w-full text-sm font-mono">
+          <input type="number" step="0.01" min="0.01" id="id_amount" name="amount" required placeholder="0.00" class="portal-input w-full text-sm font-mono">
         </div>
+      </div>
+
+      <!-- Live Balance Calculation Preview -->
+      <div id="balance-preview-box" class="hidden p-3 bg-slate-800/60 rounded-lg border border-slate-700/60 text-xs justify-between items-center">
+        <span class="text-slate-400">Estimated New Balance:</span>
+        <span id="preview-new-balance" class="font-mono font-bold text-sm text-emerald-400">₦0.00</span>
       </div>
 
       <div>
@@ -50,7 +68,7 @@
 
       <div class="pt-3 flex justify-end gap-2">
         <a href="{% url 'portal:wallets_list' %}" class="px-4 py-2 bg-slate-800 text-slate-300 rounded text-xs">Cancel</a>
-        <button type="submit" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs shadow">
+        <button type="submit" id="btn-submit-tx" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs shadow transition-all">
           Execute Transaction
         </button>
       </div>
@@ -59,3 +77,115 @@
 
 </div>
 {% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const phoneInput = document.getElementById('id_phone_number');
+  const verifyBtn = document.getElementById('btn-verify-user');
+  const userCard = document.getElementById('user-verification-card');
+  const amountInput = document.getElementById('id_amount');
+  const typeSelect = document.getElementById('id_transaction_type');
+  const previewBox = document.getElementById('balance-preview-box');
+  const previewNewBal = document.getElementById('preview-new-balance');
+  const submitBtn = document.getElementById('btn-submit-tx');
+
+  let verifiedUser = null;
+  let debounceTimer = null;
+
+  async function performUserLookup() {
+    const phone = phoneInput.value.trim();
+    if (!phone) {
+      userCard.className = "p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-300 text-xs";
+      userCard.innerHTML = "⚠️ Please enter a user phone number to validate.";
+      userCard.classList.remove('hidden');
+      verifiedUser = null;
+      updateBalancePreview();
+      return;
+    }
+
+    userCard.className = "p-3 rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-300 text-xs flex items-center gap-2";
+    userCard.innerHTML = `<span class="animate-spin inline-block">🔄</span> Validating <strong>${phone}</strong> against database...`;
+    userCard.classList.remove('hidden');
+
+    try {
+      const response = await fetch(`{% url 'portal:wallet_user_lookup' %}?phone=${encodeURIComponent(phone)}`);
+      const data = await response.json();
+
+      if (response.ok && data.status === 'success') {
+        verifiedUser = data.user;
+        userCard.className = "p-3 rounded-lg border border-emerald-500/40 bg-emerald-950/30 text-slate-200 text-xs space-y-1.5";
+        userCard.innerHTML = `
+          <div class="flex items-center justify-between font-semibold border-b border-emerald-500/20 pb-1">
+            <span class="text-emerald-400 flex items-center gap-1">✓ User Found & Validated</span>
+            <span class="text-[10px] text-slate-400 font-mono">User ID: #${data.user.id}</span>
+          </div>
+          <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
+            <div><span class="text-slate-400">Name:</span> <strong class="text-white">${data.user.full_name || 'N/A'}</strong></div>
+            <div><span class="text-slate-400">Phone:</span> <strong class="font-mono text-white">${data.user.phone_number}</strong></div>
+            <div><span class="text-slate-400">Email:</span> <span class="text-slate-300">${data.user.email || 'N/A'}</span></div>
+            <div><span class="text-slate-400">Current Balance:</span> <strong class="text-emerald-400 font-mono">${data.user.formatted_balance}</strong></div>
+          </div>
+        `;
+      } else {
+        verifiedUser = null;
+        userCard.className = "p-3 rounded-lg border border-rose-500/40 bg-rose-950/40 text-rose-300 text-xs flex items-center gap-1.5";
+        userCard.innerHTML = `<span>❌</span> <span>${data.message || 'User not found.'}</span>`;
+      }
+    } catch (error) {
+      verifiedUser = null;
+      userCard.className = "p-3 rounded-lg border border-rose-500/40 bg-rose-950/40 text-rose-300 text-xs flex items-center gap-1.5";
+      userCard.innerHTML = `<span>❌</span> <span>Error reaching server for user lookup.</span>`;
+    }
+
+    updateBalancePreview();
+  }
+
+  function updateBalancePreview() {
+    if (!verifiedUser) {
+      previewBox.classList.add('hidden');
+      previewBox.classList.remove('flex');
+      return;
+    }
+
+    const currentBal = parseFloat(verifiedUser.wallet_balance) || 0;
+    const amountVal = parseFloat(amountInput.value) || 0;
+    const txType = typeSelect.value;
+
+    if (amountVal > 0) {
+      let newBal = txType === 'credit' ? (currentBal + amountVal) : (currentBal - amountVal);
+      
+      previewBox.classList.remove('hidden');
+      previewBox.classList.add('flex');
+
+      if (txType === 'debit' && amountVal > currentBal) {
+        previewNewBal.className = "font-mono font-bold text-sm text-rose-400 flex items-center gap-1";
+        previewNewBal.innerHTML = `₦${newBal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} <span class="text-[10px] bg-rose-500/20 text-rose-300 px-1.5 py-0.5 rounded">(Insufficient Funds)</span>`;
+      } else {
+        previewNewBal.className = "font-mono font-bold text-sm text-emerald-400";
+        previewNewBal.textContent = `₦${newBal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      }
+    } else {
+      previewBox.classList.add('hidden');
+      previewBox.classList.remove('flex');
+    }
+  }
+
+  verifyBtn?.addEventListener('click', performUserLookup);
+
+  phoneInput?.addEventListener('input', function () {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(performUserLookup, 500);
+  });
+
+  amountInput?.addEventListener('input', updateBalancePreview);
+  typeSelect?.addEventListener('change', updateBalancePreview);
+
+  // Auto trigger lookup if phone number is already filled in
+  if (phoneInput && phoneInput.value.trim().length >= 5) {
+    performUserLookup();
+  }
+});
+</script>
+{% endblock %}
+

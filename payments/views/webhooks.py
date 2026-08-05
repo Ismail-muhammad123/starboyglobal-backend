@@ -70,6 +70,23 @@ class PaymentWebhookView(APIView):
                 VirtualAccount.objects.get_or_create(user=user, defaults={"account_number": acc["account_number"], "bank_name": acc["bank"]['name'], "account_name": acc['account_name'], "customer_email": customer["email"], "customer_name": customer["first_name"] + " " + customer["last_name"], "status": data.get("status", "ACTIVE").upper(), "account_reference": str(customer["id"])})
         elif event_type in ["transfer.success", "transfer.failed", "transfer.reversed"]:
             code, ref = data.get('transfer_code'), data.get('reference')
+            
+            # Check AdminTransfer records
+            from payments.models import AdminTransfer
+            admin_trf = None
+            if code:
+                admin_trf = AdminTransfer.objects.filter(transfer_code=code).first()
+            if not admin_trf and ref:
+                admin_trf = AdminTransfer.objects.filter(reference=ref).first()
+
+            if admin_trf:
+                if event_type == "transfer.success":
+                    admin_trf.status = "SUCCESS"
+                else:
+                    admin_trf.status = "FAILED"
+                admin_trf.save()
+
+            # Check Withdrawal records
             withdrawal = Withdrawal.objects.filter(transfer_code=code).first() if code else Withdrawal.objects.filter(reference=ref).first()
             if withdrawal:
                 from notifications.utils import NotificationService

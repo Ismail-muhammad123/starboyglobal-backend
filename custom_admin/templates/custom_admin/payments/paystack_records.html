@@ -4,12 +4,46 @@
 {% block content %}
 <div class="space-y-6">
 
-  <!-- Header -->
-  <div class="portal-card p-4 flex items-center justify-between">
+  <!-- Header & Filters -->
+  <div class="portal-card p-4 flex flex-col md:flex-row items-center justify-between gap-4">
     <div>
-      <h3 class="font-bold text-white text-sm">Paystack API Live Transaction History</h3>
-      <p class="text-xs text-slate-400">Direct query results fetched from Paystack API Gateway.</p>
+      <h3 class="font-bold text-white text-sm">Paystack API Live Gateway Records</h3>
+      <p class="text-xs text-slate-400">Direct query results fetched live from Paystack API (Amounts converted from Kobo to Naira).</p>
     </div>
+
+    <!-- Search, Filter & Sort Form -->
+    <form method="GET" class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+      <input type="text" name="search" value="{{ search_query }}" placeholder="Search Ref, Email, Name..."
+             class="portal-input w-full md:w-56 text-xs">
+
+      <select name="flow" onchange="this.form.submit()" class="portal-input text-xs">
+        <option value="">All Flow (Credit/Debit)</option>
+        <option value="credit" {% if flow_filter == 'credit' %}selected{% endif %}>Credit (+)</option>
+        <option value="debit" {% if flow_filter == 'debit' %}selected{% endif %}>Debit (-)</option>
+      </select>
+
+      <select name="status" onchange="this.form.submit()" class="portal-input text-xs">
+        <option value="">All Status</option>
+        <option value="success" {% if status_filter == 'success' %}selected{% endif %}>Success</option>
+        <option value="failed" {% if status_filter == 'failed' %}selected{% endif %}>Failed</option>
+        <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+        <option value="abandoned" {% if status_filter == 'abandoned' %}selected{% endif %}>Abandoned</option>
+      </select>
+
+      <select name="sort" onchange="this.form.submit()" class="portal-input text-xs">
+        <option value="">Sort By...</option>
+        <option value="date_newest" {% if sort_by == 'date_newest' %}selected{% endif %}>Newest First</option>
+        <option value="date_oldest" {% if sort_by == 'date_oldest' %}selected{% endif %}>Oldest First</option>
+        <option value="amount_high" {% if sort_by == 'amount_high' %}selected{% endif %}>Highest Amount</option>
+        <option value="amount_low" {% if sort_by == 'amount_low' %}selected{% endif %}>Lowest Amount</option>
+      </select>
+
+      <button type="submit" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded text-xs">Search</button>
+
+      {% if search_query or flow_filter or status_filter or sort_by %}
+        <a href="{% url 'portal:paystack_records' %}" class="px-3 py-1.5 bg-slate-800 text-slate-300 hover:text-white rounded text-xs">Clear</a>
+      {% endif %}
+    </form>
   </div>
 
   {% if error_msg %}
@@ -20,35 +54,55 @@
 
   <!-- Paystack Transactions Table -->
   <div class="portal-card overflow-hidden">
-    <div class="p-4 border-b border-slate-800 font-bold text-white text-sm">Live Paystack Transactions</div>
+    <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+      <div class="font-bold text-white text-sm">Live Paystack Records ({{ paystack_txs|length }})</div>
+      <span class="text-xs text-slate-400">Values in NGN (₦)</span>
+    </div>
     <div class="overflow-x-auto">
       <table class="w-full text-left text-xs text-slate-300">
         <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
           <tr>
             <th class="p-3">Reference</th>
-            <th class="p-3">Customer Email</th>
-            <th class="p-3">Amount</th>
+            <th class="p-3">Flow Type</th>
+            <th class="p-3">Customer / Recipient</th>
+            <th class="p-3">Amount (NGN)</th>
             <th class="p-3">Channel</th>
             <th class="p-3">Gateway Status</th>
-            <th class="p-3">Paid At</th>
+            <th class="p-3">Date</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-800">
           {% for tx in paystack_txs %}
             <tr class="hover:bg-slate-800/40">
               <td class="p-3 font-mono text-blue-400 font-medium">{{ tx.reference }}</td>
-              <td class="p-3 font-medium text-slate-200">{{ tx.customer.email|default:"-" }}</td>
-              <td class="p-3 font-mono font-bold text-emerald-400">₦{{ tx.amount|default:0|stringformat:".2f" }}</td>
-              <td class="p-3 uppercase text-[10px] text-slate-400">{{ tx.channel|default:"card" }}</td>
               <td class="p-3">
-                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {% if tx.status == 'success' %}badge-success{% else %}badge-danger{% endif %}">
+                {% if tx.flow_type == 'CREDIT' %}
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">
+                    CREDIT (+)
+                  </span>
+                {% else %}
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-950 text-rose-400 border border-rose-800">
+                    DEBIT (-)
+                  </span>
+                {% endif %}
+              </td>
+              <td class="p-3 font-medium text-slate-200">
+                <div>{{ tx.customer_name }}</div>
+                <div class="text-[10px] text-slate-500 font-mono">{{ tx.email }}</div>
+              </td>
+              <td class="p-3 font-mono font-bold {% if tx.flow_type == 'CREDIT' %}text-emerald-400{% else %}text-rose-400{% endif %}">
+                {{ tx.flow_sign }}{{ tx.formatted_amount }}
+              </td>
+              <td class="p-3 uppercase text-[10px] text-slate-400 font-mono">{{ tx.channel }}</td>
+              <td class="p-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {% if tx.status == 'success' %}badge-success{% elif tx.status == 'pending' %}badge-warning{% else %}badge-danger{% endif %}">
                   {{ tx.status }}
                 </span>
               </td>
-              <td class="p-3 text-slate-400">{{ tx.paid_at|default:tx.created_at }}</td>
+              <td class="p-3 text-slate-400 font-mono">{{ tx.date_str|slice:":19" }}</td>
             </tr>
           {% empty %}
-            <tr><td colspan="6" class="p-8 text-center text-slate-500">No Paystack transactions found.</td></tr>
+            <tr><td colspan="7" class="p-8 text-center text-slate-500">No Paystack records matching your criteria.</td></tr>
           {% endfor %}
         </tbody>
       </table>

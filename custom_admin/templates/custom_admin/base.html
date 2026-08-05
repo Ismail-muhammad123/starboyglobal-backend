@@ -104,6 +104,8 @@
           <div class="sidebar-group-content pl-9 pr-2 py-1 space-y-1 text-xs">
             <a href="{% url 'portal:purchases_list' %}"
               class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">All Purchases</a>
+            <a href="{% url 'portal:manual_purchase' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Manual Purchase</a>
           </div>
         </div>
 
@@ -391,10 +393,12 @@
             {{ request.user.first_name|default:request.user.phone_number|slice:":2"|upper }}
           </div>
           <div class="truncate text-xs">
-            <div class="font-semibold text-white truncate">{{ request.user.full_name|default:request.user.phone_number
-              }}</div>
-            <div class="text-[10px] text-slate-400 capitalize">{% if request.user.is_superuser %}Superuser{% else
-              %}Staff Admin{% endif %}</div>
+            <div class="font-semibold text-white truncate">
+              {{ request.user.full_name|default:request.user.phone_number}}
+            </div>
+            <div class="text-[10px] text-slate-400 capitalize">
+              {% if request.user.is_superuser %}Superuser{% else %}Staff Admin{% endif %}
+            </div>
           </div>
         </div>
         <a href="{% url 'portal:logout' %}" title="Logout"

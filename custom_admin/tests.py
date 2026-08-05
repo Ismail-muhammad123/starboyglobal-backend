@@ -27,7 +27,7 @@ class CustomAdminTests(TestCase):
     def test_login_page_renders(self):
         response = self.client.get(reverse('portal:login'))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Management Portal Login")
+        self.assertContains(response, "Admin Dashboard Login")
 
     def test_login_authentication(self):
         response = self.client.post(reverse('portal:login'), {

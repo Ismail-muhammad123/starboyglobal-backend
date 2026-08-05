@@ -192,7 +192,27 @@ class ProviderServiceConfigListView(PortalPermissionMixin, View):
 
     def get(self, request):
         configs = ProviderServiceConfig.objects.all().select_related('provider')
-        return render(request, 'custom_admin/providers/margins.html', {'configs': configs})
+        
+        provider_id = request.GET.get('provider')
+        if provider_id:
+            configs = configs.filter(provider_id=provider_id)
+
+        service_type = request.GET.get('service_type')
+        if service_type:
+            configs = configs.filter(service_type=service_type.lower())
+
+        all_providers = VTUProviderConfig.objects.all()
+        service_types = ProviderServiceConfig.SERVICE_CHOICES if hasattr(ProviderServiceConfig, 'SERVICE_CHOICES') else [
+            ('airtime', 'Airtime'), ('data', 'Data'), ('electricity', 'Electricity'), ('tv', 'Cable TV'), ('internet', 'Internet'), ('education', 'Education')
+        ]
+
+        return render(request, 'custom_admin/providers/margins.html', {
+            'configs': configs,
+            'providers': all_providers,
+            'service_types': service_types,
+            'selected_provider': provider_id or '',
+            'selected_service_type': service_type or ''
+        })
 
     def post(self, request, pk):
         config = get_object_or_404(ProviderServiceConfig, pk=pk)
@@ -208,11 +228,45 @@ class ServiceRoutingListView(PortalPermissionMixin, View):
     required_permission = ('orders.ServiceRouting', 'view')
 
     def get(self, request):
-        routings = ServiceRouting.objects.all().prefetch_related('fallbacks')
+        routings = ServiceRouting.objects.all().select_related('primary_provider').prefetch_related('fallbacks')
+
+        service_filter = request.GET.get('service')
+        if service_filter:
+            routings = routings.filter(service=service_filter.lower())
+
+        provider_filter = request.GET.get('provider')
+        if provider_filter:
+            routings = routings.filter(primary_provider_id=provider_filter)
+
+        pricing_mode_filter = request.GET.get('pricing_mode')
+        if pricing_mode_filter:
+            routings = routings.filter(pricing_mode=pricing_mode_filter)
+
+        sort_by = request.GET.get('sort', '')
+        if sort_by == 'service':
+            routings = routings.order_by('service')
+        elif sort_by == '-service':
+            routings = routings.order_by('-service')
+        elif sort_by == 'provider':
+            routings = routings.order_by('primary_provider__name')
+        elif sort_by == '-provider':
+            routings = routings.order_by('-primary_provider__name')
+        elif sort_by == 'margin':
+            routings = routings.order_by('customer_margin')
+        elif sort_by == '-margin':
+            routings = routings.order_by('-customer_margin')
+
         all_providers = VTUProviderConfig.objects.filter(is_active=True)
+        service_choices = ServiceRouting.SERVICE_CHOICES
+
         return render(request, 'custom_admin/providers/routing.html', {
             'routings': routings,
-            'providers': all_providers
+            'providers': all_providers,
+            'service_choices': service_choices,
+            'selected_service': service_filter or '',
+            'selected_provider': provider_filter or '',
+            'selected_pricing_mode': pricing_mode_filter or '',
+            'sort_by': sort_by or ''
         })
 
     def post(self, request, pk):
@@ -228,6 +282,61 @@ class ServiceRoutingListView(PortalPermissionMixin, View):
         routing.save()
 
         return JsonResponse({'status': 'success', 'message': f'Routing for {routing.get_service_display()} updated.'})
+
+
+class ServiceRoutingCreateView(PortalPermissionMixin, View):
+    required_permission = ('orders.ServiceRouting', 'add')
+
+    def get(self, request):
+        service_choices = ServiceRouting.SERVICE_CHOICES
+        all_providers = VTUProviderConfig.objects.filter(is_active=True)
+        return render(request, 'custom_admin/providers/routing_create.html', {
+            'service_choices': service_choices,
+            'providers': all_providers
+        })
+
+    def post(self, request):
+        service = request.POST.get('service', '').strip()
+        primary_provider_id = request.POST.get('primary_provider_id')
+        pricing_mode = request.POST.get('pricing_mode', 'defined')
+        customer_margin = request.POST.get('customer_margin', 0)
+        agent_margin = request.POST.get('agent_margin', 0)
+        developer_margin = request.POST.get('developer_margin', 0)
+        retry_enabled = request.POST.get('retry_enabled') == 'on' or request.POST.get('retry_enabled') == 'true'
+        fallback_enabled = request.POST.get('fallback_enabled') == 'on' or request.POST.get('fallback_enabled') == 'true'
+
+        if not service:
+            return JsonResponse({'status': 'error', 'message': 'Please select a service.'}, status=400)
+
+        primary_provider = None
+        if primary_provider_id:
+            primary_provider = VTUProviderConfig.objects.filter(pk=primary_provider_id).first()
+
+        routing, created = ServiceRouting.objects.get_or_create(
+            service=service,
+            defaults={
+                'primary_provider': primary_provider,
+                'pricing_mode': pricing_mode,
+                'customer_margin': customer_margin,
+                'agent_margin': agent_margin,
+                'developer_margin': developer_margin,
+                'retry_enabled': retry_enabled,
+                'fallback_enabled': fallback_enabled
+            }
+        )
+
+        if not created:
+            routing.primary_provider = primary_provider
+            routing.pricing_mode = pricing_mode
+            routing.customer_margin = customer_margin
+            routing.agent_margin = agent_margin
+            routing.developer_margin = developer_margin
+            routing.retry_enabled = retry_enabled
+            routing.fallback_enabled = fallback_enabled
+            routing.save()
+
+        msg = f"Service Routing for {routing.get_service_display()} {'created' if created else 'updated'} successfully."
+        return JsonResponse({'status': 'success', 'message': msg})
 
 
 class ProviderSyncTriggerView(PortalPermissionMixin, View):

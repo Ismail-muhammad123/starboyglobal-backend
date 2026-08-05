@@ -40,6 +40,10 @@
         <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
         <option value="refunded" {% if status_filter == 'refunded' %}selected{% endif %}>Refunded</option>
       </select>
+
+      <a href="{% url 'portal:manual_purchase' %}" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-lg shadow whitespace-nowrap flex items-center gap-1">
+        <span>+</span> Manual Purchase
+      </a>
     </div>
 
   </div>

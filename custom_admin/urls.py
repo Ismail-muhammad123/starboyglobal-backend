@@ -6,7 +6,8 @@ from custom_admin.views.users import (
     KYCListView, KYCDetailView, KYCApproveView
 )
 from custom_admin.views.purchases import (
-    PurchaseListView, PurchaseDetailView, PurchaseRefundView
+    PurchaseListView, PurchaseDetailView, PurchaseRefundView, ManualPurchaseView,
+    ManualPurchaseOptionsView, ManualRecipientVerifyView
 )
 from custom_admin.views.services import (
     AirtimeNetworkListView, AirtimeNetworkDetailView, AirtimeNetworkCreateView,
@@ -19,13 +20,14 @@ from custom_admin.views.services import (
 )
 from custom_admin.views.providers import (
     ProviderListView, ProviderDetailView, ProviderCreateView, ProviderServiceConfigListView,
-    ServiceRoutingListView, ProviderSyncTriggerView
+    ServiceRoutingListView, ProviderSyncTriggerView, ServiceRoutingCreateView
 )
 from custom_admin.views.wallet import (
-    WalletListView, WalletDetailView, TransactionListView, ManualTransactionView
+    WalletListView, WalletDetailView, TransactionListView, ManualTransactionView, WalletUserLookupView
 )
 from custom_admin.views.payments import (
-    DepositListView, WithdrawalListView, WithdrawalApproveView, AdminTransferListView, PaystackRecordsView
+    DepositListView, WithdrawalListView, WithdrawalApproveView, AdminTransferListView, PaystackRecordsView,
+    AdminBankListView, AdminAccountResolveView
 )
 from custom_admin.views.automation import (
     SyncScheduleListView, SyncScheduleToggleView, SyncLogListView, ManualSyncTriggerView
@@ -64,6 +66,9 @@ urlpatterns = [
 
     # Purchases
     path('purchases/', PurchaseListView.as_view(), name='purchases_list'),
+    path('purchases/manual/', ManualPurchaseView.as_view(), name='manual_purchase'),
+    path('purchases/manual-options/', ManualPurchaseOptionsView.as_view(), name='manual_purchase_options'),
+    path('purchases/verify-recipient/', ManualRecipientVerifyView.as_view(), name='verify_recipient'),
     path('purchases/<int:pk>/', PurchaseDetailView.as_view(), name='purchases_detail'),
     path('purchases/<int:pk>/refund/', PurchaseRefundView.as_view(), name='purchase_refund'),
 
@@ -112,6 +117,7 @@ urlpatterns = [
     path('providers/margins/', ProviderServiceConfigListView.as_view(), name='provider_service_configs'),
     path('providers/margins/<int:pk>/', ProviderServiceConfigListView.as_view(), name='provider_service_config_detail'),
     path('providers/routing/', ServiceRoutingListView.as_view(), name='service_routings'),
+    path('providers/routing/add/', ServiceRoutingCreateView.as_view(), name='service_routing_create'),
     path('providers/routing/<int:pk>/', ServiceRoutingListView.as_view(), name='service_routings_detail'),
 
     # Wallet & Finance
@@ -119,12 +125,15 @@ urlpatterns = [
     path('wallets/<int:pk>/', WalletDetailView.as_view(), name='wallet_detail'),
     path('wallets/transactions/', TransactionListView.as_view(), name='wallet_transactions'),
     path('wallets/manual-transaction/', ManualTransactionView.as_view(), name='manual_transaction'),
+    path('wallets/user-lookup/', WalletUserLookupView.as_view(), name='wallet_user_lookup'),
 
     # Payments
     path('payments/deposits/', DepositListView.as_view(), name='deposits_list'),
     path('payments/withdrawals/', WithdrawalListView.as_view(), name='withdrawals_list'),
     path('payments/withdrawals/<int:pk>/approve/', WithdrawalApproveView.as_view(), name='withdrawal_approve'),
     path('payments/transfers/', AdminTransferListView.as_view(), name='admin_transfers'),
+    path('payments/banks/', AdminBankListView.as_view(), name='admin_bank_list'),
+    path('payments/resolve-account/', AdminAccountResolveView.as_view(), name='admin_resolve_account'),
     path('payments/paystack-records/', PaystackRecordsView.as_view(), name='paystack_records'),
 
     # Automation

@@ -1,0 +1,332 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Manual Service Purchase - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Initiate Manual Purchase{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <a href="{% url 'portal:purchases_list' %}" class="text-xs text-blue-400 hover:underline flex items-center gap-1 w-fit">
+    <span>←</span> Back to Service Purchases
+  </a>
+
+  <div class="portal-card p-6 max-w-xl mx-auto space-y-5">
+    <div class="border-b border-slate-800 pb-3">
+      <h3 class="font-bold text-white text-base">Initiate Manual Service Purchase</h3>
+      <p class="text-xs text-slate-400">Process an administrative VTU purchase for a user wallet with real-time account and recipient validation.</p>
+    </div>
+
+    <form method="POST" id="form-manual-purchase" action="{% url 'portal:manual_purchase' %}" data-ajax="true" data-reload="true" class="space-y-4 text-xs">
+      {% csrf_token %}
+
+      <!-- Step 1: Source User Verification -->
+      <div class="space-y-2">
+        <label class="block font-semibold text-slate-300 uppercase tracking-wider">1. Source User Account (Phone Number)</label>
+        <div class="flex gap-2">
+          <input type="text" id="id_phone_number" name="phone_number" value="{{ target_phone }}" required placeholder="e.g. 08012345678" class="portal-input w-full text-sm font-mono">
+          <button type="button" id="btn-verify-user" class="px-3.5 py-2 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 shadow">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            Verify User
+          </button>
+        </div>
+        <div id="user-verification-card" class="hidden p-3 rounded-lg border text-xs transition-all"></div>
+      </div>
+
+      <!-- Step 2: Service Selection -->
+      <div>
+        <label class="block font-semibold text-slate-300 mb-1 uppercase tracking-wider">2. Select Service Type</label>
+        <select id="id_purchase_type" name="purchase_type" required class="portal-input w-full text-sm">
+          <option value="">-- Select Service --</option>
+          {% for s in services %}
+            <option value="{{ s.code }}">{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Step 3: Provider / Network & Plan Selection -->
+      <div id="provider-container" class="hidden space-y-3">
+        <div>
+          <label id="label-provider" class="block font-semibold text-slate-300 mb-1 uppercase tracking-wider">Network / Provider</label>
+          <select id="id_service_id" name="service_id" class="portal-input w-full text-sm">
+            <option value="">-- Select Provider --</option>
+          </select>
+        </div>
+
+        <div id="variation-container" class="hidden">
+          <label class="block font-semibold text-slate-300 mb-1 uppercase tracking-wider">Select Package / Plan</label>
+          <select id="id_variation_id" name="variation_id" class="portal-input w-full text-sm">
+            <option value="">-- Select Plan --</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Step 4: Recipient (Phone / Meter / Smartcard Number) -->
+      <div id="recipient-container" class="space-y-2">
+        <label id="label-recipient" class="block font-semibold text-slate-300 uppercase tracking-wider">4. Recipient Identifier</label>
+        <div class="flex gap-2">
+          <input type="text" id="id_beneficiary" name="beneficiary" required placeholder="Phone / Meter / Smartcard Number" class="portal-input w-full text-sm font-mono">
+          <button type="button" id="btn-verify-recipient" class="hidden px-3.5 py-2 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 shadow">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            Verify Customer
+          </button>
+        </div>
+        <div id="recipient-verification-card" class="hidden p-3 rounded-lg border text-xs transition-all"></div>
+      </div>
+
+      <!-- Step 5: Amount -->
+      <div>
+        <label class="block font-semibold text-slate-300 mb-1 uppercase tracking-wider">5. Purchase Amount (₦)</label>
+        <input type="number" step="0.01" min="1" id="id_amount" name="amount" required placeholder="0.00" class="portal-input w-full text-sm font-mono">
+      </div>
+
+      <!-- Step 6: Admin Security PIN -->
+      <div class="p-3 bg-slate-900/90 rounded-lg border border-amber-500/30 space-y-2">
+        <label class="block font-bold text-amber-400 uppercase tracking-wider text-[11px] flex items-center gap-1">
+          <span>🔒</span> Admin Security PIN (Required)
+        </label>
+        <input type="password" name="admin_pin" required placeholder="Enter your transaction PIN or admin password..." class="portal-input w-full text-sm font-mono tracking-widest border-amber-500/40">
+        <p class="text-[10px] text-slate-400">Required to authorize administrative wallet debits and service purchases.</p>
+      </div>
+
+      <div class="pt-3 flex justify-end gap-2">
+        <a href="{% url 'portal:purchases_list' %}" class="px-4 py-2 bg-slate-800 text-slate-300 rounded text-xs">Cancel</a>
+        <button type="submit" id="btn-submit-purchase" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs shadow transition-all">
+          Execute Manual Purchase
+        </button>
+      </div>
+    </form>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const phoneInput = document.getElementById('id_phone_number');
+  const verifyUserBtn = document.getElementById('btn-verify-user');
+  const userCard = document.getElementById('user-verification-card');
+
+  const purchaseTypeSelect = document.getElementById('id_purchase_type');
+  const providerContainer = document.getElementById('provider-container');
+  const providerSelect = document.getElementById('id_service_id');
+  const providerLabel = document.getElementById('label-provider');
+
+  const variationContainer = document.getElementById('variation-container');
+  const variationSelect = document.getElementById('id_variation_id');
+
+  const recipientContainer = document.getElementById('recipient-container');
+  const recipientInput = document.getElementById('id_beneficiary');
+  const recipientLabel = document.getElementById('label-recipient');
+  const verifyRecipientBtn = document.getElementById('btn-verify-recipient');
+  const recipientCard = document.getElementById('recipient-verification-card');
+
+  const amountInput = document.getElementById('id_amount');
+  const submitBtn = document.getElementById('btn-submit-purchase');
+
+  let verifiedUser = null;
+  let verifiedRecipient = null;
+  let userDebounceTimer = null;
+  let recipientDebounceTimer = null;
+
+  // 1. Source User Lookup
+  async function performUserLookup() {
+    const phone = phoneInput.value.trim();
+    if (!phone) {
+      userCard.className = "p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-300 text-xs";
+      userCard.innerHTML = "⚠️ Please enter a source user phone number.";
+      userCard.classList.remove('hidden');
+      verifiedUser = null;
+      return;
+    }
+
+    userCard.className = "p-3 rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-300 text-xs flex items-center gap-2";
+    userCard.innerHTML = `<span class="animate-spin inline-block">🔄</span> Validating <strong>${phone}</strong> against database...`;
+    userCard.classList.remove('hidden');
+
+    try {
+      const response = await fetch(`{% url 'portal:wallet_user_lookup' %}?phone=${encodeURIComponent(phone)}`);
+      const data = await response.json();
+
+      if (response.ok && data.status === 'success') {
+        verifiedUser = data.user;
+        userCard.className = "p-3 rounded-lg border border-emerald-500/40 bg-emerald-950/30 text-slate-200 text-xs space-y-1.5";
+        userCard.innerHTML = `
+          <div class="flex items-center justify-between font-semibold border-b border-emerald-500/20 pb-1">
+            <span class="text-emerald-400 flex items-center gap-1">✓ Source User Verified</span>
+            <span class="text-[10px] text-slate-400 font-mono">ID: #${data.user.id}</span>
+          </div>
+          <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
+            <div><span class="text-slate-400">Name:</span> <strong class="text-white">${data.user.full_name || 'N/A'}</strong></div>
+            <div><span class="text-slate-400">Phone:</span> <strong class="font-mono text-white">${data.user.phone_number}</strong></div>
+            <div><span class="text-slate-400">Email:</span> <span class="text-slate-300">${data.user.email || 'N/A'}</span></div>
+            <div><span class="text-slate-400">Wallet Balance:</span> <strong class="text-emerald-400 font-mono">${data.user.formatted_balance}</strong></div>
+          </div>
+        `;
+      } else {
+        verifiedUser = null;
+        userCard.className = "p-3 rounded-lg border border-rose-500/40 bg-rose-950/40 text-rose-300 text-xs flex items-center gap-1.5";
+        userCard.innerHTML = `<span>❌</span> <span>${data.message || 'User not found.'}</span>`;
+      }
+    } catch (e) {
+      verifiedUser = null;
+      userCard.className = "p-3 rounded-lg border border-rose-500/40 bg-rose-950/40 text-rose-300 text-xs flex items-center gap-1.5";
+      userCard.innerHTML = `<span>❌</span> <span>Error checking user details.</span>`;
+    }
+  }
+
+  verifyUserBtn?.addEventListener('click', performUserLookup);
+  phoneInput?.addEventListener('input', function () {
+    clearTimeout(userDebounceTimer);
+    userDebounceTimer = setTimeout(performUserLookup, 500);
+  });
+
+  if (phoneInput && phoneInput.value.trim().length >= 5) {
+    performUserLookup();
+  }
+
+  // 2. Dynamic Service & Provider Loading
+  purchaseTypeSelect?.addEventListener('change', async function () {
+    const type = purchaseTypeSelect.value;
+    providerSelect.innerHTML = '<option value="">-- Select Provider --</option>';
+    variationSelect.innerHTML = '<option value="">-- Select Plan --</option>';
+    variationContainer.classList.add('hidden');
+    recipientCard.classList.add('hidden');
+    verifiedRecipient = null;
+
+    if (!type) {
+      providerContainer.classList.add('hidden');
+      return;
+    }
+
+    providerContainer.classList.remove('hidden');
+    verifyRecipientBtn.classList.add('hidden');
+
+    if (type === 'airtime' || type === 'data') {
+      recipientLabel.textContent = '4. Recipient Phone Number';
+      recipientInput.placeholder = 'e.g. 08012345678';
+    } else if (type === 'tv') {
+      recipientLabel.textContent = '4. Smartcard / IUC Number';
+      recipientInput.placeholder = 'e.g. 1029384756';
+      verifyRecipientBtn.classList.remove('hidden');
+    } else if (type === 'electricity') {
+      recipientLabel.textContent = '4. Meter Number';
+      recipientInput.placeholder = 'e.g. 45012394857';
+      verifyRecipientBtn.classList.remove('hidden');
+    } else if (type === 'internet') {
+      recipientLabel.textContent = '4. Account / User ID';
+      recipientInput.placeholder = 'e.g. 10293847';
+      verifyRecipientBtn.classList.remove('hidden');
+    } else if (type === 'education') {
+      recipientLabel.textContent = '4. Profile / Recipient ID';
+      recipientInput.placeholder = 'e.g. 08012345678';
+    }
+
+    try {
+      const res = await fetch(`{% url 'portal:manual_purchase_options' %}?purchase_type=${type}`);
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        providerSelect.innerHTML = '<option value="">-- Select Provider --</option>';
+        data.providers.forEach(p => {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = p.name;
+          providerSelect.appendChild(opt);
+        });
+      }
+    } catch (e) {
+      providerSelect.innerHTML = '<option value="">Error loading providers</option>';
+    }
+  });
+
+  // 3. Dynamic Variation / Plan Loading
+  providerSelect?.addEventListener('change', async function () {
+    const type = purchaseTypeSelect.value;
+    const providerId = providerSelect.value;
+    variationSelect.innerHTML = '<option value="">-- Select Plan --</option>';
+
+    if (!providerId || type === 'airtime') {
+      variationContainer.classList.add('hidden');
+      return;
+    }
+
+    try {
+      const res = await fetch(`{% url 'portal:manual_purchase_options' %}?purchase_type=${type}&service_id=${providerId}`);
+      const data = await res.json();
+      if (res.ok && data.status === 'success' && data.variations.length > 0) {
+        variationContainer.classList.remove('hidden');
+        data.variations.forEach(v => {
+          const opt = document.createElement('option');
+          opt.value = v.id;
+          opt.textContent = v.name;
+          opt.dataset.price = v.price;
+          variationSelect.appendChild(opt);
+        });
+      } else {
+        variationContainer.classList.add('hidden');
+      }
+    } catch (e) {
+      variationContainer.classList.add('hidden');
+    }
+  });
+
+  variationSelect?.addEventListener('change', function () {
+    const selectedOpt = variationSelect.options[variationSelect.selectedIndex];
+    if (selectedOpt && selectedOpt.dataset.price) {
+      const price = parseFloat(selectedOpt.dataset.price);
+      if (price > 0) {
+        amountInput.value = price.toFixed(2);
+      }
+    }
+  });
+
+  // 4. Recipient Verification (Electricity / TV / Internet)
+  async function performRecipientVerification() {
+    const type = purchaseTypeSelect.value;
+    const serviceId = providerSelect.value;
+    const customerId = recipientInput.value.trim();
+
+    if (!customerId) {
+      recipientCard.className = "p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-300 text-xs";
+      recipientCard.innerHTML = "⚠️ Please enter recipient identifier.";
+      recipientCard.classList.remove('hidden');
+      return;
+    }
+
+    recipientCard.className = "p-3 rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-300 text-xs flex items-center gap-2";
+    recipientCard.innerHTML = `<span class="animate-spin inline-block">🔄</span> Verifying recipient <strong>${customerId}</strong>...`;
+    recipientCard.classList.remove('hidden');
+
+    try {
+      const url = `{% url 'portal:verify_recipient' %}?purchase_type=${type}&service_id=${serviceId}&customer_id=${encodeURIComponent(customerId)}`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (res.ok && data.status === 'success') {
+        verifiedRecipient = data.name;
+        recipientCard.className = "p-3 rounded-lg border border-emerald-500/40 bg-emerald-950/30 text-slate-200 text-xs space-y-1";
+        recipientCard.innerHTML = `
+          <div class="flex items-center justify-between font-semibold border-b border-emerald-500/20 pb-1">
+            <span class="text-emerald-400 flex items-center gap-1">✓ Recipient Verified</span>
+            <span class="text-[10px] text-slate-400 font-mono">${customerId}</span>
+          </div>
+          <div class="pt-1">
+            <div class="text-slate-400 text-[10px]">CUSTOMER NAME</div>
+            <div class="font-bold text-white text-sm tracking-wide uppercase">${data.name}</div>
+          </div>
+        `;
+      } else {
+        verifiedRecipient = null;
+        recipientCard.className = "p-3 rounded-lg border border-rose-500/40 bg-rose-950/40 text-rose-300 text-xs flex items-center gap-1.5";
+        recipientCard.innerHTML = `<span>❌</span> <span>${data.message || 'Could not verify recipient.'}</span>`;
+      }
+    } catch (e) {
+      verifiedRecipient = null;
+      recipientCard.className = "p-3 rounded-lg border border-rose-500/40 bg-rose-950/40 text-rose-300 text-xs flex items-center gap-1.5";
+      recipientCard.innerHTML = `<span>❌</span> <span>Network error during recipient verification.</span>`;
+    }
+  }
+
+  verifyRecipientBtn?.addEventListener('click', performRecipientVerification);
+});
+</script>
+{% endblock %}

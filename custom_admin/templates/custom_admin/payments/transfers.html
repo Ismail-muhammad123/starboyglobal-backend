@@ -1,16 +1,17 @@
 {% extends 'custom_admin/base.html' %}
 {% block title %}Admin Transfers - Starboy Global Admin Dashboard{% endblock %}
 {% block page_title %}Admin Transfers & Vendor Replenishment{% endblock %}
+
 {% block content %}
 <div class="space-y-6">
 
   <div class="portal-card p-4 flex items-center justify-between">
     <div>
       <h3 class="font-bold text-white text-sm">Admin Account Transfers</h3>
-      <p class="text-xs text-slate-400">Transfer funds from the main platform account to saved vendor beneficiaries.</p>
+      <p class="text-xs text-slate-400">Transfer funds from the main platform account to vendor beneficiaries or verified bank accounts.</p>
     </div>
-    <button onclick="PortalForms.openModal('modal-new-transfer')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-lg shadow">
-      + Initiate Admin Transfer
+    <button onclick="PortalForms.openModal('modal-new-transfer')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-lg shadow flex items-center gap-1">
+      <span>+</span> Initiate Admin Transfer
     </button>
   </div>
 
@@ -55,40 +56,249 @@
 
 <!-- Modal: Initiate Admin Transfer -->
 <div id="modal-new-transfer" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-  <div class="portal-card max-w-md w-full p-6 space-y-4 bg-slate-900 border-slate-700 shadow-2xl">
+  <div class="portal-card max-w-lg w-full p-6 space-y-4 bg-slate-900 border-slate-700 shadow-2xl overflow-y-auto max-h-[90vh]">
     <div class="flex items-center justify-between border-b border-slate-800 pb-3">
       <h3 class="font-bold text-white text-base">Initiate Admin Transfer</h3>
-      <button onclick="PortalForms.closeModal('modal-new-transfer')" class="text-slate-400 hover:text-white">&times;</button>
+      <button onclick="PortalForms.closeModal('modal-new-transfer')" class="text-slate-400 hover:text-white text-lg">&times;</button>
     </div>
 
-    <form method="POST" action="{% url 'portal:admin_transfers' %}" data-ajax="true" data-reload="true" data-close-modal="modal-new-transfer" class="space-y-4 text-xs">
+    <form method="POST" id="form-admin-transfer" action="{% url 'portal:admin_transfers' %}" data-ajax="true" data-reload="true" data-close-modal="modal-new-transfer" class="space-y-4 text-xs">
       {% csrf_token %}
 
-      <div>
-        <label class="block font-semibold text-slate-300 mb-1">Beneficiary Account</label>
-        <select name="beneficiary_id" required class="portal-input w-full">
-          <option value="">-- Select Beneficiary --</option>
+      <!-- Transfer Destination Mode Toggle -->
+      <div class="space-y-2">
+        <label class="block font-semibold text-slate-300 uppercase tracking-wider">Destination Account</label>
+        <div class="grid grid-cols-2 gap-2 p-1 bg-slate-950 rounded-lg border border-slate-800">
+          <button type="button" id="tab-saved-beneficiary" class="py-1.5 px-3 rounded-md text-xs font-semibold bg-blue-600 text-white transition-all">
+            Saved Beneficiary
+          </button>
+          <button type="button" id="tab-new-account" class="py-1.5 px-3 rounded-md text-xs font-semibold text-slate-400 hover:text-white transition-all">
+            New Bank Account
+          </button>
+        </div>
+      </div>
+
+      <!-- Section A: Saved Beneficiary Selection -->
+      <div id="section-saved-beneficiary" class="space-y-2">
+        <label class="block font-semibold text-slate-300">Select Beneficiary</label>
+        <select name="beneficiary_id" id="id_beneficiary_id" class="portal-input w-full text-xs">
+          <option value="">-- Select Saved Beneficiary --</option>
           {% for b in beneficiaries %}
             <option value="{{ b.pk }}">{{ b.name }} ({{ b.bank_name }} - {{ b.account_number }})</option>
           {% endfor %}
         </select>
       </div>
 
+      <!-- Section B: Direct Bank & Account Input with Live Lookup -->
+      <div id="section-new-account" class="hidden space-y-3">
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1">Select Bank</label>
+          <select id="id_bank_code" name="bank_code" class="portal-input w-full text-xs">
+            <option value="">Loading bank list...</option>
+          </select>
+          <input type="hidden" id="id_bank_name" name="bank_name">
+        </div>
+
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1">Account Number (10 Digits)</label>
+          <div class="flex gap-2">
+            <input type="text" id="id_account_number" name="account_number" maxlength="10" placeholder="e.g. 0123456789" class="portal-input w-full font-mono text-sm">
+            <button type="button" id="btn-resolve-account" class="px-3 py-2 bg-blue-600/90 hover:bg-blue-600 text-white rounded-lg text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1 shadow">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              Verify
+            </button>
+          </div>
+          <input type="hidden" id="id_account_name" name="account_name">
+        </div>
+
+        <!-- Account Resolution Result Card -->
+        <div id="account-verification-card" class="hidden p-3 rounded-lg border text-xs transition-all"></div>
+      </div>
+
+      <!-- Transfer Amount -->
       <div>
         <label class="block font-semibold text-slate-300 mb-1">Transfer Amount (₦)</label>
         <input type="number" step="0.01" min="1" name="amount" required placeholder="0.00" class="portal-input w-full font-mono text-sm">
       </div>
 
+      <!-- Remarks / Note -->
       <div>
         <label class="block font-semibold text-slate-300 mb-1">Remarks / Note</label>
         <input type="text" name="remarks" placeholder="e.g. VTU Wallet Replenishment" class="portal-input w-full">
       </div>
 
-      <div class="flex justify-end gap-2 pt-2">
+      <!-- Admin Security PIN -->
+      <div class="p-3 bg-slate-950 rounded-lg border border-amber-500/30 space-y-2">
+        <label class="block font-bold text-amber-400 uppercase tracking-wider text-[11px] flex items-center gap-1">
+          <span>🔒</span> Admin Security PIN (Required)
+        </label>
+        <input type="password" name="admin_pin" required placeholder="Enter your transaction PIN or admin password..." class="portal-input w-full text-sm font-mono tracking-widest border-amber-500/40">
+        <p class="text-[10px] text-slate-400">Required to authorize administrative fund transfers.</p>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
         <button type="button" onclick="PortalForms.closeModal('modal-new-transfer')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded text-xs">Cancel</button>
-        <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded text-xs">Confirm & Transfer</button>
+        <button type="submit" id="btn-submit-transfer" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded text-xs shadow transition-all">
+          Confirm & Transfer
+        </button>
       </div>
     </form>
   </div>
 </div>
 {% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const tabSaved = document.getElementById('tab-saved-beneficiary');
+  const tabNew = document.getElementById('tab-new-account');
+  const sectionSaved = document.getElementById('section-saved-beneficiary');
+  const sectionNew = document.getElementById('section-new-account');
+  const beneficiarySelect = document.getElementById('id_beneficiary_id');
+
+  const bankSelect = document.getElementById('id_bank_code');
+  const bankNameInput = document.getElementById('id_bank_name');
+  const accountNumberInput = document.getElementById('id_account_number');
+  const accountNameInput = document.getElementById('id_account_name');
+  const resolveBtn = document.getElementById('btn-resolve-account');
+  const verifyCard = document.getElementById('account-verification-card');
+  const transferForm = document.getElementById('form-admin-transfer');
+
+  let activeMode = 'saved'; // 'saved' or 'new'
+  let banksLoaded = false;
+  let debounceTimer = null;
+
+  // Toggle between Saved Beneficiary and New Bank Account modes
+  tabSaved?.addEventListener('click', function () {
+    activeMode = 'saved';
+    tabSaved.className = "py-1.5 px-3 rounded-md text-xs font-semibold bg-blue-600 text-white transition-all";
+    tabNew.className = "py-1.5 px-3 rounded-md text-xs font-semibold text-slate-400 hover:text-white transition-all";
+    sectionSaved.classList.remove('hidden');
+    sectionNew.classList.add('hidden');
+    beneficiarySelect.setAttribute('required', 'required');
+  });
+
+  tabNew?.addEventListener('click', function () {
+    activeMode = 'new';
+    tabNew.className = "py-1.5 px-3 rounded-md text-xs font-semibold bg-blue-600 text-white transition-all";
+    tabSaved.className = "py-1.5 px-3 rounded-md text-xs font-semibold text-slate-400 hover:text-white transition-all";
+    sectionNew.classList.remove('hidden');
+    sectionSaved.classList.add('hidden');
+    beneficiarySelect.removeAttribute('required');
+
+    if (!banksLoaded) {
+      loadBankList();
+    }
+  });
+
+  async function loadBankList() {
+    bankSelect.innerHTML = '<option value="">Loading banks...</option>';
+    try {
+      const res = await fetch("{% url 'portal:admin_bank_list' %}");
+      const data = await res.json();
+      if (res.ok && data.status === 'success') {
+        bankSelect.innerHTML = '<option value="">-- Select Destination Bank --</option>';
+        data.banks.forEach(b => {
+          const opt = document.createElement('option');
+          opt.value = b.code;
+          opt.textContent = b.name;
+          opt.dataset.bankName = b.name;
+          bankSelect.appendChild(opt);
+        });
+        banksLoaded = true;
+      } else {
+        bankSelect.innerHTML = '<option value="">Failed to load bank list</option>';
+      }
+    } catch (e) {
+      bankSelect.innerHTML = '<option value="">Error loading bank list</option>';
+    }
+  }
+
+  bankSelect?.addEventListener('change', function () {
+    const selectedOpt = bankSelect.options[bankSelect.selectedIndex];
+    bankNameInput.value = selectedOpt ? (selectedOpt.dataset.bankName || selectedOpt.textContent) : '';
+    if (accountNumberInput.value.trim().length === 10) {
+      resolveAccountDetails();
+    }
+  });
+
+  async function resolveAccountDetails() {
+    const bankCode = bankSelect.value;
+    const accountNumber = accountNumberInput.value.trim();
+
+    if (!bankCode) {
+      verifyCard.className = "p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-300 text-xs";
+      verifyCard.innerHTML = "⚠️ Please select a bank first.";
+      verifyCard.classList.remove('hidden');
+      accountNameInput.value = '';
+      return;
+    }
+
+    if (!accountNumber || accountNumber.length !== 10 || !/^\d+$/.test(accountNumber)) {
+      verifyCard.className = "p-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-300 text-xs";
+      verifyCard.innerHTML = "⚠️ Please enter a valid 10-digit account number.";
+      verifyCard.classList.remove('hidden');
+      accountNameInput.value = '';
+      return;
+    }
+
+    verifyCard.className = "p-3 rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-300 text-xs flex items-center gap-2";
+    verifyCard.innerHTML = `<span class="animate-spin inline-block">🔄</span> Resolving account details with bank...`;
+    verifyCard.classList.remove('hidden');
+
+    try {
+      const url = `{% url 'portal:admin_resolve_account' %}?account_number=${encodeURIComponent(accountNumber)}&bank_code=${encodeURIComponent(bankCode)}`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (res.ok && data.status === 'success') {
+        const accountName = data.data.account_name;
+        accountNameInput.value = accountName;
+        const bankName = bankNameInput.value || 'Selected Bank';
+
+        verifyCard.className = "p-3 rounded-lg border border-emerald-500/40 bg-emerald-950/30 text-slate-200 text-xs space-y-1";
+        verifyCard.innerHTML = `
+          <div class="flex items-center justify-between font-semibold border-b border-emerald-500/20 pb-1">
+            <span class="text-emerald-400 flex items-center gap-1">✓ Account Verified</span>
+            <span class="text-[10px] text-slate-400 font-mono">${accountNumber}</span>
+          </div>
+          <div class="pt-1">
+            <div class="text-slate-400 text-[10px]">ACCOUNT NAME</div>
+            <div class="font-bold text-white text-sm tracking-wide uppercase">${accountName}</div>
+            <div class="text-emerald-400 text-[11px] font-medium mt-0.5">${bankName}</div>
+          </div>
+        `;
+      } else {
+        accountNameInput.value = '';
+        verifyCard.className = "p-3 rounded-lg border border-rose-500/40 bg-rose-950/40 text-rose-300 text-xs flex items-center gap-1.5";
+        verifyCard.innerHTML = `<span>❌</span> <span>${data.message || 'Could not resolve account details.'}</span>`;
+      }
+    } catch (e) {
+      accountNameInput.value = '';
+      verifyCard.className = "p-3 rounded-lg border border-rose-500/40 bg-rose-950/40 text-rose-300 text-xs flex items-center gap-1.5";
+      verifyCard.innerHTML = `<span>❌</span> <span>Network error while resolving account details.</span>`;
+    }
+  }
+
+  resolveBtn?.addEventListener('click', resolveAccountDetails);
+
+  accountNumberInput?.addEventListener('input', function () {
+    clearTimeout(debounceTimer);
+    if (accountNumberInput.value.trim().length === 10) {
+      debounceTimer = setTimeout(resolveAccountDetails, 400);
+    }
+  });
+
+  // Client side validation before form submit when in new account mode
+  transferForm?.addEventListener('submit', function (e) {
+    if (activeMode === 'new') {
+      if (!accountNameInput.value) {
+        e.preventDefault();
+        alert('Please verify the account details before proceeding with the transfer.');
+      }
+    }
+  });
+});
+</script>
+{% endblock %}
+
