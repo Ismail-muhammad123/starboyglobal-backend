@@ -1,0 +1,75 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Sync Execution Logs - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Auto Sync Execution Logs{% endblock %}
+{% block content %}
+<div class="space-y-6">
+
+  <div class="portal-card p-4 flex items-center justify-between">
+    <div>
+      <h3 class="font-bold text-white text-sm">Immutable Execution Logs</h3>
+      <p class="text-xs text-slate-400">Audit logs recorded after every sync run.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="{% url 'portal:sync_logs' %}" class="px-3 py-1.5 rounded text-xs font-semibold {% if not status_filter %}bg-blue-600 text-white{% else %}bg-slate-800 text-slate-300 hover:text-white{% endif %}">
+        All Logs
+      </a>
+      <a href="?status=success" class="px-3 py-1.5 rounded text-xs font-semibold {% if status_filter == 'success' %}bg-emerald-600 text-white{% else %}bg-slate-800 text-slate-300 hover:text-white{% endif %}">
+        SUCCESS
+      </a>
+      <a href="?status=failed" class="px-3 py-1.5 rounded text-xs font-semibold {% if status_filter == 'failed' %}bg-red-600 text-white{% else %}bg-slate-800 text-slate-300 hover:text-white{% endif %}">
+        FAILED
+      </a>
+    </div>
+  </div>
+
+  <div class="portal-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+          <tr>
+            <th class="p-3">Schedule Name</th>
+            <th class="p-3">Provider</th>
+            <th class="p-3">Service Type</th>
+            <th class="p-3">Status</th>
+            <th class="p-3">Synced Items</th>
+            <th class="p-3">Duration (s)</th>
+            <th class="p-3">Started At</th>
+            <th class="p-3">Finished At</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for l in logs %}
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-3 font-bold text-white">{{ l.schedule_name }}</td>
+              <td class="p-3 font-medium text-blue-400">{{ l.provider_name }}</td>
+              <td class="p-3 uppercase text-purple-300 font-medium">{{ l.service_type }}</td>
+              <td class="p-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {% if l.status == 'SUCCESS' %}badge-success{% elif l.status == 'PARTIAL' %}badge-warning{% else %}badge-danger{% endif %}">
+                  {{ l.status }}
+                </span>
+              </td>
+              <td class="p-3 font-mono font-bold text-emerald-400">{{ l.items_synced }}</td>
+              <td class="p-3 font-mono text-slate-400">{{ l.duration_seconds|floatformat:2 }}s</td>
+              <td class="p-3 text-slate-400">{{ l.started_at|date:"M d, H:i:s" }}</td>
+              <td class="p-3 text-slate-400">{{ l.finished_at|date:"M d, H:i:s" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="8" class="p-8 text-center text-slate-500">No sync execution logs recorded.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if logs.has_other_pages %}
+      <div class="p-4 border-t border-slate-800 flex items-center justify-between text-xs">
+        <span class="text-slate-400">Page {{ logs.number }} of {{ logs.paginator.num_pages }}</span>
+        <div class="flex gap-1">
+          {% if logs.has_previous %}<a href="?page={{ logs.previous_page_number }}" class="px-3 py-1 bg-slate-800 text-slate-300 rounded hover:bg-slate-700">Prev</a>{% endif %}
+          {% if logs.has_next %}<a href="?page={{ logs.next_page_number }}" class="px-3 py-1 bg-slate-800 text-slate-300 rounded hover:bg-slate-700">Next</a>{% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

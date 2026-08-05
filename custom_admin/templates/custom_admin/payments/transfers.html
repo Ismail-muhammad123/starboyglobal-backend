@@ -1,0 +1,94 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Admin Transfers - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Admin Transfers & Vendor Replenishment{% endblock %}
+{% block content %}
+<div class="space-y-6">
+
+  <div class="portal-card p-4 flex items-center justify-between">
+    <div>
+      <h3 class="font-bold text-white text-sm">Admin Account Transfers</h3>
+      <p class="text-xs text-slate-400">Transfer funds from the main platform account to saved vendor beneficiaries.</p>
+    </div>
+    <button onclick="PortalForms.openModal('modal-new-transfer')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-lg shadow">
+      + Initiate Admin Transfer
+    </button>
+  </div>
+
+  <div class="portal-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+          <tr>
+            <th class="p-3">Reference</th>
+            <th class="p-3">Beneficiary</th>
+            <th class="p-3">Bank Info</th>
+            <th class="p-3">Amount</th>
+            <th class="p-3">Status</th>
+            <th class="p-3">Initiated By</th>
+            <th class="p-3">Date</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for t in transfers %}
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-3 font-mono text-blue-400 font-medium">{{ t.reference }}</td>
+              <td class="p-3 font-bold text-white">{{ t.beneficiary.name }}</td>
+              <td class="p-3 text-slate-300 font-mono">{{ t.beneficiary.bank_name }} ({{ t.beneficiary.account_number }})</td>
+              <td class="p-3 font-mono font-bold text-emerald-400">₦{{ t.amount|floatformat:2 }}</td>
+              <td class="p-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {% if t.status == 'SUCCESS' %}badge-success{% elif t.status == 'PENDING' %}badge-warning{% else %}badge-danger{% endif %}">
+                  {{ t.status }}
+                </span>
+              </td>
+              <td class="p-3 text-slate-400">{{ t.initiated_by.phone_number|default:"Admin" }}</td>
+              <td class="p-3 text-slate-400">{{ t.created_at|date:"M d, H:i" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7" class="p-8 text-center text-slate-500">No admin transfers recorded.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal: Initiate Admin Transfer -->
+<div id="modal-new-transfer" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div class="portal-card max-w-md w-full p-6 space-y-4 bg-slate-900 border-slate-700 shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+      <h3 class="font-bold text-white text-base">Initiate Admin Transfer</h3>
+      <button onclick="PortalForms.closeModal('modal-new-transfer')" class="text-slate-400 hover:text-white">&times;</button>
+    </div>
+
+    <form method="POST" action="{% url 'portal:admin_transfers' %}" data-ajax="true" data-reload="true" data-close-modal="modal-new-transfer" class="space-y-4 text-xs">
+      {% csrf_token %}
+
+      <div>
+        <label class="block font-semibold text-slate-300 mb-1">Beneficiary Account</label>
+        <select name="beneficiary_id" required class="portal-input w-full">
+          <option value="">-- Select Beneficiary --</option>
+          {% for b in beneficiaries %}
+            <option value="{{ b.pk }}">{{ b.name }} ({{ b.bank_name }} - {{ b.account_number }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block font-semibold text-slate-300 mb-1">Transfer Amount (₦)</label>
+        <input type="number" step="0.01" min="1" name="amount" required placeholder="0.00" class="portal-input w-full font-mono text-sm">
+      </div>
+
+      <div>
+        <label class="block font-semibold text-slate-300 mb-1">Remarks / Note</label>
+        <input type="text" name="remarks" placeholder="e.g. VTU Wallet Replenishment" class="portal-input w-full">
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="PortalForms.closeModal('modal-new-transfer')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded text-xs">Cancel</button>
+        <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded text-xs">Confirm & Transfer</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

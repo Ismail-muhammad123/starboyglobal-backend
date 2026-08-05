@@ -1,0 +1,170 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Sync Schedules - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Auto Sync Schedules{% endblock %}
+{% block content %}
+<div class="space-y-6">
+
+  <div class="portal-card p-4 flex items-center justify-between">
+    <div>
+      <h3 class="font-bold text-white text-sm">Automated Catalogue Sync Schedules</h3>
+      <p class="text-xs text-slate-400">Scheduled jobs to fetch and sync plans/prices from VTU providers.</p>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="PortalForms.openModal('modal-manual-sync')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-lg shadow">
+        ⚡ Run Manual Sync Now
+      </button>
+      <button onclick="PortalForms.openModal('modal-new-schedule')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-lg shadow">
+        + New Sync Schedule
+      </button>
+    </div>
+  </div>
+
+  <div class="portal-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+          <tr>
+            <th class="p-3">Schedule Name</th>
+            <th class="p-3">Target Provider</th>
+            <th class="p-3">Service Type</th>
+            <th class="p-3">Frequency</th>
+            <th class="p-3">Last Run</th>
+            <th class="p-3">Next Run</th>
+            <th class="p-3">Status</th>
+            <th class="p-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for s in schedules %}
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-3 font-bold text-white">{{ s.name }}</td>
+              <td class="p-3 font-medium text-blue-400">{{ s.provider.get_name_display|default:"All Providers" }}</td>
+              <td class="p-3 uppercase text-purple-300 font-medium">{{ s.get_service_type_display }}</td>
+              <td class="p-3 uppercase font-mono text-slate-300">{{ s.get_frequency_display }}</td>
+              <td class="p-3 text-slate-400">{{ s.last_run|date:"M d, H:i"|default:"Never" }}</td>
+              <td class="p-3 text-slate-400">{{ s.next_run|date:"M d, H:i"|default:"Scheduled" }}</td>
+              <td class="p-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {% if s.is_active %}badge-success{% else %}badge-danger{% endif %}">
+                  {% if s.is_active %}Active{% else %}Paused{% endif %}
+                </span>
+              </td>
+              <td class="p-3 text-right">
+                <button onclick="toggleSchedule('{{ s.pk }}')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-semibold text-[11px]">
+                  {% if s.is_active %}Pause{% else %}Resume{% endif %}
+                </button>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="8" class="p-8 text-center text-slate-500">No sync schedules configured.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal: New Schedule -->
+<div id="modal-new-schedule" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div class="portal-card max-w-md w-full p-6 space-y-4 bg-slate-900 border-slate-700 shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+      <h3 class="font-bold text-white text-base">Create Auto Sync Schedule</h3>
+      <button onclick="PortalForms.closeModal('modal-new-schedule')" class="text-slate-400 hover:text-white">&times;</button>
+    </div>
+    <form method="POST" action="{% url 'portal:sync_schedules' %}" data-ajax="true" data-reload="true" data-close-modal="modal-new-schedule" class="space-y-4 text-xs">
+      {% csrf_token %}
+      <div>
+        <label class="block font-semibold text-slate-300 mb-1">Schedule Name</label>
+        <input type="text" name="name" placeholder="e.g. Daily Data Plans Sync" required class="portal-input w-full">
+      </div>
+      <div>
+        <label class="block font-semibold text-slate-300 mb-1">Provider</label>
+        <select name="provider_id" class="portal-input w-full">
+          <option value="">All Providers</option>
+          {% for p in providers %}<option value="{{ p.pk }}">{{ p.get_name_display }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1">Service Type</label>
+          <select name="service_type" class="portal-input w-full">
+            <option value="all">All Services</option>
+            <option value="data">Data</option>
+            <option value="airtime">Airtime</option>
+            <option value="tv">TV</option>
+            <option value="electricity">Electricity</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1">Frequency</label>
+          <select name="frequency" class="portal-input w-full">
+            <option value="hourly">Hourly</option>
+            <option value="daily" selected>Daily</option>
+            <option value="weekly">Weekly</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="PortalForms.closeModal('modal-new-schedule')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded text-xs">Cancel</button>
+        <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded text-xs">Save Schedule</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Manual Sync Trigger -->
+<div id="modal-manual-sync" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div class="portal-card max-w-md w-full p-6 space-y-4 bg-slate-900 border-slate-700 shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+      <h3 class="font-bold text-white text-base">Run Manual Sync Now</h3>
+      <button onclick="PortalForms.closeModal('modal-manual-sync')" class="text-slate-400 hover:text-white">&times;</button>
+    </div>
+    <form method="POST" action="{% url 'portal:manual_sync_trigger' %}" data-ajax="true" data-reload="true" data-close-modal="modal-manual-sync" class="space-y-4 text-xs">
+      {% csrf_token %}
+      <div>
+        <label class="block font-semibold text-slate-300 mb-1">Provider</label>
+        <select name="provider_id" class="portal-input w-full">
+          <option value="">All Active Providers</option>
+          {% for p in providers %}<option value="{{ p.pk }}">{{ p.get_name_display }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block font-semibold text-slate-300 mb-1">Service Type</label>
+        <select name="service_type" class="portal-input w-full">
+          <option value="all">All Services</option>
+          <option value="data">Data</option>
+          <option value="airtime">Airtime</option>
+          <option value="tv">TV</option>
+          <option value="electricity">Electricity</option>
+        </select>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="PortalForms.closeModal('modal-manual-sync')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded text-xs">Cancel</button>
+        <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded text-xs">Trigger Immediate Sync</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  async function toggleSchedule(scheduleId) {
+    try {
+      const res = await fetch(`/portal/automation/schedules/${scheduleId}/toggle/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': PortalForms.getCookie('csrftoken') }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        PortalForms.toast(data.message, 'success');
+        setTimeout(() => location.reload(), 600);
+      } else {
+        PortalForms.toast(data.message || 'Error updating schedule.', 'error');
+      }
+    } catch (e) {
+      PortalForms.toast('Action failed.', 'error');
+    }
+  }
+</script>
+{% endblock %}

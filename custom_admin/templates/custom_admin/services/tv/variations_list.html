@@ -1,0 +1,86 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}All TV Packages - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}All TV Packages & Pricing{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Header Controls Bar -->
+  <div class="portal-card p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+    <div>
+      <h3 class="font-bold text-white text-sm">All TV Package Variations</h3>
+      <p class="text-xs text-slate-400">View TV bouquet plans and tier pricing.</p>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+      <!-- Search Form -->
+      <form method="GET" class="flex items-center gap-2 flex-1 md:flex-initial">
+        <input type="text" name="search" value="{{ search_query }}" placeholder="Search package name/ID..." class="portal-input text-xs w-44">
+        <button type="submit" class="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-xs">Search</button>
+      </form>
+
+      <!-- Status Filter -->
+      <select onchange="updateQueryParam('status', this.value)" class="portal-input text-xs">
+        <option value="" {% if not status_filter %}selected{% endif %}>All Status</option>
+        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active Only</option>
+        <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive Only</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="portal-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+          <tr>
+            <th class="p-3">Service</th>
+            <th class="p-3">Package Name</th>
+            <th class="p-3">Variation ID</th>
+            <th class="p-3">Cost Price</th>
+            <th class="p-3">Customer Price</th>
+            <th class="p-3">Agent Price</th>
+            <th class="p-3">Developer Price</th>
+            <th class="p-3">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for v in variations %}
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-3 font-semibold text-purple-400">{{ v.service.service_name }}</td>
+              <td class="p-3 font-bold text-white">{{ v.name }}</td>
+              <td class="p-3 font-mono text-slate-400">{{ v.variation_id }}</td>
+              <td class="p-3 font-mono text-slate-300">₦{{ v.cost_price|floatformat:2 }}</td>
+              <td class="p-3 font-mono font-bold text-emerald-400">₦{{ v.selling_price|floatformat:2 }}</td>
+              <td class="p-3 font-mono font-bold text-blue-400">₦{{ v.agent_price|floatformat:2 }}</td>
+              <td class="p-3 font-mono font-bold text-purple-400">₦{{ v.developer_price|floatformat:2 }}</td>
+              <td class="p-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {% if v.is_active %}badge-success{% else %}badge-danger{% endif %}">
+                  {% if v.is_active %}Active{% else %}Inactive{% endif %}
+                </span>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="8" class="p-8 text-center text-slate-500">No TV packages found matching your search.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% include 'custom_admin/includes/pagination.html' with page_obj=variations per_page=per_page %}
+  </div>
+
+</div>
+
+<script>
+  function updateQueryParam(key, val) {
+    const url = new URL(window.location.href);
+    if (val) {
+      url.searchParams.set(key, val);
+    } else {
+      url.searchParams.delete(key);
+    }
+    window.location.href = url.toString();
+  }
+</script>
+{% endblock %}

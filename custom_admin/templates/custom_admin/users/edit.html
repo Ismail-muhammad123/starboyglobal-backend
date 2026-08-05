@@ -1,0 +1,167 @@
+{% extends 'custom_admin/base.html' %}
+
+{% block title %}Edit User: {{ target_user.full_name|default:target_user.phone_number }} - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Edit User Profile{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+
+  <!-- Header & Back Link -->
+  <div class="flex items-center justify-between">
+    <a href="{% url 'portal:users_detail' target_user.pk %}" class="text-xs text-blue-400 hover:underline flex items-center gap-1">
+      <span>←</span> Back to User Details
+    </a>
+    <div class="text-xs text-slate-400">
+      User ID: <span class="font-mono text-slate-200">#{{ target_user.pk }}</span>
+    </div>
+  </div>
+
+  <!-- User Edit Form Card -->
+  <div class="portal-card p-6">
+    <div class="border-b border-slate-800 pb-4 mb-6">
+      <h2 class="text-base font-bold text-white">Edit Profile Details</h2>
+      <p class="text-xs text-slate-400 mt-0.5">Modify personal information, account status, role, and verification levels for <strong>({{ target_user.phone_country_code|default:"+234" }}) {{ target_user.phone_number }}</strong>.</p>
+    </div>
+
+    <form method="POST" action="{% url 'portal:user_edit' target_user.pk %}" data-ajax="true" data-reload="true" class="space-y-6">
+      {% csrf_token %}
+
+      <!-- Section: Personal Information -->
+      <div>
+        <h3 class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-3">1. Personal Information</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">First Name</label>
+            <input type="text" name="first_name" value="{{ target_user.first_name|default:'' }}" class="portal-input w-full text-xs" placeholder="e.g. John">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Middle Name</label>
+            <input type="text" name="middle_name" value="{{ target_user.middle_name|default:'' }}" class="portal-input w-full text-xs" placeholder="e.g. David">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Last Name</label>
+            <input type="text" name="last_name" value="{{ target_user.last_name|default:'' }}" class="portal-input w-full text-xs" placeholder="e.g. Doe">
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Contact Details -->
+      <div>
+        <h3 class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-3">2. Contact & Phone Details</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Country Code</label>
+            <select name="phone_country_code" class="portal-input w-full text-xs">
+              {% for code, label in country_codes %}
+                <option value="{{ code }}" {% if target_user.phone_country_code == code or not target_user.phone_country_code and code == '+234' %}selected{% endif %}>
+                  {{ label }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Phone Number</label>
+            <input type="text" name="phone_number" value="{{ target_user.phone_number }}" required class="portal-input w-full text-xs font-mono">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Email Address</label>
+            <input type="email" name="email" value="{{ target_user.email|default:'' }}" class="portal-input w-full text-xs" placeholder="user@example.com">
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Role & Rates -->
+      <div>
+        <h3 class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-3">3. Role & Commission Configuration</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">User Role</label>
+            <select name="role" class="portal-input w-full text-xs">
+              <option value="customer" {% if target_user.role == 'customer' %}selected{% endif %}>Customer (Standard)</option>
+              <option value="agent" {% if target_user.role == 'agent' %}selected{% endif %}>Agent / Reseller</option>
+              <option value="developer" {% if target_user.role == 'developer' %}selected{% endif %}>Developer (API Access)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Agent Commission Rate (%)</label>
+            <input type="number" step="0.01" min="0" max="100" name="agent_commission_rate" value="{{ target_user.agent_commission_rate|default:0.00 }}" class="portal-input w-full text-xs">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Referral Code</label>
+            <input type="text" name="referral_code" value="{{ target_user.referral_code }}" class="portal-input w-full text-xs font-mono">
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Account Flags & Statuses -->
+      <div>
+        <h3 class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-3">4. Status & Verification Flags</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-900/60 p-4 rounded-lg border border-slate-800">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-2">Account Active Status</label>
+            <select name="is_active" class="portal-input w-full text-xs">
+              <option value="true" {% if target_user.is_active %}selected{% endif %}>Active (Allowed Access)</option>
+              <option value="false" {% if not target_user.is_active %}selected{% endif %}>Suspended (Disabled)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-2">KYC Verification Status</label>
+            <select name="is_kyc_verified" class="portal-input w-full text-xs">
+              <option value="true" {% if target_user.is_kyc_verified %}selected{% endif %}>Verified</option>
+              <option value="false" {% if not target_user.is_kyc_verified %}selected{% endif %}>Unverified</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-2">Overall Verification</label>
+            <select name="is_verified" class="portal-input w-full text-xs">
+              <option value="true" {% if target_user.is_verified %}selected{% endif %}>Fully Verified</option>
+              <option value="false" {% if not target_user.is_verified %}selected{% endif %}>Unverified</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-2">Email Verified</label>
+            <select name="email_verified" class="portal-input w-full text-xs">
+              <option value="true" {% if target_user.email_verified %}selected{% endif %}>Yes</option>
+              <option value="false" {% if not target_user.email_verified %}selected{% endif %}>No</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-2">Phone Verified</label>
+            <select name="phone_number_verified" class="portal-input w-full text-xs">
+              <option value="true" {% if target_user.phone_number_verified %}selected{% endif %}>Yes</option>
+              <option value="false" {% if not target_user.phone_number_verified %}selected{% endif %}>No</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: Password & Security Reset (Optional) -->
+      <div>
+        <h3 class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-3">5. Security & Passwords (Optional)</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Set New Password / Login PIN</label>
+            <input type="password" name="new_password" class="portal-input w-full text-xs" placeholder="Leave blank to keep unchanged">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">Set New Transaction PIN</label>
+            <input type="password" name="new_transaction_pin" maxlength="6" class="portal-input w-full text-xs" placeholder="Leave blank to keep unchanged">
+          </div>
+        </div>
+      </div>
+
+      <!-- Submit Actions -->
+      <div class="flex items-center justify-end gap-3 border-t border-slate-800 pt-4">
+        <a href="{% url 'portal:users_detail' target_user.pk %}" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold">
+          Cancel
+        </a>
+        <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg shadow-lg shadow-blue-600/30">
+          Save User Profile
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+</div>
+{% endblock %}

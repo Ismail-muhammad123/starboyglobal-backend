@@ -1,0 +1,33 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Financial Reports - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Financial Reports & Metrics{% endblock %}
+{% block content %}
+<div class="space-y-6">
+
+  <div class="portal-card p-4 flex items-center justify-between">
+    <div>
+      <h3 class="font-bold text-white text-sm">Financial & Performance Summary Report</h3>
+      <p class="text-xs text-slate-400">Comprehensive overview of revenue, profits, deposits, and service breakdowns.</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+    <div class="portal-card p-5 space-y-2">
+      <div class="text-xs text-slate-400 font-semibold uppercase">Total Deposit Volume</div>
+      <div class="text-2xl font-bold text-emerald-400">₦{{ stats.financial.total_deposits|floatformat:2 }}</div>
+      <p class="text-xs text-slate-500">Gross inflow into platform</p>
+    </div>
+    <div class="portal-card p-5 space-y-2">
+      <div class="text-xs text-slate-400 font-semibold uppercase">Total Withdrawal Volume</div>
+      <div class="text-2xl font-bold text-amber-400">₦{{ stats.financial.total_withdrawals|floatformat:2 }}</div>
+      <p class="text-xs text-slate-500">Approved user cashouts</p>
+    </div>
+    <div class="portal-card p-5 space-y-2">
+      <div class="text-xs text-slate-400 font-semibold uppercase">Net Platform Profit</div>
+      <div class="text-2xl font-bold text-purple-400">₦{{ stats.purchases.total_profit|floatformat:2 }}</div>
+      <p class="text-xs text-slate-500">Calculated margin across all services</p>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

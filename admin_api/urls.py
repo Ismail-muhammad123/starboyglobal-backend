@@ -36,7 +36,9 @@ from .views import (
     AutomationConfigView, AutomationGlobalSettingsView, ServiceRetryConfigView,
     ServiceFallbackToggleView, ServiceAutoRefundView, ServicePricingModeView,
     DetectDelayedTransactionsView, ProviderServiceConfigViewSet, AutoSyncConfigView, AutoSyncRunNowView,
+    AutoSyncScheduleViewSet, AutoSyncLogViewSet,
     VariationToggleView, ServiceTypeToggleView, AdminAvailableVTUProvidersView, LiveCataloguePreviewView,
+
     # New views added today
     AdminWalletViewSet, AdminTransferViewSet, AdminTransferBeneficiaryViewSet,
     AdminPaystackDataViewSet, AdminReferralViewSet, AdminSiteConfigViewSet, AdminServiceCashbackViewSet,
@@ -77,8 +79,11 @@ router.register(r'notifications/templates', AdminNotificationTemplateViewSet, ba
 router.register(r'notifications/logs', AdminNotificationViewSet, basename='admin-notifications')
 
 router.register(r'vtu/provider-service-configs', ProviderServiceConfigViewSet, basename='admin-provider-service-configs')
+router.register(r'automation/schedules', AutoSyncScheduleViewSet, basename='admin-auto-sync-schedules')
+router.register(r'automation/logs', AutoSyncLogViewSet, basename='admin-auto-sync-logs')
 
 # Comprehensive Admin Control Sets
+
 
 router.register(r'wallets/all', AdminWalletViewSet, basename='admin-global-wallets')
 router.register(r'admin-transfers/beneficiaries', AdminTransferBeneficiaryViewSet, basename='admin-transfers-beneficiaries')

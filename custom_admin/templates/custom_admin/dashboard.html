@@ -1,0 +1,297 @@
+{% extends 'custom_admin/base.html' %}
+{% load humanize %}
+
+{% block title %}Dashboard - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Dashboard Overview{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- ROW 1: REVENUE & FINANCIAL KPI CARDS -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+
+    <div class="portal-card p-4">
+      <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Total Volume</div>
+      <div class="text-base font-bold text-white mt-1">₦{{ purchases.total_volume|default:0|floatformat:2|intcomma }}</div>
+      <div class="text-[10px] text-emerald-400 mt-1">Success Tx</div>
+    </div>
+
+    <div class="portal-card p-4 border-l-4 border-l-emerald-500">
+      <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Profit Today</div>
+      <div class="text-base font-bold text-emerald-400 mt-1">
+        ₦{{ purchases.profit_periods.today|default:0|floatformat:2|intcomma }}</div>
+      <div class="text-[10px] text-slate-400 mt-1">24 Hours</div>
+    </div>
+
+    <div class="portal-card p-4 border-l-4 border-l-blue-500">
+      <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Profit Weekly</div>
+      <div class="text-base font-bold text-blue-400 mt-1">
+        ₦{{ purchases.profit_periods.weekly|default:0|floatformat:2|intcomma }}
+      </div>
+      <div class="text-[10px] text-slate-400 mt-1">Last 7 Days</div>
+    </div>
+
+    <div class="portal-card p-4 border-l-4 border-l-purple-500">
+      <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Profit Monthly</div>
+      <div class="text-base font-bold text-purple-400 mt-1">
+        ₦{{ purchases.profit_periods.monthly|default:0|floatformat:2|intcomma }}
+      </div>
+      <div class="text-[10px] text-slate-400 mt-1">Last 30 Days</div>
+    </div>
+
+    <div class="portal-card p-4">
+      <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Paystack Balance</div>
+      <div class="text-base font-bold text-cyan-400 mt-1">
+        ₦{{ financial.paystack_balance|default:0|floatformat:2|intcomma }}
+      </div>
+      <div class="text-[10px] text-slate-400 mt-1">Gateway API</div>
+    </div>
+
+    <div class="portal-card p-4">
+      <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">VTU Balance</div>
+      <div class="text-base font-bold text-amber-400 mt-1">
+        ₦{{ stats.provider_balances.vtu|default:0|floatformat:2|intcomma }}
+      </div>
+      <div class="text-[10px] text-slate-400 mt-1">Provider Wallet</div>
+    </div>
+
+    <div class="portal-card p-4">
+      <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">User Wallets</div>
+      <div class="text-base font-bold text-indigo-400 mt-1">
+        ₦{{ wallets.total_balance|default:0|floatformat:2|intcomma }}
+      </div>
+      <div class="text-[10px] text-slate-400 mt-1">Total System Liabilities</div>
+    </div>
+
+    <div class="portal-card p-4">
+      <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Total Deposits</div>
+      <div class="text-base font-bold text-teal-400 mt-1">
+        ₦{{ financial.total_deposits|default:0|floatformat:2|intcomma }}</div>
+      <div class="text-[10px] text-slate-400 mt-1">Successful Inflow</div>
+    </div>
+
+  </div>
+
+  <!-- ROW 2: REVENUE & PROFIT TREND CHART -->
+  <div class="portal-card p-5">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+      <div>
+        <h3 class="text-base font-bold text-white">Revenue & Profit Performance Trend</h3>
+        <p class="text-xs text-[var(--text-muted)]">Daily transaction volume vs net profit</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button class="px-3 py-1 text-xs rounded bg-slate-800 text-slate-300 hover:text-white border border-slate-700"
+          onclick="loadRevenueChart(7)">7 Days</button>
+        <button class="px-3 py-1 text-xs rounded bg-blue-600 text-white font-semibold shadow"
+          onclick="loadRevenueChart(30)">30 Days</button>
+        <button class="px-3 py-1 text-xs rounded bg-slate-800 text-slate-300 hover:text-white border border-slate-700"
+          onclick="loadRevenueChart(90)">90 Days</button>
+      </div>
+    </div>
+    <div class="h-72 w-full">
+      <canvas id="revenueTrendChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ROW 3: CHARTS - SERVICE DISTRIBUTION & STATUS -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+    <div class="portal-card p-5">
+      <h3 class="text-sm font-bold text-white mb-1">Service Type Volume Share</h3>
+      <p class="text-xs text-[var(--text-muted)] mb-4">Distribution by service type (Bar Chart)</p>
+      <div class="h-64 flex items-center justify-center">
+        <canvas id="serviceShareChart"></canvas>
+      </div>
+    </div>
+
+    <div class="portal-card p-5">
+      <h3 class="text-sm font-bold text-white mb-1">Transactions Count Status</h3>
+      <p class="text-xs text-[var(--text-muted)] mb-4">Success vs Failed vs Pending</p>
+      <div class="grid grid-cols-3 gap-4 mb-4 text-center">
+        <div class="p-3 rounded-lg bg-emerald-950/40 border border-emerald-800/40">
+          <div class="text-xs text-emerald-400 font-medium">Successful</div>
+          <div class="text-xl font-bold text-emerald-300 mt-1">{{ purchases.success_count|default:0|intcomma }}</div>
+        </div>
+        <div class="p-3 rounded-lg bg-red-950/40 border border-red-800/40">
+          <div class="text-xs text-red-400 font-medium">Failed</div>
+          <div class="text-xl font-bold text-red-300 mt-1">{{ purchases.failed_count|default:0|intcomma }}</div>
+        </div>
+        <div class="p-3 rounded-lg bg-amber-950/40 border border-amber-800/40">
+          <div class="text-xs text-amber-400 font-medium">Pending</div>
+          <div class="text-xl font-bold text-amber-300 mt-1">{{ purchases.pending_count|default:0|intcomma }}</div>
+        </div>
+      </div>
+      <div class="h-44">
+        <canvas id="statusDistributionChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ROW 4: PROVIDER PERFORMANCE CARDS -->
+  <div>
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-sm font-bold text-white uppercase tracking-wider">VTU Provider Health & Balances</h3>
+      <span class="text-xs text-slate-400">{{ vtu_providers|length }} Configured Providers</span>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {% for provider in vtu_providers %}
+      <div class="portal-card p-4 relative overflow-hidden">
+        <div class="flex items-center justify-between mb-3">
+          <span class="font-bold text-white text-base">{{ provider.name }}</span>
+          <span
+            class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {% if provider.is_active %}badge-success{% else %}badge-danger{% endif %}">
+            {% if provider.is_active %}Active{% else %}Inactive{% endif %}
+          </span>
+        </div>
+
+        <div class="space-y-2 text-xs">
+          <div class="flex justify-between text-slate-400">
+            <span>Balance:</span>
+            <span class="font-semibold text-amber-400 text-sm">₦{{ provider.balance|floatformat:2|intcomma }}</span>
+          </div>
+          <div class="flex justify-between text-slate-400">
+            <span>Success Rate:</span>
+            <span
+              class="font-semibold {% if provider.success_rate >= 90 %}text-emerald-400{% else %}text-amber-400{% endif %}">
+              {{ provider.success_rate|floatformat:2 }}%</span>
+          </div>
+          <div class="flex justify-between text-slate-400">
+            <span>Total Transactions:</span>
+            <span class="text-slate-200 font-medium">{{ provider.total_transactions|intcomma }}</span>
+          </div>
+          <div class="flex justify-between text-slate-400">
+            <span>Active Services:</span>
+            <span class="text-slate-200 font-medium">{{ provider.active_services }}</span>
+          </div>
+        </div>
+      </div>
+      {% empty %}
+      <div class="portal-card p-6 col-span-full text-center text-slate-400 text-sm">
+        No VTU Providers configured yet.
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ROW 5: NETWORK & SYSTEM HEALTH -->
+  <div class="portal-card p-5">
+    <h3 class="text-sm font-bold text-white mb-3">Network & Service Health Indicators</h3>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      {% for net, health in service_health.network_status.items %}
+      <div class="p-3 rounded-lg bg-slate-900/60 border border-slate-800 flex items-center justify-between">
+        <span class="uppercase font-bold text-xs text-slate-300">{{ net }}</span>
+        <span
+          class="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase
+            {% if health == 'EXCELLENT' %}badge-success{% elif health == 'DEGRADED' %}badge-warning{% else %}badge-danger{% endif %}">
+          {{ health }}
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ROW 6: USERS SUMMARY & ALERTS -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+    <!-- User Stats Card -->
+    <div class="portal-card p-5">
+      <h3 class="text-sm font-bold text-white mb-4">User Base Statistics</h3>
+      <div class="space-y-3 text-xs">
+        <div class="flex justify-between py-2 border-b border-slate-800">
+          <span class="text-slate-400">Total Users</span>
+          <span class="font-bold text-white text-sm">{{ users.total|default:0|intcomma }}</span>
+        </div>
+        <div class="flex justify-between py-2 border-b border-slate-800">
+          <span class="text-slate-400">Active Today</span>
+          <span class="font-semibold text-emerald-400">{{ users.active_today|default:0|intcomma }}</span>
+        </div>
+        <div class="flex justify-between py-2 border-b border-slate-800">
+          <span class="text-slate-400">Customers</span>
+          <span class="font-medium text-slate-200">{{ users.customers|default:0|intcomma }}</span>
+        </div>
+        <div class="flex justify-between py-2 border-b border-slate-800">
+          <span class="text-slate-400">Agents / Resellers</span>
+          <span class="font-medium text-blue-400">{{ users.agents|default:0|intcomma }}</span>
+        </div>
+        <div class="flex justify-between py-2">
+          <span class="text-slate-400">Staff / Admins</span>
+          <span class="font-medium text-purple-400">{{ users.admins|default:0|intcomma }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Failed Transactions Alerts Table -->
+    <div class="portal-card p-5 lg:col-span-2">
+      <h3 class="text-sm font-bold text-white mb-3">Recent Failed Transactions Alerts</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px]">
+            <tr>
+              <th class="p-2">Ref</th>
+              <th class="p-2">Type</th>
+              <th class="p-2">Amount</th>
+              <th class="p-2">Beneficiary</th>
+              <th class="p-2">Reason</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800">
+            {% for f in alerts.failed_transactions %}
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-2 font-mono text-blue-400">{{ f.ref }}</td>
+              <td class="p-2 uppercase">{{ f.type }}</td>
+              <td class="p-2 font-semibold">₦{{ f.amount|floatformat:2|intcomma }}</td>
+              <td class="p-2">{{ f.beneficiary }}</td>
+              <td class="p-2 text-red-400 truncate max-w-xs">{{ f.error|default:"Provider Error" }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="5" class="p-4 text-center text-slate-500">No recent failed transactions.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ purchases.totals_by_service|json_script:"totals-by-service-data" }}
+<script>
+  let revenueChart = null;
+
+  async function loadRevenueChart(days = 30) {
+    try {
+      const res = await fetch(`/portal/api/chart/revenue/?days=${days}`);
+      const data = await res.json();
+      const ctx = document.getElementById('revenueTrendChart').getContext('2d');
+
+      if (revenueChart) revenueChart.destroy();
+      revenueChart = PortalCharts.createLineChart(ctx, data.labels, data.datasets);
+    } catch (e) {
+      console.error('Failed to load revenue chart', e);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadRevenueChart(30);
+
+    // Service Type Volume Share Bar Chart
+    const totalsByService = JSON.parse(document.getElementById('totals-by-service-data').textContent || '{}');
+    const labels = Object.keys(totalsByService).map(k => k.toUpperCase());
+    const values = Object.values(totalsByService).map(v => v.total_amount || 0);
+
+    const shareCtx = document.getElementById('serviceShareChart').getContext('2d');
+    if (PortalCharts.createBarChart) {
+      PortalCharts.createBarChart(shareCtx, labels, values);
+    } else {
+      PortalCharts.createDoughnutChart(shareCtx, labels, values);
+    }
+  });
+</script>
+{% endblock %}

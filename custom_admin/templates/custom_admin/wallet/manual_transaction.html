@@ -1,0 +1,61 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Manual Wallet Transaction - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Manual Wallet Transaction{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <a href="{% url 'portal:wallets_list' %}" class="text-xs text-blue-400 hover:underline">← Back to Wallets</a>
+
+  <div class="portal-card p-6 max-w-xl mx-auto space-y-5">
+    <div class="border-b border-slate-800 pb-3">
+      <h3 class="font-bold text-white text-base">Credit or Debit User Wallet</h3>
+      <p class="text-xs text-slate-400">Perform an administrative wallet adjustment. All actions are logged into AdminActionLog.</p>
+    </div>
+
+    <form method="POST" action="{% url 'portal:manual_transaction' %}" data-ajax="true" data-reload="true" class="space-y-4 text-xs">
+      {% csrf_token %}
+
+      <div>
+        <label class="block font-semibold text-slate-300 mb-1 uppercase tracking-wider">User Phone Number</label>
+        <input type="text" name="phone_number" value="{{ target_phone }}" required placeholder="e.g. 08012345678" class="portal-input w-full text-sm font-mono">
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1 uppercase tracking-wider">Action Type</label>
+          <select name="transaction_type" required class="portal-input w-full text-sm">
+            <option value="credit">Credit (+) Add Balance</option>
+            <option value="debit">Debit (-) Deduct Balance</option>
+          </select>
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1 uppercase tracking-wider">Amount (₦)</label>
+          <input type="number" step="0.01" min="0.01" name="amount" required placeholder="0.00" class="portal-input w-full text-sm font-mono">
+        </div>
+      </div>
+
+      <div>
+        <label class="block font-semibold text-slate-300 mb-1 uppercase tracking-wider">Reason / Description</label>
+        <textarea name="description" rows="3" required placeholder="State the reason for this manual credit/debit adjustment..." class="portal-input w-full text-xs"></textarea>
+      </div>
+
+      <div class="p-3 bg-slate-900/90 rounded-lg border border-amber-500/30 space-y-2">
+        <label class="block font-bold text-amber-400 uppercase tracking-wider text-[11px] flex items-center gap-1">
+          <span>🔒</span> Admin Security PIN (Required)
+        </label>
+        <input type="password" name="admin_pin" required placeholder="Enter your transaction PIN or admin password..." class="portal-input w-full text-sm font-mono tracking-widest border-amber-500/40">
+        <p class="text-[10px] text-slate-400">Required to authorize manual balance adjustments.</p>
+      </div>
+
+      <div class="pt-3 flex justify-end gap-2">
+        <a href="{% url 'portal:wallets_list' %}" class="px-4 py-2 bg-slate-800 text-slate-300 rounded text-xs">Cancel</a>
+        <button type="submit" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs shadow">
+          Execute Transaction
+        </button>
+      </div>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Deposits - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Deposit Log & Inflows{% endblock %}
+{% block content %}
+<div class="space-y-6">
+
+  <div class="portal-card p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+    <form method="GET" class="flex items-center gap-2 w-full md:w-auto flex-1">
+      <input type="text" name="search" value="{{ search_query }}" placeholder="Search Ref, Phone..." class="portal-input w-full md:w-80 text-xs">
+      <button type="submit" class="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-xs">Search</button>
+      {% if search_query or status_filter %}<a href="{% url 'portal:deposits_list' %}" class="px-3 py-2 bg-slate-800 text-slate-300 rounded-lg text-xs">Clear</a>{% endif %}
+    </form>
+    <div class="flex items-center gap-2 w-full md:w-auto">
+      <select onchange="location = this.value;" class="portal-input text-xs">
+        <option value="{% url 'portal:deposits_list' %}" {% if not status_filter %}selected{% endif %}>All Status</option>
+        <option value="?status=success" {% if status_filter == 'success' %}selected{% endif %}>SUCCESS</option>
+        <option value="?status=pending" {% if status_filter == 'pending' %}selected{% endif %}>PENDING</option>
+        <option value="?status=failed" {% if status_filter == 'failed' %}selected{% endif %}>FAILED</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="portal-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+          <tr>
+            <th class="p-3">Reference</th>
+            <th class="p-3">User</th>
+            <th class="p-3">Amount</th>
+            <th class="p-3">Payment Type</th>
+            <th class="p-3">Status</th>
+            <th class="p-3">Processed By</th>
+            <th class="p-3">Timestamp</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for d in deposits %}
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-3 font-mono text-blue-400 font-medium">{{ d.reference }}</td>
+              <td class="p-3 font-medium text-slate-200">
+                <a href="{% url 'portal:users_detail' d.user.pk %}" class="hover:text-blue-400">{{ d.user.phone_number }}</a>
+              </td>
+              <td class="p-3 font-mono font-bold text-emerald-400">₦{{ d.amount|floatformat:2 }}</td>
+              <td class="p-3 uppercase text-[10px] text-slate-400">{{ d.payment_type }}</td>
+              <td class="p-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {% if d.status == 'SUCCESS' %}badge-success{% elif d.status == 'PENDING' %}badge-warning{% else %}badge-danger{% endif %}">
+                  {{ d.status }}
+                </span>
+              </td>
+              <td class="p-3 text-slate-400">{{ d.processed_by.phone_number|default:"System / Auto" }}</td>
+              <td class="p-3 text-slate-400">{{ d.timestamp|date:"M d, H:i:s" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7" class="p-8 text-center text-slate-500">No deposits found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if deposits.has_other_pages %}
+      <div class="p-4 border-t border-slate-800 flex items-center justify-between text-xs">
+        <span class="text-slate-400">Page {{ deposits.number }} of {{ deposits.paginator.num_pages }}</span>
+        <div class="flex gap-1">
+          {% if deposits.has_previous %}<a href="?page={{ deposits.previous_page_number }}" class="px-3 py-1 bg-slate-800 text-slate-300 rounded hover:bg-slate-700">Prev</a>{% endif %}
+          {% if deposits.has_next %}<a href="?page={{ deposits.next_page_number }}" class="px-3 py-1 bg-slate-800 text-slate-300 rounded hover:bg-slate-700">Next</a>{% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

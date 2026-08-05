@@ -1,0 +1,171 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Configure {{ provider.get_name_display }} - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Provider Configuration: {{ provider.get_name_display }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <a href="{% url 'portal:providers_list' %}" class="text-xs text-blue-400 hover:underline">← Back to Providers</a>
+
+  <!-- Provider Sync Operations Toolbar -->
+  <div class="portal-card p-4 space-y-3 bg-slate-900 border-slate-800">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+      <div>
+        <h3 class="font-bold text-white text-sm flex items-center gap-2">
+          <span>🔄</span> Live Provider Catalogue & Service Sync
+        </h3>
+        <p class="text-xs text-slate-400">Trigger immediate sync of plans, packages, networks, or variations directly from {{ provider.get_name_display }}.</p>
+      </div>
+
+      <form method="POST" action="{% url 'portal:provider_sync' provider.pk %}" data-ajax="true" class="inline">
+        {% csrf_token %}
+        <input type="hidden" name="service_type" value="all">
+        <button type="submit" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-lg shadow flex items-center gap-1.5">
+          <span>⚡</span> Sync All Services
+        </button>
+      </form>
+    </div>
+
+    <!-- Per-Service Sync Action Buttons -->
+    <div class="flex flex-wrap items-center gap-2 pt-1 text-xs">
+      <span class="text-slate-400 font-semibold text-[11px] mr-2 uppercase tracking-wider">Sync Single Service:</span>
+      
+      {% for cfg in service_configs %}
+        <form method="POST" action="{% url 'portal:provider_sync' provider.pk %}" data-ajax="true" class="inline">
+          {% csrf_token %}
+          <input type="hidden" name="service_type" value="{{ cfg.service_type }}">
+          <button type="submit" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-blue-300 hover:text-white border border-slate-700 rounded-md font-semibold text-[11px] flex items-center gap-1 shadow-sm">
+            <span>🔄</span> Sync {{ cfg.get_service_type_display }}
+          </button>
+        </form>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="portal-card p-6 max-w-3xl">
+    <form method="POST" action="{% url 'portal:provider_detail' provider.pk %}" data-ajax="true" data-reload="true" class="space-y-5">
+      {% csrf_token %}
+
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <h3 class="font-bold text-white text-base">API Credentials & Endpoints</h3>
+        <label class="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-300">
+          <input type="checkbox" name="is_active" {% if provider.is_active %}checked{% endif %} class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-blue-600 focus:ring-0">
+          <span>Active Provider</span>
+        </label>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1">API Key / Token</label>
+          <input type="password" name="api_key" value="{{ provider.api_key|default:'' }}" class="portal-input w-full font-mono">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">User ID / Username</label>
+          <input type="text" name="user_id" value="{{ provider.user_id|default:'' }}" class="portal-input w-full font-mono">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Secret Key / Password</label>
+          <input type="password" name="secret_key" value="{{ provider.secret_key|default:'' }}" class="portal-input w-full font-mono">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Session ID / PIN</label>
+          <input type="text" name="session_id" value="{{ provider.session_id|default:'' }}" class="portal-input w-full font-mono">
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-slate-400 mb-1">Base URL Endpoint</label>
+          <input type="text" name="base_url" value="{{ provider.base_url|default:'' }}" class="portal-input w-full font-mono">
+        </div>
+      </div>
+
+      <div class="border-t border-slate-800 pt-4">
+        <h4 class="font-bold text-white text-sm mb-3">Bank Funding Account Info</h4>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+          <div>
+            <label class="block text-slate-400 mb-1">Bank Name</label>
+            <input type="text" name="bank_name" value="{{ provider.bank_name|default:'' }}" class="portal-input w-full">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Account Number</label>
+            <input type="text" name="account_number" value="{{ provider.account_number|default:'' }}" class="portal-input w-full font-mono">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Account Name</label>
+            <input type="text" name="account_name" value="{{ provider.account_name|default:'' }}" class="portal-input w-full">
+          </div>
+        </div>
+      </div>
+
+      <!-- Inline Provider Service Configs & Margins (Django Admin style) -->
+      <div class="border-t border-slate-800 pt-5 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+          <h4 class="font-bold text-amber-400 text-sm uppercase tracking-wider">Service Catalogue & Margin Settings (Inline)</h4>
+          <span class="text-[11px] text-slate-400">Configure catalogue sources & profit margins per service</span>
+        </div>
+
+        <div class="space-y-4">
+          {% for cfg in service_configs %}
+            <div class="p-4 rounded-lg bg-slate-900/80 border border-slate-800 space-y-3">
+              <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                <span class="font-bold text-white text-sm uppercase">{{ cfg.get_service_type_display }} Service Configuration</span>
+                <div class="flex items-center gap-2 text-xs">
+                  <label class="text-slate-400">Catalogue Source:</label>
+                  <select name="catalogue_source_{{ cfg.service_type }}" class="portal-input text-xs py-1">
+                    <option value="db" {% if cfg.catalogue_source == 'db' %}selected{% endif %}>Local Database</option>
+                    <option value="live" {% if cfg.catalogue_source == 'live' %}selected{% endif %}>Live Provider API</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Margins Grid -->
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <!-- Customer Margin -->
+                <div class="p-3 bg-slate-950/40 rounded border border-slate-800 space-y-1">
+                  <span class="font-semibold text-blue-400">Customer Margin</span>
+                  <div class="flex gap-2">
+                    <select name="customer_margin_type_{{ cfg.service_type }}" class="portal-input text-[11px] py-1">
+                      <option value="flat" {% if cfg.customer_margin_type == 'flat' %}selected{% endif %}>Flat (₦)</option>
+                      <option value="percentage" {% if cfg.customer_margin_type == 'percentage' %}selected{% endif %}>Percentage (%)</option>
+                    </select>
+                    <input type="number" step="0.01" name="customer_margin_value_{{ cfg.service_type }}" value="{{ cfg.customer_margin_value|default:0.00 }}" class="portal-input w-full text-xs font-mono py-1">
+                  </div>
+                </div>
+
+                <!-- Agent Margin -->
+                <div class="p-3 bg-slate-950/40 rounded border border-slate-800 space-y-1">
+                  <span class="font-semibold text-purple-400">Agent Margin</span>
+                  <div class="flex gap-2">
+                    <select name="agent_margin_type_{{ cfg.service_type }}" class="portal-input text-[11px] py-1">
+                      <option value="flat" {% if cfg.agent_margin_type == 'flat' %}selected{% endif %}>Flat (₦)</option>
+                      <option value="percentage" {% if cfg.agent_margin_type == 'percentage' %}selected{% endif %}>Percentage (%)</option>
+                    </select>
+                    <input type="number" step="0.01" name="agent_margin_value_{{ cfg.service_type }}" value="{{ cfg.agent_margin_value|default:0.00 }}" class="portal-input w-full text-xs font-mono py-1">
+                  </div>
+                </div>
+
+                <!-- Developer Margin -->
+                <div class="p-3 bg-slate-950/40 rounded border border-slate-800 space-y-1">
+                  <span class="font-semibold text-emerald-400">Developer Margin</span>
+                  <div class="flex gap-2">
+                    <select name="developer_margin_type_{{ cfg.service_type }}" class="portal-input text-[11px] py-1">
+                      <option value="flat" {% if cfg.developer_margin_type == 'flat' %}selected{% endif %}>Flat (₦)</option>
+                      <option value="percentage" {% if cfg.developer_margin_type == 'percentage' %}selected{% endif %}>Percentage (%)</option>
+                    </select>
+                    <input type="number" step="0.01" name="developer_margin_value_{{ cfg.service_type }}" value="{{ cfg.developer_margin_value|default:0.00 }}" class="portal-input w-full text-xs font-mono py-1">
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="pt-4 flex justify-end">
+        <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-xs shadow">
+          Save All Config Changes & Margins
+        </button>
+      </div>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

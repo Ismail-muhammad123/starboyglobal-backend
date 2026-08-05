@@ -1,0 +1,60 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Service Routing - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Service Routing & Provider Fallbacks{% endblock %}
+{% block content %}
+<div class="space-y-6">
+
+  <div class="portal-card p-4 flex items-center justify-between">
+    <div>
+      <h3 class="font-bold text-white text-sm">Service Routing Rules</h3>
+      <p class="text-xs text-slate-400">Select primary provider and manage automated provider fallbacks per service type.</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+    {% for r in routings %}
+      <div class="portal-card p-5 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <h4 class="font-bold text-white text-base">{{ r.get_service_display }} Routing</h4>
+          <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase badge-info">{{ r.pricing_mode }}</span>
+        </div>
+
+        <form method="POST" action="{% url 'portal:service_routings_detail' r.pk %}" data-ajax="true" data-reload="true" class="space-y-3 text-xs">
+          {% csrf_token %}
+          <div>
+            <label class="block text-slate-400 mb-1">Primary Provider</label>
+            <select name="primary_provider_id" class="portal-input w-full">
+              <option value="">-- None Selected --</option>
+              {% for p in providers %}
+                <option value="{{ p.pk }}" {% if r.primary_provider_id == p.pk %}selected{% endif %}>{{ p.get_name_display }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="block text-slate-400 mb-1">Customer Margin</label>
+              <input type="number" step="0.01" name="customer_margin" value="{{ r.customer_margin }}" class="portal-input w-full">
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1">Agent Margin</label>
+              <input type="number" step="0.01" name="agent_margin" value="{{ r.agent_margin }}" class="portal-input w-full">
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1">Dev Margin</label>
+              <input type="number" step="0.01" name="developer_margin" value="{{ r.developer_margin }}" class="portal-input w-full">
+            </div>
+          </div>
+
+          <div class="pt-2 flex justify-end">
+            <button type="submit" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded text-xs">Save Routing</button>
+          </div>
+        </form>
+      </div>
+    {% empty %}
+      <div class="portal-card p-8 col-span-full text-center text-slate-500 text-sm">No Service Routings configured.</div>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}

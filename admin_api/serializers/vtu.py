@@ -4,9 +4,22 @@ from orders.models import (
     VTUProviderConfig, ServiceRouting, ServiceFallback, DataService, DataVariation, 
     AirtimeNetwork, TVService, TVVariation, InternetService, InternetVariation, 
     EducationService, EducationVariation, ElectricityService, ElectricityVariation,
-    ProviderServiceConfig
+    ProviderServiceConfig, AutoSyncSchedule, AutoSyncLog
 )
+
 from summary.models import SiteConfig
+
+
+class InlineProviderServiceConfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProviderServiceConfig
+        fields = [
+            'id', 'service_type',
+            'catalogue_source', 'live_cache_ttl_seconds',
+            'customer_margin_type', 'customer_margin_value',
+            'agent_margin_type', 'agent_margin_value',
+            'developer_margin_type', 'developer_margin_value',
+        ]
 
 
 class VTUProviderConfigSerializer(serializers.ModelSerializer):
@@ -14,6 +27,7 @@ class VTUProviderConfigSerializer(serializers.ModelSerializer):
     callback_url = serializers.ReadOnlyField()
     supported_services = serializers.SerializerMethodField()
     config_requirements = serializers.SerializerMethodField()
+    service_configs = InlineProviderServiceConfigSerializer(many=True, required=False)
 
     class Meta:
         model = VTUProviderConfig
@@ -22,7 +36,7 @@ class VTUProviderConfigSerializer(serializers.ModelSerializer):
             'secret_key', 'public_key', 'base_url', 'webhook_url', 'callback_url', 
             'max_retries', 'auto_refund_on_failure', 'account_name', 'bank_name', 
             'account_number', 'bank_code', 'min_funding_balance', 'auto_funding_enabled',
-            'supported_services', 'config_requirements'
+            'supported_services', 'config_requirements', 'service_configs'
         ]
 
     @extend_schema_field(serializers.ListField(child=serializers.CharField()))
@@ -36,6 +50,34 @@ class VTUProviderConfigSerializer(serializers.ModelSerializer):
         from orders.router import ProviderRouter
         p_class = ProviderRouter.FACTORIES.get(obj.name.lower())
         return p_class.get_config_requirements() if p_class else []
+
+    def validate_service_configs(self, value):
+        service_types = [item.get('service_type') for item in value if item.get('service_type')]
+        if len(service_types) != len(set(service_types)):
+            raise serializers.ValidationError("A provider can only have a maximum of 1 configuration per service type.")
+        return value
+
+    def create(self, validated_data):
+        service_configs_data = validated_data.pop('service_configs', [])
+        provider = super().create(validated_data)
+        for cfg in service_configs_data:
+            ProviderServiceConfig.objects.create(provider=provider, **cfg)
+        return provider
+
+    def update(self, instance, validated_data):
+        service_configs_data = validated_data.pop('service_configs', None)
+        provider = super().update(instance, validated_data)
+        if service_configs_data is not None:
+            for cfg in service_configs_data:
+                stype = cfg.get('service_type')
+                if stype:
+                    ProviderServiceConfig.objects.update_or_create(
+                        provider=provider,
+                        service_type=stype,
+                        defaults=cfg
+                    )
+        return provider
+
 
 class ServiceFallbackSerializer(serializers.ModelSerializer):
     provider_name = serializers.CharField(source='provider.get_name_display', read_only=True)
@@ -156,4 +198,34 @@ class AutoSyncConfigSerializer(serializers.ModelSerializer):
             'auto_sync_last_run', 'auto_sync_next_run'
         ]
         read_only_fields = ['auto_sync_last_run', 'auto_sync_next_run']
+
+
+class AutoSyncScheduleSerializer(serializers.ModelSerializer):
+    provider_display = serializers.CharField(source='provider.get_name_display', read_only=True)
+    service_type_display = serializers.CharField(source='get_service_type_display', read_only=True)
+    frequency_display = serializers.CharField(source='get_frequency_display', read_only=True)
+
+    class Meta:
+        model = AutoSyncSchedule
+        fields = [
+            'id', 'name', 'provider', 'provider_display',
+            'service_type', 'service_type_display',
+            'frequency', 'frequency_display',
+            'start_date_time', 'is_active',
+            'last_run', 'next_run', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['last_run', 'next_run', 'created_at', 'updated_at']
+
+
+class AutoSyncLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AutoSyncLog
+        fields = [
+            'id', 'schedule', 'schedule_name', 'provider_name',
+            'service_type', 'status', 'items_synced',
+            'details', 'error_message', 'started_at',
+            'finished_at', 'duration_seconds'
+        ]
+        read_only_fields = fields
+
 

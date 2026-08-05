@@ -90,6 +90,7 @@ INSTALLED_APPS = [
     'admin_api',
     'support',
     'developer_api',
+    'custom_admin',
     'django_filters',
     'django_apscheduler',
 ]
@@ -170,7 +171,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'custom_admin', 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -359,12 +360,12 @@ CLUBKONNECT_ENDPOINTS = {
 # ----------------------------- Jazzmin Configuration -----------------------------
 
 JAZZMIN_SETTINGS = {
-    "site_title": "A-Star Data App",
-    "site_header": "A-Star Data",
-    "site_brand": "A-Star",
+    "site_title": "Starboy Global Admin Dashboard",
+    "site_header": "Starboy Global",
+    "site_brand": "Starboy Global",
     "site_logo": "img/logo.png",
-    "welcome_sign": "Welcome to A-Star Data App",
-    "copyright": "A-Star Data App Ltd",
+    "welcome_sign": "Welcome to Starboy Global Admin Dashboard",
+    "copyright": "Starboy Global Ltd",
     "search_model": ["users.User"],
     "user_avatar": None,
     "topmenu_links": [

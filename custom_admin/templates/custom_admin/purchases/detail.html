@@ -1,0 +1,118 @@
+{% extends 'custom_admin/base.html' %}
+
+{% block title %}Purchase Detail: {{ purchase.reference }}{% endblock %}
+{% block page_title %}Purchase Detail: {{ purchase.reference }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Navigation & Action Header -->
+  <div class="flex items-center justify-between">
+    <a href="{% url 'portal:purchases_list' %}" class="text-xs text-blue-400 hover:underline">← Back to Purchases</a>
+    <div class="flex items-center gap-2">
+      {% if purchase.status != 'refunded' %}
+        <button onclick="refundPurchase('{{ purchase.pk }}')" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs rounded-lg shadow">
+          ↩ Refund to User Wallet
+        </button>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Key Specs Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="portal-card p-4">
+      <div class="text-[10px] text-slate-400 uppercase font-semibold">Reference</div>
+      <div class="font-mono font-bold text-blue-400 text-sm mt-1">{{ purchase.reference }}</div>
+    </div>
+    <div class="portal-card p-4">
+      <div class="text-[10px] text-slate-400 uppercase font-semibold">Status</div>
+      <div class="mt-1">
+        <span class="px-2.5 py-1 rounded text-xs font-bold uppercase
+          {% if purchase.status == 'success' %}badge-success{% elif purchase.status == 'pending' %}badge-warning{% elif purchase.status == 'refunded' %}badge-info{% else %}badge-danger{% endif %}">
+          {{ purchase.status }}
+        </span>
+      </div>
+    </div>
+    <div class="portal-card p-4">
+      <div class="text-[10px] text-slate-400 uppercase font-semibold">Amount</div>
+      <div class="font-bold text-white text-lg mt-1">₦{{ purchase.amount|floatformat:2 }}</div>
+    </div>
+    <div class="portal-card p-4">
+      <div class="text-[10px] text-slate-400 uppercase font-semibold">Net Profit</div>
+      <div class="font-bold text-emerald-400 text-lg mt-1">₦{{ purchase.profit|floatformat:2 }}</div>
+    </div>
+  </div>
+
+  <!-- Detail Information Card -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+    
+    <div class="portal-card p-5 space-y-3">
+      <h3 class="font-bold text-white text-sm border-b border-slate-800 pb-2">Purchase Parameters</h3>
+      <div class="space-y-2 text-xs">
+        <div class="flex justify-between"><span class="text-slate-400">User Phone:</span> <span class="font-mono text-blue-300">{{ purchase.user.phone_number }}</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Service Type:</span> <span class="uppercase font-bold text-purple-400">{{ purchase.purchase_type }}</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Beneficiary:</span> <span class="font-mono text-white">{{ purchase.beneficiary }}</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Cost Price:</span> <span class="text-slate-300">₦{{ purchase.cost_price|floatformat:2 }}</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Token / Meter Token:</span> <span class="font-mono text-amber-300">{{ purchase.token|default:"None" }}</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Provider Config:</span> <span class="text-slate-200">{{ purchase.provider.get_name_display|default:"None" }}</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Initiator:</span> <span class="uppercase text-slate-300">{{ purchase.initiator }}</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Timestamp:</span> <span class="text-slate-300">{{ purchase.time|date:"Y-m-d H:i:s" }}</span></div>
+      </div>
+    </div>
+
+    <div class="portal-card p-5 space-y-3">
+      <h3 class="font-bold text-white text-sm border-b border-slate-800 pb-2">Remarks & Errors</h3>
+      <div class="text-xs space-y-2">
+        {% if purchase.remarks %}
+          <div class="p-3 rounded bg-slate-900 border border-slate-800 text-slate-300">
+            <span class="font-bold text-slate-400 block mb-1">Remarks:</span>
+            {{ purchase.remarks }}
+          </div>
+        {% endif %}
+        {% if purchase.last_error %}
+          <div class="p-3 rounded bg-red-950/60 border border-red-800 text-red-200">
+            <span class="font-bold text-red-400 block mb-1">Last Error:</span>
+            {{ purchase.last_error }}
+          </div>
+        {% endif %}
+        {% if not purchase.remarks and not purchase.last_error %}
+          <div class="text-slate-500 italic">No specific errors or remarks recorded.</div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Raw Provider Response JSON Block -->
+  <div class="portal-card p-5 space-y-2">
+    <h3 class="font-bold text-white text-sm">Raw Provider Response (JSON)</h3>
+    <pre class="bg-slate-950 p-4 rounded-lg border border-slate-800 font-mono text-xs text-emerald-400 overflow-x-auto max-h-96">
+{{ purchase.provider_response|default:"{}" }}
+    </pre>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  async function refundPurchase(purchaseId) {
+    if (!confirm('Are you sure you want to refund this purchase to the user wallet?')) return;
+    try {
+      const res = await fetch(`/portal/purchases/${purchaseId}/refund/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': PortalForms.getCookie('csrftoken') }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        PortalForms.toast(data.message, 'success');
+        setTimeout(() => location.reload(), 600);
+      } else {
+        PortalForms.toast(data.message || 'Refund failed.', 'error');
+      }
+    } catch (e) {
+      PortalForms.toast('Action failed.', 'error');
+    }
+  }
+</script>
+{% endblock %}

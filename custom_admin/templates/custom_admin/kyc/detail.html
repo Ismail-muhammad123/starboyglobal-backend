@@ -1,0 +1,107 @@
+{% extends 'custom_admin/base.html' %}
+
+{% block title %}Review KYC: {{ kyc.user.phone_number }}{% endblock %}
+{% block page_title %}Review KYC Verification: {{ kyc.user.phone_number }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <a href="{% url 'portal:kyc_list' %}" class="text-xs text-blue-400 hover:underline">← Back to KYC List</a>
+
+  <!-- Overview Header -->
+  <div class="portal-card p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <div class="flex items-center gap-3">
+        <h2 class="text-lg font-bold text-white">{{ kyc.user.full_name|default:kyc.user.phone_number }}</h2>
+        <span class="px-2.5 py-0.5 rounded text-xs font-bold uppercase
+          {% if kyc.status == 'APPROVED' %}badge-success{% elif kyc.status == 'PENDING' %}badge-warning{% else %}badge-danger{% endif %}">
+          {{ kyc.status }}
+        </span>
+      </div>
+      <p class="text-xs text-slate-400 mt-1">Phone: <span class="font-mono text-blue-400">{{ kyc.user.phone_number }}</span> | Submitted: {{ kyc.created_at|date:"M d, Y H:i" }}</p>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex items-center gap-2">
+      <button onclick="handleKYC('approve')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg text-xs shadow">
+        ✓ Approve Verification
+      </button>
+      <button onclick="handleKYC('reject')" class="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-semibold rounded-lg text-xs shadow">
+        ✕ Reject Verification
+      </button>
+    </div>
+  </div>
+
+  <!-- Document Images Preview Grid -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    
+    <!-- ID Image -->
+    <div class="portal-card p-5 space-y-3">
+      <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">ID Document ({{ kyc.id_type }}: {{ kyc.id_number }})</h4>
+      <div class="bg-slate-950 p-2 rounded-lg border border-slate-800 flex items-center justify-center min-h-[250px]">
+        {% if kyc.id_image %}
+          <img src="{{ kyc.id_image.url }}" alt="ID Document" class="max-h-80 w-auto rounded object-contain cursor-pointer" onclick="window.open(this.src)">
+        {% else %}
+          <div class="text-slate-500 text-xs">No ID Image Uploaded</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Face Image -->
+    <div class="portal-card p-5 space-y-3">
+      <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Live Face / Selfie Image</h4>
+      <div class="bg-slate-950 p-2 rounded-lg border border-slate-800 flex items-center justify-center min-h-[250px]">
+        {% if kyc.face_image %}
+          <img src="{{ kyc.face_image.url }}" alt="Face Image" class="max-h-80 w-auto rounded object-contain cursor-pointer" onclick="window.open(this.src)">
+        {% else %}
+          <div class="text-slate-500 text-xs">No Face Image Uploaded</div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Processing Info / Remarks Card -->
+  <div class="portal-card p-5 space-y-2 text-xs">
+    <h4 class="font-bold text-white text-sm mb-2">Audit & Remarks</h4>
+    {% if kyc.processed_by %}
+      <p class="text-slate-400">Processed by: <span class="font-semibold text-slate-200">{{ kyc.processed_by.full_name|default:kyc.processed_by.phone_number }}</span></p>
+    {% endif %}
+    {% if kyc.remarks %}
+      <p class="text-slate-300 bg-slate-900/60 p-3 rounded border border-slate-800">
+        <span class="font-bold text-slate-400 block mb-1">Remarks:</span>
+        {{ kyc.remarks }}
+      </p>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  async function handleKYC(actionType) {
+    const remarks = prompt(`Enter remarks for ${actionType.toUpperCase()} (optional):`) || '';
+    try {
+      const formData = new FormData();
+      formData.append('action_type', actionType);
+      formData.append('remarks', remarks);
+
+      const res = await fetch(`/portal/kyc/{{ kyc.pk }}/approve/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': PortalForms.getCookie('csrftoken') },
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok) {
+        PortalForms.toast(data.message, 'success');
+        setTimeout(() => location.reload(), 600);
+      } else {
+        PortalForms.toast(data.message || 'Error processing KYC.', 'error');
+      }
+    } catch (e) {
+      PortalForms.toast('Action failed.', 'error');
+    }
+  }
+</script>
+{% endblock %}

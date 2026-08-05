@@ -1,0 +1,95 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Edit Group: {{ group.name }} - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Permission Grid: {{ group.name }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <a href="{% url 'portal:groups_list' %}" class="text-xs text-blue-400 hover:underline">← Back to Groups List</a>
+
+  <form method="POST" action="{% url 'portal:group_detail' group.pk %}" data-ajax="true" data-reload="true" class="space-y-6">
+    {% csrf_token %}
+
+    <div class="portal-card p-5 space-y-4">
+      <h3 class="font-bold text-white text-base">Group Details</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1">Group Name</label>
+          <input type="text" name="name" value="{{ group.name }}" required class="portal-input w-full">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Description</label>
+          <input type="text" name="description" value="{{ group.description }}" class="portal-input w-full">
+        </div>
+      </div>
+    </div>
+
+    <!-- Permission Grid -->
+    <div class="portal-card overflow-hidden">
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+        <h3 class="font-bold text-white text-sm">CRUD Permission Capabilities Matrix</h3>
+        <span class="text-xs text-slate-400">Select view/add/change/delete capabilities for each model resource</span>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+            <tr>
+              <th class="p-3">Resource / Model</th>
+              <th class="p-3 text-center">View (Read)</th>
+              <th class="p-3 text-center">Add (Create)</th>
+              <th class="p-3 text-center">Change (Edit)</th>
+              <th class="p-3 text-center">Delete</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800">
+            {% for res_code, item in resource_map.items %}
+              <tr class="hover:bg-slate-800/40">
+                <td class="p-3 font-semibold text-white">
+                  {{ item.title }}
+                  <div class="text-[10px] font-mono text-slate-500">{{ res_code }}</div>
+                </td>
+
+                <td class="p-3 text-center">
+                  {% if item.view %}
+                    <input type="checkbox" name="permissions" value="{{ item.view.id }}"
+                           {% if item.view.id in assigned_perm_ids %}checked{% endif %} class="w-4 h-4 rounded bg-slate-800">
+                  {% else %}-{% endif %}
+                </td>
+
+                <td class="p-3 text-center">
+                  {% if item.add %}
+                    <input type="checkbox" name="permissions" value="{{ item.add.id }}"
+                           {% if item.add.id in assigned_perm_ids %}checked{% endif %} class="w-4 h-4 rounded bg-slate-800">
+                  {% else %}-{% endif %}
+                </td>
+
+                <td class="p-3 text-center">
+                  {% if item.change %}
+                    <input type="checkbox" name="permissions" value="{{ item.change.id }}"
+                           {% if item.change.id in assigned_perm_ids %}checked{% endif %} class="w-4 h-4 rounded bg-slate-800">
+                  {% else %}-{% endif %}
+                </td>
+
+                <td class="p-3 text-center">
+                  {% if item.delete %}
+                    <input type="checkbox" name="permissions" value="{{ item.delete.id }}"
+                           {% if item.delete.id in assigned_perm_ids %}checked{% endif %} class="w-4 h-4 rounded bg-slate-800">
+                  {% else %}-{% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="p-4 border-t border-slate-800 flex justify-end">
+        <button type="submit" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs shadow">
+          Save Group Permission Grid
+        </button>
+      </div>
+    </div>
+  </form>
+
+</div>
+{% endblock %}

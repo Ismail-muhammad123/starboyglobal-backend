@@ -6,8 +6,8 @@ from django.contrib.auth.forms import ReadOnlyPasswordHashField
 from rest_framework.authtoken.models import Token
 
 # update labels for dashboard
-admin.site.site_title = "A-Star Data App - Dashboard"
-admin.site.site_header = "A-Star Data App - Admin"
+admin.site.site_title = "Starboy Global Admin Dashboard"
+admin.site.site_header = "Starboy Global Admin"
 admin.site.index_title = "Dashboard"
 
 

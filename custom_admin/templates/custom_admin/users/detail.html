@@ -1,0 +1,333 @@
+{% extends 'custom_admin/base.html' %}
+
+{% block title %}{{ target_user.full_name|default:target_user.phone_number }} - User Detail{% endblock %}
+{% block page_title %}User Profile: ({{ target_user.phone_country_code|default:"+234" }}) {{ target_user.phone_number }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Back Link & Action Bar -->
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <a href="{% url 'portal:users_list' %}" class="text-xs text-blue-400 hover:underline">← Back to Users List</a>
+    <div class="flex flex-wrap items-center gap-2">
+      <a href="{% url 'portal:user_edit' target_user.pk %}" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg flex items-center gap-1 shadow">
+        ✏️ Edit Profile
+      </a>
+      <button onclick="PortalForms.openModal('modal-update-role')" class="px-3 py-1.5 bg-purple-950/80 hover:bg-purple-900 border border-purple-800 text-purple-200 text-xs font-semibold rounded-lg">
+        Change Role ({{ target_user.role }})
+      </button>
+      <button onclick="toggleUserStatus('{{ target_user.pk }}')" class="px-3 py-1.5 bg-amber-950/80 hover:bg-amber-900 border border-amber-800 text-amber-200 text-xs font-semibold rounded-lg">
+        {% if target_user.is_active %}Suspend Account{% else %}Activate Account{% endif %}
+      </button>
+    </div>
+  </div>
+
+  <!-- Profile & Wallet Overview Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+    
+    <!-- Profile Card -->
+    <div class="portal-card p-5 space-y-3">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-full bg-blue-600/30 text-blue-400 font-bold text-lg flex items-center justify-center border border-blue-500/30">
+          {{ target_user.first_name|default:target_user.phone_number|slice:":2"|upper }}
+        </div>
+        <div>
+          <h3 class="font-bold text-white text-base">{{ target_user.full_name|default:"No Name Set" }}</h3>
+          <p class="text-xs text-blue-400 font-mono">({{ target_user.phone_country_code|default:"+234" }}) {{ target_user.phone_number }}</p>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-800 space-y-2 text-xs">
+        <div class="flex justify-between"><span class="text-slate-400">Email:</span> <span class="text-slate-200 font-medium">{{ target_user.email|default:"Not set" }}</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Phone:</span> <span class="font-mono text-slate-200">({{ target_user.phone_country_code|default:"+234" }}) {{ target_user.phone_number }}</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Role:</span> <span class="uppercase font-bold text-purple-400">{{ target_user.role }}</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Status:</span> <span class="font-bold {% if target_user.is_active %}text-emerald-400{% else %}text-red-400{% endif %}">{% if target_user.is_active %}Active{% else %}Suspended{% endif %}</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">KYC Status:</span> <span class="font-bold {% if target_user.is_kyc_verified %}text-emerald-400{% else %}text-slate-500{% endif %}">{% if target_user.is_kyc_verified %}Verified{% else %}Unverified{% endif %}</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Referral Code:</span> <span class="font-mono text-amber-400">{{ target_user.referral_code }}</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Joined:</span> <span class="text-slate-300">{{ target_user.created_at|date:"Y-m-d H:i" }}</span></div>
+      </div>
+    </div>
+
+    <!-- Wallet Balance Card -->
+    <div class="portal-card p-5 flex flex-col justify-between border-l-4 border-l-emerald-500">
+      <div>
+        <div class="text-xs font-semibold text-slate-400 uppercase">Current Wallet Balance</div>
+        <div class="text-3xl font-extrabold text-emerald-400 mt-2">₦{{ wallet.balance|floatformat:2 }}</div>
+        <div class="text-xs text-slate-500 mt-1">Last updated: {{ wallet.updated_at|date:"M d, H:i" }}</div>
+      </div>
+      <div class="pt-4 flex gap-2">
+        <a href="{% url 'portal:manual_transaction' %}?user={{ target_user.phone_number }}" class="flex-1 text-center py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-lg shadow">
+          Manual Credit / Debit
+        </a>
+      </div>
+    </div>
+
+    <!-- Virtual Account Card -->
+    <div class="portal-card p-5 space-y-3">
+      <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Virtual Bank Account</h4>
+      <div class="space-y-2 text-xs">
+        <div class="p-3 rounded bg-slate-900/60 border border-slate-800">
+          <div class="text-[10px] text-slate-500">Virtual Bank Details</div>
+          {% if target_user.virtual_account %}
+            <div class="font-bold text-white mt-1">{{ target_user.virtual_account.bank_name }}</div>
+            <div class="font-mono text-blue-400 text-sm">{{ target_user.virtual_account.account_number }}</div>
+          {% else %}
+            <div class="text-slate-500 mt-1">No virtual account created</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Detailed KYC Record Card -->
+  <div class="portal-card p-5 space-y-4">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div>
+        <h3 class="text-sm font-bold text-white">KYC Verification Record & Status</h3>
+        <p class="text-xs text-slate-400">Identity verification documents submitted by this user</p>
+      </div>
+      {% if kyc %}
+        <span class="px-3 py-1 rounded text-xs font-bold uppercase
+          {% if kyc.status == 'APPROVED' %}badge-success{% elif kyc.status == 'PENDING' %}badge-warning{% else %}badge-danger{% endif %}">
+          {{ kyc.status }}
+        </span>
+      {% else %}
+        <span class="px-3 py-1 rounded text-xs font-bold uppercase bg-slate-800 text-slate-400">Not Submitted</span>
+      {% endif %}
+    </div>
+
+    {% if kyc %}
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+        <div class="p-3 bg-slate-900/60 rounded border border-slate-800">
+          <div class="text-slate-400">ID Document Type:</div>
+          <div class="font-bold text-white mt-0.5">{{ kyc.id_type }}</div>
+        </div>
+        <div class="p-3 bg-slate-900/60 rounded border border-slate-800">
+          <div class="text-slate-400">ID Number:</div>
+          <div class="font-mono font-bold text-blue-300 mt-0.5">{{ kyc.id_number }}</div>
+        </div>
+        <div class="p-3 bg-slate-900/60 rounded border border-slate-800">
+          <div class="text-slate-400">Submitted Date:</div>
+          <div class="text-slate-200 font-medium mt-0.5">{{ kyc.created_at|date:"M d, Y H:i" }}</div>
+        </div>
+        <div class="p-3 bg-slate-900/60 rounded border border-slate-800">
+          <div class="text-slate-400">Processed By:</div>
+          <div class="text-slate-200 font-medium mt-0.5">{{ kyc.processed_by|default:"Not processed yet" }}</div>
+        </div>
+      </div>
+
+      {% if kyc.remarks %}
+        <div class="p-3 bg-slate-900/40 rounded border border-slate-800 text-xs">
+          <span class="font-semibold text-slate-300">Admin Remarks / Notes:</span>
+          <p class="text-slate-400 mt-1">{{ kyc.remarks }}</p>
+        </div>
+      {% endif %}
+
+      <!-- KYC Document Image Previews -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+        {% if kyc.id_image %}
+          <div class="p-3 bg-slate-900/60 rounded border border-slate-800 space-y-2">
+            <div class="text-xs font-semibold text-slate-300">ID Document Image</div>
+            <a href="{{ kyc.id_image.url }}" target="_blank" class="block">
+              <img src="{{ kyc.id_image.url }}" alt="ID Document" class="w-full h-40 object-cover rounded border border-slate-700 hover:opacity-90 transition-opacity">
+            </a>
+          </div>
+        {% endif %}
+        {% if kyc.face_image %}
+          <div class="p-3 bg-slate-900/60 rounded border border-slate-800 space-y-2">
+            <div class="text-xs font-semibold text-slate-300">Face Selfie Image</div>
+            <a href="{{ kyc.face_image.url }}" target="_blank" class="block">
+              <img src="{{ kyc.face_image.url }}" alt="Face Selfie" class="w-full h-40 object-cover rounded border border-slate-700 hover:opacity-90 transition-opacity">
+            </a>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="flex items-center justify-between pt-2">
+        <a href="{% url 'portal:kyc_detail' kyc.pk %}" class="text-xs text-blue-400 hover:underline">
+          View full KYC record detail page →
+        </a>
+      </div>
+    {% else %}
+      <div class="p-6 text-center text-slate-500 text-xs">
+        No KYC documents have been submitted by this user yet.
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- User Groups & Permissions Card -->
+  <div class="portal-card p-6 space-y-4">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div>
+        <h3 class="font-bold text-white text-sm flex items-center gap-2">
+          <span>🛡️</span> User Roles, Groups & Permissions
+        </h3>
+        <p class="text-xs text-slate-400">Assign portal staff roles, custom permission groups, and direct user permissions.</p>
+      </div>
+
+      {% if request.user.is_superuser %}
+        <div class="flex items-center gap-3 text-xs">
+          <span class="text-slate-400">Superuser: 
+            <strong class="{% if target_user.is_superuser %}text-emerald-400{% else %}text-slate-500{% endif %}">
+              {% if target_user.is_superuser %}YES{% else %}NO{% endif %}
+            </strong>
+          </span>
+          <span class="text-slate-400">Staff Status: 
+            <strong class="{% if target_user.is_staff %}text-blue-400{% else %}text-slate-500{% endif %}">
+              {% if target_user.is_staff %}YES{% else %}NO{% endif %}
+            </strong>
+          </span>
+        </div>
+      {% endif %}
+    </div>
+
+    <form method="POST" action="{% url 'portal:user_permissions_update' target_user.pk %}" data-ajax="true" data-reload="true" class="space-y-5">
+      {% csrf_token %}
+
+      {% if request.user.is_superuser %}
+        <div class="p-3 bg-slate-900/80 rounded-lg border border-slate-800 flex flex-wrap items-center gap-6 text-xs">
+          <label class="flex items-center gap-2 cursor-pointer text-slate-200 font-semibold">
+            <input type="checkbox" name="is_staff" {% if target_user.is_staff %}checked{% endif %} class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-blue-600">
+            <span>Staff status (Can log into Admin Dashboard)</span>
+          </label>
+
+          <label class="flex items-center gap-2 cursor-pointer text-slate-200 font-semibold">
+            <input type="checkbox" name="is_superuser" {% if target_user.is_superuser %}checked{% endif %} class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-purple-600">
+            <span>Superuser status (All permissions automatically granted)</span>
+          </label>
+        </div>
+      {% endif %}
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+        <!-- Assigned Groups -->
+        <div class="space-y-2">
+          <label class="block font-bold text-blue-400 uppercase tracking-wider text-[11px]">Assigned Permission Groups</label>
+          <div class="p-3 bg-slate-950/50 rounded-lg border border-slate-800 max-h-48 overflow-y-auto space-y-2">
+            {% for group in all_groups %}
+              <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white p-1 rounded hover:bg-slate-800/50">
+                <input type="checkbox" name="groups" value="{{ group.id }}" {% if group.id in user_group_ids %}checked{% endif %} class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-blue-600">
+                <span>{{ group.name }}</span>
+              </label>
+            {% empty %}
+              <div class="text-slate-500 text-xs">No permission groups created yet.</div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Direct Individual Permissions -->
+        <div class="space-y-2">
+          <label class="block font-bold text-emerald-400 uppercase tracking-wider text-[11px]">Direct User Permissions</label>
+          <div class="p-3 bg-slate-950/50 rounded-lg border border-slate-800 max-h-48 overflow-y-auto space-y-2">
+            {% for perm in all_permissions %}
+              <label class="flex items-center gap-2 cursor-pointer text-slate-300 hover:text-white p-1 rounded hover:bg-slate-800/50">
+                <input type="checkbox" name="user_permissions" value="{{ perm.id }}" {% if perm.id in user_permission_ids %}checked{% endif %} class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-emerald-600">
+                <span>{{ perm.content_type.app_label }} | {{ perm.name }}</span>
+              </label>
+            {% empty %}
+              <div class="text-slate-500 text-xs">No permissions found.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-2 border-t border-slate-800">
+        <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg shadow">
+          Save Groups & Permissions
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Recent Purchases Table -->
+  <div class="portal-card p-5">
+    <h3 class="text-sm font-bold text-white mb-3">Recent Service Purchases</h3>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px]">
+          <tr>
+            <th class="p-2">Ref</th>
+            <th class="p-2">Type</th>
+            <th class="p-2">Amount</th>
+            <th class="p-2">Beneficiary</th>
+            <th class="p-2">Status</th>
+            <th class="p-2">Date</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for p in purchases %}
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-2 font-mono text-blue-400">{{ p.reference }}</td>
+              <td class="p-2 uppercase font-medium">{{ p.purchase_type }}</td>
+              <td class="p-2 font-semibold">₦{{ p.amount|floatformat:2 }}</td>
+              <td class="p-2 font-mono">{{ p.beneficiary }}</td>
+              <td class="p-2">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase
+                  {% if p.status == 'success' %}badge-success{% elif p.status == 'pending' %}badge-warning{% else %}badge-danger{% endif %}">
+                  {{ p.status }}
+                </span>
+              </td>
+              <td class="p-2 text-slate-400">{{ p.time|date:"M d, H:i" }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6" class="p-4 text-center text-slate-500">No purchases found for this user.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal: Role Update -->
+<div id="modal-update-role" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div class="portal-card max-w-md w-full p-6 space-y-4 bg-slate-900 border-slate-700 shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+      <h3 class="font-bold text-white text-base">Update User Role</h3>
+      <button onclick="PortalForms.closeModal('modal-update-role')" class="text-slate-400 hover:text-white">&times;</button>
+    </div>
+
+    <form method="POST" action="{% url 'portal:user_role_update' target_user.pk %}" data-ajax="true" data-reload="true" data-close-modal="modal-update-role" class="space-y-4">
+      {% csrf_token %}
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Select Role</label>
+        <select name="role" class="portal-input w-full text-sm">
+          <option value="customer" {% if target_user.role == 'customer' %}selected{% endif %}>Customer (Standard)</option>
+          <option value="agent" {% if target_user.role == 'agent' %}selected{% endif %}>Agent / Reseller</option>
+          <option value="developer" {% if target_user.role == 'developer' %}selected{% endif %}>Developer (API Access)</option>
+        </select>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="PortalForms.closeModal('modal-update-role')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded text-xs">Cancel</button>
+        <button type="submit" class="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded text-xs">Save Role</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  async function toggleUserStatus(userId) {
+    if (!confirm('Are you sure you want to toggle this user status?')) return;
+    try {
+      const res = await fetch(`/portal/users/${userId}/suspend/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': PortalForms.getCookie('csrftoken') }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        PortalForms.toast(data.message, 'success');
+        setTimeout(() => location.reload(), 600);
+      } else {
+        PortalForms.toast(data.message || 'Error updating user.', 'error');
+      }
+    } catch (e) {
+      PortalForms.toast('Action failed.', 'error');
+    }
+  }
+</script>
+{% endblock %}

@@ -1,7 +1,8 @@
 from rest_framework import serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view
+
 from summary.models import SiteConfig
 from orders.models import ServiceRouting, Purchase
 from admin_api.serializers import (
@@ -186,9 +187,14 @@ class DetectDelayedTransactionsView(APIView):
         return Response(results)
 
 
-from rest_framework import viewsets
-from orders.models import ProviderServiceConfig
-from admin_api.serializers import ProviderServiceConfigSerializer, AutoSyncConfigSerializer
+from rest_framework import viewsets, filters
+from rest_framework.decorators import action
+from django_filters.rest_framework import DjangoFilterBackend
+from orders.models import ProviderServiceConfig, AutoSyncSchedule, AutoSyncLog
+from admin_api.serializers import (
+    ProviderServiceConfigSerializer, AutoSyncConfigSerializer,
+    AutoSyncScheduleSerializer, AutoSyncLogSerializer
+)
 
 class ProviderServiceConfigViewSet(viewsets.ModelViewSet):
     """Manage per-provider, per-service catalogue source and margins."""
@@ -244,4 +250,102 @@ class AutoSyncRunNowView(APIView):
             return Response({"status": "SUCCESS", "message": "Provider plans sync completed."})
         except Exception as e:
             return Response({"status": "FAILED", "message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@extend_schema_view(
+    list=extend_schema(tags=["Admin Automation"]),
+    retrieve=extend_schema(tags=["Admin Automation"]),
+    create=extend_schema(tags=["Admin Automation"]),
+    update=extend_schema(tags=["Admin Automation"]),
+    partial_update=extend_schema(tags=["Admin Automation"]),
+    destroy=extend_schema(tags=["Admin Automation"]),
+)
+class AutoSyncScheduleViewSet(viewsets.ModelViewSet):
+    """
+    CRUD management for Auto Sync Jobs.
+    Select service type (Airtime, Data, etc.), provider (Ketamency, FlowPay, etc. or All), frequency (daily, weekly, etc.), start time and enable/disable toggle.
+    """
+    queryset = AutoSyncSchedule.objects.all().order_by('-created_at')
+    serializer_class = AutoSyncScheduleSerializer
+    permission_classes = [CanManageSiteConfig]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['is_active', 'frequency', 'service_type', 'provider']
+    search_fields = ['name']
+
+    def perform_create(self, serializer):
+        schedule = serializer.save()
+        from orders.scheduler import update_schedule_job
+        update_schedule_job(schedule.id)
+
+    def perform_update(self, serializer):
+        schedule = serializer.save()
+        from orders.scheduler import update_schedule_job
+        update_schedule_job(schedule.id)
+
+    def perform_destroy(self, instance):
+        schedule_id = instance.id
+        instance.delete()
+        from orders.scheduler import update_schedule_job
+        update_schedule_job(schedule_id)
+
+    @extend_schema(
+        tags=["Admin Automation"],
+        summary="Enable or disable a specific job schedule",
+        responses={200: AdminStatusResponseSerializer}
+    )
+    @action(detail=True, methods=['post'], url_path='toggle')
+    def toggle_schedule(self, request, pk=None):
+        schedule = self.get_object()
+        schedule.is_active = not schedule.is_active
+        schedule.save(update_fields=['is_active'])
+
+        from orders.scheduler import update_schedule_job
+        update_schedule_job(schedule.id)
+
+        status_text = "enabled" if schedule.is_active else "disabled"
+        return Response({
+            "status": "SUCCESS",
+            "message": f"Job schedule '{schedule.name}' is now {status_text}.",
+            "is_active": schedule.is_active
+        })
+
+    @extend_schema(
+        tags=["Admin Automation"],
+        summary="Trigger a job schedule run immediately",
+        responses={200: AdminStatusResponseSerializer}
+    )
+    @action(detail=True, methods=['post'], url_path='run-now')
+    def run_now(self, request, pk=None):
+        schedule = self.get_object()
+        from orders.utils.sync_runner import execute_sync_schedule
+        execute_sync_schedule(schedule.id)
+
+        latest_log = AutoSyncLog.objects.filter(schedule=schedule).first()
+        log_serializer = AutoSyncLogSerializer(latest_log) if latest_log else None
+
+        return Response({
+            "status": "SUCCESS",
+            "message": f"Immediate execution of schedule '{schedule.name}' triggered.",
+            "execution_log": log_serializer.data if log_serializer else None
+        })
+
+
+@extend_schema_view(
+    list=extend_schema(tags=["Admin Automation"]),
+    retrieve=extend_schema(tags=["Admin Automation"]),
+)
+class AutoSyncLogViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Read-only audit log table of sync job runs.
+    Entries are unmodifiable and non-deletable.
+    """
+    queryset = AutoSyncLog.objects.all().order_by('-started_at')
+    serializer_class = AutoSyncLogSerializer
+    permission_classes = [CanManageSiteConfig]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['status', 'service_type', 'provider_name', 'schedule']
+    search_fields = ['schedule_name', 'provider_name', 'error_message']
+    ordering_fields = ['started_at', 'duration_seconds', 'items_synced']
+
+
 

@@ -1,0 +1,50 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Service Margins - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Provider Service Margins & Catalogue Source{% endblock %}
+{% block content %}
+<div class="space-y-6">
+  <div class="portal-card p-4 flex items-center justify-between">
+    <div>
+      <h3 class="font-bold text-white text-sm">Provider Service Margins</h3>
+      <p class="text-xs text-slate-400">Configure markup margins and data source mode per provider × service type.</p>
+    </div>
+  </div>
+
+  <div class="portal-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+          <tr>
+            <th class="p-3">Provider</th>
+            <th class="p-3">Service Type</th>
+            <th class="p-3">Catalogue Source</th>
+            <th class="p-3">Customer Margin</th>
+            <th class="p-3">Agent Margin</th>
+            <th class="p-3">Developer Margin</th>
+            <th class="p-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for c in configs %}
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-3 font-bold text-white">{{ c.provider.get_name_display }}</td>
+              <td class="p-3 uppercase font-medium text-purple-300">{{ c.get_service_type_display }}</td>
+              <td class="p-3 uppercase font-mono text-blue-400">{{ c.get_catalogue_source_display }}</td>
+              <td class="p-3 font-mono font-semibold text-emerald-400">₦{{ c.customer_margin_value }}</td>
+              <td class="p-3 font-mono font-semibold text-blue-400">₦{{ c.agent_margin_value }}</td>
+              <td class="p-3 font-mono font-semibold text-purple-400">₦{{ c.developer_margin_value }}</td>
+              <td class="p-3 text-right">
+                <button onclick="editMargin('{{ c.pk }}', '{{ c.customer_margin_value }}', '{{ c.agent_margin_value }}', '{{ c.developer_margin_value }}')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-semibold text-[11px]">
+                  Edit
+                </button>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7" class="p-8 text-center text-slate-500">No service margins configured.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

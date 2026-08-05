@@ -1,0 +1,43 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Role Upgrade Config - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Role Upgrade Fee Configuration{% endblock %}
+{% block content %}
+<div class="space-y-6">
+
+  <div class="portal-card p-6 max-w-xl">
+    <form method="POST" action="{% url 'portal:role_upgrade_config' %}" data-ajax="true" data-reload="true" class="space-y-4 text-xs">
+      {% csrf_token %}
+
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="font-bold text-white text-base">Self-Upgrade Fees</h3>
+        <label class="flex items-center gap-2 cursor-pointer font-semibold text-slate-300">
+          <input type="checkbox" name="is_active" {% if config.is_active %}checked{% endif %}>
+          <span>Allow Self-Upgrades</span>
+        </label>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block font-semibold text-slate-400 mb-1">Customer → Agent Upgrade Fee (₦)</label>
+          <input type="number" step="0.01" name="customer_to_agent_fee" value="{{ config.customer_to_agent_fee }}" class="portal-input w-full font-mono text-sm">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-400 mb-1">Customer → Developer Upgrade Fee (₦)</label>
+          <input type="number" step="0.01" name="customer_to_developer_fee" value="{{ config.customer_to_developer_fee }}" class="portal-input w-full font-mono text-sm">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-400 mb-1">Agent → Developer Upgrade Fee (₦)</label>
+          <input type="number" step="0.01" name="agent_to_developer_fee" value="{{ config.agent_to_developer_fee }}" class="portal-input w-full font-mono text-sm">
+        </div>
+      </div>
+
+      <div class="pt-2 flex justify-end">
+        <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-xs shadow">
+          Save Upgrade Fees
+        </button>
+      </div>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

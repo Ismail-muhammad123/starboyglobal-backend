@@ -12,8 +12,9 @@ from .vtu import (
     AdminInternetVariationSerializer, AdminEducationServiceSerializer, 
     AdminEducationVariationSerializer, AdminElectricityServiceSerializer, 
     AdminElectricityVariationSerializer, ProviderServiceConfigSerializer,
-    AutoSyncConfigSerializer
+    AutoSyncConfigSerializer, AutoSyncScheduleSerializer, AutoSyncLogSerializer
 )
+
 
 from .financial import (
     AdminPaystackConfigSerializer, AdminPurchaseSerializer, AdminDepositSerializer, 

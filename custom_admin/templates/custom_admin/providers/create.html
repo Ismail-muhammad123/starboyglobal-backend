@@ -1,0 +1,166 @@
+{% extends 'custom_admin/base.html' %}
+
+{% block title %}Add New VTU Provider - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Create New VTU Provider{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+
+  <div class="flex items-center justify-between">
+    <a href="{% url 'portal:providers_list' %}" class="text-xs text-blue-400 hover:underline">← Back to VTU Providers</a>
+  </div>
+
+  <div class="portal-card p-6 space-y-6">
+    <div class="border-b border-slate-800 pb-3">
+      <h2 class="text-base font-bold text-white">VTU Provider Configuration</h2>
+      <p class="text-xs text-slate-400 mt-0.5">Set up API credentials, failover behavior, bank funding details, and inline service pricing margins.</p>
+    </div>
+
+    <form method="POST" action="{% url 'portal:provider_add' %}" data-ajax="true" data-reload="true" class="space-y-6">
+      {% csrf_token %}
+
+      <!-- Basic Provider Identity -->
+      <div>
+        <h3 class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-3">1. Provider Identity</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+          <div>
+            <label class="block text-slate-300 font-semibold mb-1">Provider Identifier / Name</label>
+            <select name="name" required class="portal-input w-full">
+              <option value="">-- Select Provider --</option>
+              {% for val, label in provider_choices %}
+                <option value="{{ val }}">{{ label }} ({{ val }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="flex items-center pt-5">
+            <label class="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-300">
+              <input type="checkbox" name="is_active" checked class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-blue-600 focus:ring-0">
+              <span>Active Provider (Enable API execution)</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- API Credentials -->
+      <div>
+        <h3 class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-3">2. API Credentials & Endpoints</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+          <div>
+            <label class="block text-slate-300 font-semibold mb-1">API Key / Token</label>
+            <input type="password" name="api_key" class="portal-input w-full font-mono">
+          </div>
+          <div>
+            <label class="block text-slate-300 font-semibold mb-1">User ID / Username</label>
+            <input type="text" name="user_id" class="portal-input w-full font-mono">
+          </div>
+          <div>
+            <label class="block text-slate-300 font-semibold mb-1">Secret Key / Password</label>
+            <input type="password" name="secret_key" class="portal-input w-full font-mono">
+          </div>
+          <div>
+            <label class="block text-slate-300 font-semibold mb-1">Session ID / PIN</label>
+            <input type="text" name="session_id" class="portal-input w-full font-mono">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-slate-300 font-semibold mb-1">Base URL Endpoint (Optional)</label>
+            <input type="url" name="base_url" placeholder="https://api.provider.com/v1" class="portal-input w-full font-mono">
+          </div>
+        </div>
+      </div>
+
+      <!-- Bank Funding Account -->
+      <div>
+        <h3 class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-3">3. Bank Auto-Funding Info</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+          <div>
+            <label class="block text-slate-300 font-semibold mb-1">Bank Name</label>
+            <input type="text" name="bank_name" class="portal-input w-full">
+          </div>
+          <div>
+            <label class="block text-slate-300 font-semibold mb-1">Account Number</label>
+            <input type="text" name="account_number" class="portal-input w-full font-mono">
+          </div>
+          <div>
+            <label class="block text-slate-300 font-semibold mb-1">Account Name</label>
+            <input type="text" name="account_name" class="portal-input w-full">
+          </div>
+        </div>
+      </div>
+
+      <!-- Inline Provider Service Configs & Margins (Django Admin style) -->
+      <div>
+        <div class="border-b border-slate-800 pb-2 mb-4 flex items-center justify-between">
+          <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider">4. Provider Service Configs & Margins (Inline)</h3>
+          <span class="text-[11px] text-slate-400">Configure catalogue sources & profit margins per service</span>
+        </div>
+
+        <div class="space-y-4">
+          {% for stype, slabel in service_types %}
+            <div class="p-4 rounded-lg bg-slate-900/80 border border-slate-800 space-y-3">
+              <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                <span class="font-bold text-white text-sm uppercase">{{ slabel }} Service Configuration</span>
+                <div class="flex items-center gap-2 text-xs">
+                  <label class="text-slate-400">Catalogue Source:</label>
+                  <select name="catalogue_source_{{ stype }}" class="portal-input text-xs py-1">
+                    <option value="db">Local Database</option>
+                    <option value="live">Live Provider API</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Margins Grid -->
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <!-- Customer Margin -->
+                <div class="p-3 bg-slate-950/40 rounded border border-slate-800 space-y-1">
+                  <span class="font-semibold text-blue-400">Customer Margin</span>
+                  <div class="flex gap-2">
+                    <select name="customer_margin_type_{{ stype }}" class="portal-input text-[11px] py-1">
+                      <option value="flat">Flat (₦)</option>
+                      <option value="percentage">Percentage (%)</option>
+                    </select>
+                    <input type="number" step="0.01" name="customer_margin_value_{{ stype }}" value="0.00" class="portal-input w-full text-xs font-mono py-1">
+                  </div>
+                </div>
+
+                <!-- Agent Margin -->
+                <div class="p-3 bg-slate-950/40 rounded border border-slate-800 space-y-1">
+                  <span class="font-semibold text-purple-400">Agent Margin</span>
+                  <div class="flex gap-2">
+                    <select name="agent_margin_type_{{ stype }}" class="portal-input text-[11px] py-1">
+                      <option value="flat">Flat (₦)</option>
+                      <option value="percentage">Percentage (%)</option>
+                    </select>
+                    <input type="number" step="0.01" name="agent_margin_value_{{ stype }}" value="0.00" class="portal-input w-full text-xs font-mono py-1">
+                  </div>
+                </div>
+
+                <!-- Developer Margin -->
+                <div class="p-3 bg-slate-950/40 rounded border border-slate-800 space-y-1">
+                  <span class="font-semibold text-emerald-400">Developer Margin</span>
+                  <div class="flex gap-2">
+                    <select name="developer_margin_type_{{ stype }}" class="portal-input text-[11px] py-1">
+                      <option value="flat">Flat (₦)</option>
+                      <option value="percentage">Percentage (%)</option>
+                    </select>
+                    <input type="number" step="0.01" name="developer_margin_value_{{ stype }}" value="0.00" class="portal-input w-full text-xs font-mono py-1">
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex justify-end gap-3 pt-4 border-t border-slate-800">
+        <a href="{% url 'portal:providers_list' %}" class="px-4 py-2 bg-slate-800 text-slate-300 hover:text-white rounded-lg text-xs font-semibold">Cancel</a>
+        <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg shadow-lg shadow-blue-600/30">
+          Create VTU Provider & Save Config
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,170 @@
+/* Deep Blue Theme CSS Custom Properties & Core Portal Styles */
+
+:root {
+  /* Dark Theme (Lighter Deep Blue) */
+  --bg-base: #0F1D38;
+  --bg-surface: #142749;
+  --bg-card: #1A305A;
+  --bg-card-hover: #203A6A;
+  --bg-input: #244175;
+  --accent: #3B82F6;
+  --accent-hover: #2563EB;
+  --accent-light: #60A5FA;
+  --accent-glow: rgba(59, 130, 246, 0.3);
+  --text-primary: #F8FAFC;
+  --text-secondary: #E2E8F0;
+  --text-muted: #94A3B8;
+  --border: #25487B;
+  --border-light: #3661A0;
+
+  --success: #10B981;
+  --success-bg: rgba(16, 185, 129, 0.2);
+  --warning: #F59E0B;
+  --warning-bg: rgba(245, 158, 11, 0.2);
+  --danger: #EF4444;
+  --danger-bg: rgba(239, 68, 68, 0.2);
+  --info: #3B82F6;
+  --info-bg: rgba(59, 130, 246, 0.2);
+}
+
+[data-theme="light"] {
+  --bg-base: #F0F4FF;
+  --bg-surface: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #F8FAFC;
+  --bg-input: #F1F5F9;
+  --accent: #2563EB;
+  --accent-hover: #1D4ED8;
+  --accent-light: #3B82F6;
+  --accent-glow: rgba(37, 99, 235, 0.2);
+  --text-primary: #020617;
+  --text-secondary: #0F172A;
+  --text-muted: #334155;
+  --border: #CBD5E1;
+  --border-light: #94A3B8;
+
+  --success: #047857;
+  --success-bg: #D1FAE5;
+  --warning: #B45309;
+  --warning-bg: #FEF3C7;
+  --danger: #B91C1C;
+  --danger-bg: #FEE2E2;
+  --info: #1D4ED8;
+  --info-bg: #DBEAFE;
+}
+
+[data-theme="light"] .text-white {
+  color: #0F172A !important;
+}
+
+[data-theme="light"] .text-slate-200,
+[data-theme="light"] .text-slate-300 {
+  color: #1E293B !important;
+}
+
+[data-theme="light"] .text-slate-400,
+[data-theme="light"] .text-slate-500 {
+  color: #334155 !important;
+}
+
+[data-theme="light"] .bg-slate-900\/80,
+[data-theme="light"] .bg-slate-900\/60,
+[data-theme="light"] .bg-slate-900 {
+  background-color: #F1F5F9 !important;
+  border-color: #CBD5E1 !important;
+}
+
+[data-theme="light"] .bg-slate-800,
+[data-theme="light"] .bg-slate-800\/40 {
+  background-color: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  transition: background-color 0.25s ease, color 0.25s ease;
+  min-height: 100vh;
+}
+
+/* Glassmorphism utility */
+.portal-glass {
+  background: var(--bg-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+}
+
+.portal-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.portal-card:hover {
+  border-color: var(--border-light);
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-base);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* Sidebar Accordion Animations */
+.sidebar-group-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+  opacity: 0;
+}
+
+.sidebar-group.open .sidebar-group-content {
+  max-height: 1000px;
+  opacity: 1;
+}
+
+.sidebar-group .chevron {
+  transition: transform 0.25s ease;
+}
+
+.sidebar-group.open .chevron {
+  transform: rotate(90deg);
+}
+
+/* Form Inputs */
+.portal-input {
+  background-color: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.portal-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* Badges */
+.badge-success { background-color: var(--success-bg); color: var(--success); }
+.badge-warning { background-color: var(--warning-bg); color: var(--warning); }
+.badge-danger  { background-color: var(--danger-bg);  color: var(--danger);  }
+.badge-info    { background-color: var(--info-bg);    color: var(--info);    }

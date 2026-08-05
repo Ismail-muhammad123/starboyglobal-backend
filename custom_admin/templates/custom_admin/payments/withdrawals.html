@@ -1,0 +1,105 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Withdrawals - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Withdrawal Requests & Approvals{% endblock %}
+{% block content %}
+<div class="space-y-6">
+
+  <div class="portal-card p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+    <form method="GET" class="flex items-center gap-2 w-full md:w-auto flex-1">
+      <input type="text" name="search" value="{{ search_query }}" placeholder="Search Ref, Phone, Account..." class="portal-input w-full md:w-80 text-xs">
+      <button type="submit" class="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-xs">Search</button>
+      {% if search_query or status_filter %}<a href="{% url 'portal:withdrawals_list' %}" class="px-3 py-2 bg-slate-800 text-slate-300 rounded-lg text-xs">Clear</a>{% endif %}
+    </form>
+    <div class="flex items-center gap-2 w-full md:w-auto">
+      <select onchange="location = this.value;" class="portal-input text-xs">
+        <option value="{% url 'portal:withdrawals_list' %}" {% if not status_filter %}selected{% endif %}>All Status</option>
+        <option value="?status=pending" {% if status_filter == 'pending' %}selected{% endif %}>PENDING</option>
+        <option value="?status=approved" {% if status_filter == 'approved' %}selected{% endif %}>APPROVED</option>
+        <option value="?status=rejected" {% if status_filter == 'rejected' %}selected{% endif %}>REJECTED</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="portal-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+          <tr>
+            <th class="p-3">Reference</th>
+            <th class="p-3">User</th>
+            <th class="p-3">Amount</th>
+            <th class="p-3">Bank Details</th>
+            <th class="p-3">Status</th>
+            <th class="p-3">Date</th>
+            <th class="p-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for w in withdrawals %}
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-3 font-mono text-blue-400 font-medium">{{ w.reference }}</td>
+              <td class="p-3 font-medium text-slate-200">
+                <a href="{% url 'portal:users_detail' w.user.pk %}" class="hover:text-blue-400">{{ w.user.phone_number }}</a>
+              </td>
+              <td class="p-3 font-mono font-bold text-white">₦{{ w.amount|floatformat:2 }}</td>
+              <td class="p-3">
+                <div class="font-semibold text-slate-200">{{ w.account_name }}</div>
+                <div class="text-[10px] text-slate-400 font-mono">{{ w.bank_name }} ({{ w.account_number }})</div>
+              </td>
+              <td class="p-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {% if w.status == 'APPROVED' %}badge-success{% elif w.status == 'PENDING' %}badge-warning{% else %}badge-danger{% endif %}">
+                  {{ w.status }}
+                </span>
+              </td>
+              <td class="p-3 text-slate-400">{{ w.created_at|date:"M d, H:i" }}</td>
+              <td class="p-3 text-right space-x-1">
+                {% if w.status == 'PENDING' %}
+                  <button onclick="processWithdrawal('{{ w.pk }}', 'APPROVED')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-semibold text-[11px]">
+                    Approve
+                  </button>
+                  <button onclick="processWithdrawal('{{ w.pk }}', 'REJECTED')" class="px-2.5 py-1 bg-red-600 hover:bg-red-500 text-white rounded font-semibold text-[11px]">
+                    Reject
+                  </button>
+                {% else %}
+                  <span class="text-slate-500 text-[11px]">Completed</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7" class="p-8 text-center text-slate-500">No withdrawal records found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  async function processWithdrawal(withdrawalId, actionType) {
+    const remarks = prompt(`Enter remarks for ${actionType} (optional):`) || '';
+    try {
+      const formData = new FormData();
+      formData.append('action_type', actionType);
+      formData.append('remarks', remarks);
+
+      const res = await fetch(`/portal/withdrawals/${withdrawalId}/approve/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': PortalForms.getCookie('csrftoken') },
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok) {
+        PortalForms.toast(data.message, 'success');
+        setTimeout(() => location.reload(), 600);
+      } else {
+        PortalForms.toast(data.message || 'Error processing withdrawal.', 'error');
+      }
+    } catch (e) {
+      PortalForms.toast('Action failed.', 'error');
+    }
+  }
+</script>
+{% endblock %}

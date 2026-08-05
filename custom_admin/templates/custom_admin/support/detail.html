@@ -1,0 +1,136 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Ticket #{{ ticket.id }}: {{ ticket.subject }} - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Ticket #{{ ticket.id }}: {{ ticket.subject }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-4xl mx-auto">
+
+  <div class="flex items-center justify-between">
+    <a href="{% url 'portal:support_tickets' %}" class="text-xs text-blue-400 hover:underline">← Back to Support Tickets</a>
+  </div>
+
+  <!-- Ticket Overview Header Card -->
+  <div class="portal-card p-5 space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-3">
+      <div>
+        <div class="flex items-center gap-3">
+          <span class="text-slate-400 font-mono font-bold text-sm">#{{ ticket.id }}</span>
+          <h3 class="font-bold text-white text-base">{{ ticket.subject }}</h3>
+        </div>
+        <div class="text-xs text-slate-400 mt-1 flex flex-wrap items-center gap-3">
+          <span>Category: <strong class="text-purple-300 uppercase">{{ ticket.get_category_display }}</strong></span>
+          <span>Opened: <strong class="text-slate-300">{{ ticket.created_at|date:"M d, Y H:i" }}</strong></span>
+          {% if ticket.related_reference %}
+            <span>Ref: <strong class="text-blue-300 font-mono">{{ ticket.related_reference }}</strong></span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <span class="px-3 py-1 rounded text-xs font-bold uppercase 
+          {% if ticket.status == 'open' %}badge-warning{% elif ticket.status == 'in_progress' %}badge-info{% elif ticket.status == 'resolved' %}badge-success{% else %}badge-danger{% endif %}">
+          {{ ticket.get_status_display }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Customer Profile Strip -->
+    <div class="p-3 bg-slate-900/80 rounded-lg border border-slate-800 flex flex-wrap items-center justify-between gap-4 text-xs">
+      <div>
+        <span class="text-slate-400">Customer: </span>
+        <a href="{% url 'portal:users_detail' ticket.user.pk %}" class="font-bold text-white hover:text-blue-400">
+          {{ ticket.user.full_name|default:ticket.user.phone_number }}
+        </a>
+        <span class="font-mono text-blue-400 font-semibold ml-2">
+          ({{ ticket.user.phone_country_code|default:"+234" }}) {{ ticket.user.phone_number }}
+        </span>
+      </div>
+
+      <!-- Quick Status Action Buttons -->
+      <div class="flex items-center gap-2">
+        <form method="POST" action="{% url 'portal:support_detail' ticket.pk %}" data-ajax="true" data-reload="true" class="inline">
+          {% csrf_token %}
+          <input type="hidden" name="status" value="in_progress">
+          <button type="submit" class="px-2.5 py-1 bg-blue-900/60 hover:bg-blue-800 text-blue-200 border border-blue-700/60 rounded text-[11px] font-semibold">
+            Set In Progress
+          </button>
+        </form>
+
+        <form method="POST" action="{% url 'portal:support_detail' ticket.pk %}" data-ajax="true" data-reload="true" class="inline">
+          {% csrf_token %}
+          <input type="hidden" name="status" value="resolved">
+          <button type="submit" class="px-2.5 py-1 bg-emerald-900/60 hover:bg-emerald-800 text-emerald-200 border border-emerald-700/60 rounded text-[11px] font-semibold">
+            Mark Resolved
+          </button>
+        </form>
+
+        <form method="POST" action="{% url 'portal:support_detail' ticket.pk %}" data-ajax="true" data-reload="true" class="inline">
+          {% csrf_token %}
+          <input type="hidden" name="status" value="closed">
+          <button type="submit" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded text-[11px] font-semibold">
+            Close Ticket
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Conversation Chat Thread -->
+  <div class="portal-card p-5 space-y-4">
+    <h4 class="font-bold text-white text-sm border-b border-slate-800 pb-2">Support Message Thread</h4>
+
+    <div class="space-y-4 max-h-[500px] overflow-y-auto p-2">
+      <!-- Original Issue Description -->
+      <div class="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2">
+        <div class="flex justify-between items-center text-xs border-b border-slate-800/80 pb-2">
+          <span class="font-bold text-blue-400">👤 {{ ticket.user.full_name|default:ticket.user.phone_number }} (Customer Issue)</span>
+          <span class="text-slate-400 text-[11px]">{{ ticket.created_at|date:"M d, Y H:i" }}</span>
+        </div>
+        <p class="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap">{{ ticket.description }}</p>
+      </div>
+
+      <!-- Thread Replies -->
+      {% for msg in messages %}
+        <div class="p-4 rounded-xl text-xs space-y-2 {% if msg.is_admin %}bg-blue-950/70 border border-blue-800/70 ml-8{% else %}bg-slate-900/90 border border-slate-800 mr-8{% endif %} shadow">
+          <div class="flex justify-between items-center border-b border-slate-800/50 pb-2">
+            <span class="font-bold {% if msg.is_admin %}text-purple-300{% else %}text-blue-400{% endif %}">
+              {% if msg.is_admin %}
+                🛡️ Admin Support ({{ msg.sender.full_name|default:msg.sender.phone_number }})
+              {% else %}
+                👤 {{ msg.sender.full_name|default:msg.sender.phone_number }}
+              {% endif %}
+            </span>
+            <span class="text-slate-400 text-[11px]">{{ msg.created_at|date:"M d, H:i" }}</span>
+          </div>
+          <p class="text-slate-200 leading-relaxed whitespace-pre-wrap">{{ msg.message }}</p>
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- Reply Form Box -->
+    <form method="POST" action="{% url 'portal:support_detail' ticket.pk %}" data-ajax="true" data-reload="true" class="border-t border-slate-800 pt-4 space-y-3">
+      {% csrf_token %}
+      <div class="flex items-center justify-between">
+        <label class="block font-semibold text-xs text-slate-300">Reply & Update Status</label>
+        <div class="flex items-center gap-2">
+          <span class="text-[11px] text-slate-400">Update Status:</span>
+          <select name="status" class="portal-input text-xs py-1">
+            {% for code, label in status_choices %}
+              <option value="{{ code }}" {% if ticket.status == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <textarea name="message" rows="4" required placeholder="Write response to customer..." class="portal-input w-full text-xs"></textarea>
+
+      <div class="flex justify-end gap-3">
+        <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg shadow-lg shadow-blue-600/30 flex items-center gap-2">
+          <span>💬</span> Send Admin Reply
+        </button>
+      </div>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

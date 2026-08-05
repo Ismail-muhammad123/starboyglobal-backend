@@ -1,0 +1,131 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Service Cashback - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Service Cashback Rules{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Header & Add Button -->
+  <div class="portal-card p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div>
+      <h3 class="font-bold text-white text-sm">Service Cashback Configuration</h3>
+      <p class="text-xs text-slate-400">Configure promotional cashback amounts or percentages per service type.</p>
+    </div>
+
+    <button onclick="PortalForms.openModal('modal-add-cashback')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow">
+      <span>+</span> Add Cashback Rule
+    </button>
+  </div>
+
+  <!-- Table -->
+  <div class="portal-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+          <tr>
+            <th class="p-3">Service Type</th>
+            <th class="p-3">Cashback Type</th>
+            <th class="p-3">Cashback Reward</th>
+            <th class="p-3">Min Purchase Spend</th>
+            <th class="p-3">Status</th>
+            <th class="p-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for cb in cashbacks %}
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-3 font-bold text-white uppercase">{{ cb.get_service_type_display }}</td>
+              <td class="p-3 font-medium uppercase text-purple-300">{{ cb.get_cashback_type_display }}</td>
+              <td class="p-3 font-mono font-bold text-emerald-400">
+                {% if cb.cashback_type == 'percentage' %}
+                  {{ cb.cashback_value }}%
+                {% else %}
+                  ₦{{ cb.cashback_value|floatformat:2 }}
+                {% endif %}
+              </td>
+              <td class="p-3 font-mono text-slate-300">₦{{ cb.min_purchase_amount|floatformat:2 }}</td>
+              <td class="p-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {% if cb.is_active %}badge-success{% else %}badge-danger{% endif %}">
+                  {% if cb.is_active %}Active{% else %}Inactive{% endif %}
+                </span>
+              </td>
+              <td class="p-3 text-right">
+                <button onclick="editCashbackRule('{{ cb.service_type }}', '{{ cb.cashback_type }}', '{{ cb.cashback_value }}', '{{ cb.min_purchase_amount }}', {{ cb.is_active|yesno:'true,false' }})" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-blue-400 font-semibold text-[11px] rounded">
+                  Edit Rule
+                </button>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="p-8 text-center text-slate-500">No cashback rules configured yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal: Add / Edit Cashback Rule -->
+<div id="modal-add-cashback" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div class="portal-card max-w-md w-full p-6 space-y-4 bg-slate-900 border-slate-700 shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+      <h3 class="font-bold text-white text-base">Add / Edit Cashback Rule</h3>
+      <button onclick="PortalForms.closeModal('modal-add-cashback')" class="text-slate-400 hover:text-white">&times;</button>
+    </div>
+
+    <form method="POST" action="{% url 'portal:settings_cashback' %}" data-ajax="true" data-reload="true" data-close-modal="modal-add-cashback" class="space-y-4 text-xs">
+      {% csrf_token %}
+
+      <div>
+        <label class="block font-semibold text-slate-300 uppercase mb-1">Target Service</label>
+        <select name="service_type" id="cb_service_type" required class="portal-input w-full text-xs">
+          {% for val, label in service_choices %}
+            <option value="{{ val }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block font-semibold text-slate-300 uppercase mb-1">Cashback Calculation Type</label>
+        <select name="cashback_type" id="cb_cashback_type" class="portal-input w-full text-xs">
+          {% for val, label in cashback_types %}
+            <option value="{{ val }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block font-semibold text-slate-300 uppercase mb-1">Cashback Reward Value</label>
+          <input type="number" step="0.01" name="cashback_value" id="cb_cashback_value" value="0.00" required class="portal-input w-full font-mono text-xs">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-300 uppercase mb-1">Min Spend (₦)</label>
+          <input type="number" step="0.01" name="min_purchase_amount" id="cb_min_amount" value="0.00" class="portal-input w-full font-mono text-xs">
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 pt-1">
+        <input type="checkbox" name="is_active" id="cb_is_active" checked class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-blue-600">
+        <label for="cb_is_active" class="font-semibold text-slate-300">Active Cashback Offer</label>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+        <button type="button" onclick="PortalForms.closeModal('modal-add-cashback')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded font-semibold">Cancel</button>
+        <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded shadow">Save Cashback Offer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function editCashbackRule(stype, type, value, minAmount, isActive) {
+    document.getElementById('cb_service_type').value = stype;
+    document.getElementById('cb_cashback_type').value = type;
+    document.getElementById('cb_cashback_value').value = value;
+    document.getElementById('cb_min_amount').value = minAmount;
+    document.getElementById('cb_is_active').checked = isActive;
+    PortalForms.openModal('modal-add-cashback');
+  }
+</script>
+{% endblock %}

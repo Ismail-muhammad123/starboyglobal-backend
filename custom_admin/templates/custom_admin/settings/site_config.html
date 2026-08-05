@@ -1,0 +1,83 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Site Configuration - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Site Configuration & Global Toggles{% endblock %}
+{% block content %}
+<div class="space-y-6">
+
+  <div class="portal-card p-6 max-w-3xl">
+    <form method="POST" action="{% url 'portal:site_config' %}" data-ajax="true" data-reload="true" class="space-y-6 text-xs">
+      {% csrf_token %}
+
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div>
+          <h3 class="font-bold text-white text-base">Global Toggles</h3>
+          <p class="text-slate-400">Emergency controls for maintenance mode and service availability.</p>
+        </div>
+        <label class="flex items-center gap-2 cursor-pointer font-bold text-red-400">
+          <input type="checkbox" name="maintenance_mode" {% if config.maintenance_mode %}checked{% endif %} class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-red-600">
+          <span>Maintenance Mode ON</span>
+        </label>
+      </div>
+
+      <div>
+        <h4 class="font-bold text-white text-sm mb-3">Service Active Toggles</h4>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <label class="p-3 rounded bg-slate-900 border border-slate-800 flex items-center justify-between cursor-pointer">
+            <span class="font-medium text-slate-200">Airtime</span>
+            <input type="checkbox" name="airtime_active" {% if config.airtime_active %}checked{% endif %}>
+          </label>
+          <label class="p-3 rounded bg-slate-900 border border-slate-800 flex items-center justify-between cursor-pointer">
+            <span class="font-medium text-slate-200">Data</span>
+            <input type="checkbox" name="data_active" {% if config.data_active %}checked{% endif %}>
+          </label>
+          <label class="p-3 rounded bg-slate-900 border border-slate-800 flex items-center justify-between cursor-pointer">
+            <span class="font-medium text-slate-200">TV Cable</span>
+            <input type="checkbox" name="tv_active" {% if config.tv_active %}checked{% endif %}>
+          </label>
+          <label class="p-3 rounded bg-slate-900 border border-slate-800 flex items-center justify-between cursor-pointer">
+            <span class="font-medium text-slate-200">Electricity</span>
+            <input type="checkbox" name="electricity_active" {% if config.electricity_active %}checked{% endif %}>
+          </label>
+          <label class="p-3 rounded bg-slate-900 border border-slate-800 flex items-center justify-between cursor-pointer">
+            <span class="font-medium text-slate-200">Education</span>
+            <input type="checkbox" name="education_active" {% if config.education_active %}checked{% endif %}>
+          </label>
+          <label class="p-3 rounded bg-slate-900 border border-slate-800 flex items-center justify-between cursor-pointer">
+            <span class="font-medium text-slate-200">Withdrawals</span>
+            <input type="checkbox" name="withdrawals_enabled" {% if config.withdrawals_enabled %}checked{% endif %}>
+          </label>
+        </div>
+      </div>
+
+      <div class="border-t border-slate-800 pt-4">
+        <h4 class="font-bold text-white text-sm mb-3">Deposit & Withdrawal Charges</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-slate-400 mb-1">Deposit Charge Fixed (₦)</label>
+            <input type="number" step="0.01" name="deposit_charge_fixed" value="{{ config.deposit_charge_fixed }}" class="portal-input w-full">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Deposit Charge (%)</label>
+            <input type="number" step="0.01" name="deposit_charge_percentage" value="{{ config.deposit_charge_percentage }}" class="portal-input w-full">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Withdrawal Charge Fixed (₦)</label>
+            <input type="number" step="0.01" name="withdrawal_charge_fixed" value="{{ config.withdrawal_charge_fixed }}" class="portal-input w-full">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Withdrawal Charge (%)</label>
+            <input type="number" step="0.01" name="withdrawal_charge_percentage" value="{{ config.withdrawal_charge_percentage }}" class="portal-input w-full">
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-4 flex justify-end">
+        <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-xs shadow">
+          Save Site Config
+        </button>
+      </div>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

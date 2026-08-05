@@ -1,0 +1,38 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Paystack Gateway Config - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Paystack Payment Gateway Config{% endblock %}
+{% block content %}
+<div class="space-y-6">
+
+  <div class="portal-card p-6 max-w-xl">
+    <form method="POST" action="{% url 'portal:paystack_config' %}" data-ajax="true" data-reload="true" class="space-y-4 text-xs">
+      {% csrf_token %}
+
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="font-bold text-white text-base">Paystack API Keys</h3>
+        <label class="flex items-center gap-2 cursor-pointer font-semibold text-slate-300">
+          <input type="checkbox" name="is_active" {% if config.is_active %}checked{% endif %} class="w-4 h-4 rounded">
+          <span>Active Gateway</span>
+        </label>
+      </div>
+
+      <div>
+        <label class="block font-semibold text-slate-400 mb-1">Public Key (pk_test_... or pk_live_...)</label>
+        <input type="text" name="public_key" value="{{ config.public_key|default:'' }}" class="portal-input w-full font-mono text-sm">
+      </div>
+
+      <div>
+        <label class="block font-semibold text-slate-400 mb-1">Secret Key (sk_test_... or sk_live_...)</label>
+        <input type="password" name="secret_key" value="{{ config.secret_key|default:'' }}" class="portal-input w-full font-mono text-sm">
+      </div>
+
+      <div class="pt-2 flex justify-end">
+        <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-xs shadow">
+          Save Keys
+        </button>
+      </div>
+    </form>
+  </div>
+
+</div>
+{% endblock %}

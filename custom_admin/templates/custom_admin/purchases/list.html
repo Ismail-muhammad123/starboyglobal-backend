@@ -1,0 +1,122 @@
+{% extends 'custom_admin/base.html' %}
+
+{% block title %}Purchases Management - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Service Purchases{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Header Controls -->
+  <div class="portal-card p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+    
+    <!-- Search Form -->
+    <form method="GET" class="flex items-center gap-2 w-full md:w-auto flex-1">
+      <input type="text" name="search" value="{{ search_query }}" placeholder="Search Ref, Beneficiary, User..."
+             class="portal-input w-full md:w-80 text-xs">
+      <button type="submit" class="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-xs">
+        Search
+      </button>
+      {% if search_query or type_filter or status_filter %}
+        <a href="{% url 'portal:purchases_list' %}" class="px-3 py-2 bg-slate-800 text-slate-300 hover:text-white rounded-lg text-xs">Clear</a>
+      {% endif %}
+    </form>
+
+    <!-- Filters -->
+    <div class="flex items-center gap-2 w-full md:w-auto">
+      <select onchange="updateQueryParam('type', this.value)" class="portal-input text-xs">
+        <option value="" {% if not type_filter %}selected{% endif %}>All Services</option>
+        <option value="airtime" {% if type_filter == 'airtime' %}selected{% endif %}>Airtime</option>
+        <option value="data" {% if type_filter == 'data' %}selected{% endif %}>Data</option>
+        <option value="electricity" {% if type_filter == 'electricity' %}selected{% endif %}>Electricity</option>
+        <option value="tv" {% if type_filter == 'tv' %}selected{% endif %}>TV Cable</option>
+        <option value="internet" {% if type_filter == 'internet' %}selected{% endif %}>Internet</option>
+        <option value="education" {% if type_filter == 'education' %}selected{% endif %}>Education</option>
+      </select>
+
+      <select onchange="updateQueryParam('status', this.value)" class="portal-input text-xs">
+        <option value="" {% if not status_filter %}selected{% endif %}>All Status</option>
+        <option value="success" {% if status_filter == 'success' %}selected{% endif %}>Success</option>
+        <option value="failed" {% if status_filter == 'failed' %}selected{% endif %}>Failed</option>
+        <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+        <option value="refunded" {% if status_filter == 'refunded' %}selected{% endif %}>Refunded</option>
+      </select>
+    </div>
+
+  </div>
+
+  <!-- Table -->
+  <div class="portal-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+          <tr>
+            <th class="p-3">Reference</th>
+            <th class="p-3">User</th>
+            <th class="p-3">Type</th>
+            <th class="p-3">Amount</th>
+            <th class="p-3">Profit</th>
+            <th class="p-3">Beneficiary</th>
+            <th class="p-3">Provider</th>
+            <th class="p-3">Status</th>
+            <th class="p-3">Date</th>
+            <th class="p-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for p in purchases %}
+            <tr onclick="window.location.href='{% url 'portal:purchases_detail' p.pk %}'" class="hover:bg-slate-800/60 cursor-pointer transition-colors">
+              <td class="p-3 font-mono text-blue-400 font-medium">
+                {{ p.reference }}
+              </td>
+              <td class="p-3 font-medium text-slate-200" onclick="event.stopPropagation()">
+                <a href="{% url 'portal:users_detail' p.user.pk %}" class="hover:text-blue-400">
+                  ({{ p.user.phone_country_code|default:"+234" }}) {{ p.user.phone_number }}
+                </a>
+              </td>
+              <td class="p-3 uppercase font-semibold text-purple-300">{{ p.purchase_type }}</td>
+              <td class="p-3 font-bold text-white">₦{{ p.amount|floatformat:2 }}</td>
+              <td class="p-3 font-semibold text-emerald-400">₦{{ p.profit|floatformat:2 }}</td>
+              <td class="p-3 font-mono text-slate-300">{{ p.beneficiary }}</td>
+              <td class="p-3 text-slate-400">{{ p.provider.get_name_display|default:"-" }}</td>
+              <td class="p-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase
+                  {% if p.status == 'success' %}badge-success{% elif p.status == 'pending' %}badge-warning{% elif p.status == 'refunded' %}badge-info{% else %}badge-danger{% endif %}">
+                  {{ p.status }}
+                </span>
+              </td>
+              <td class="p-3 text-slate-400">{{ p.time|date:"M d, H:i" }}</td>
+              <td class="p-3 text-right" onclick="event.stopPropagation()">
+                <a href="{% url 'portal:purchases_detail' p.pk %}" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-semibold text-[11px]">
+                  Details
+                </a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="10" class="p-8 text-center text-slate-500">
+                No purchase transactions match your filters.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% include 'custom_admin/includes/pagination.html' with page_obj=purchases per_page=per_page %}
+  </div>
+
+</div>
+
+<script>
+  function updateQueryParam(key, val) {
+    const url = new URL(window.location.href);
+    if (val) {
+      url.searchParams.set(key, val);
+    } else {
+      url.searchParams.delete(key);
+    }
+    window.location.href = url.toString();
+  }
+</script>
+{% endblock %}

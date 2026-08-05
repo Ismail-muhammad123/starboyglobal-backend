@@ -622,3 +622,94 @@ class DynamicOperationPayload(models.Model):
     operation = models.ForeignKey(DynamicOperationConfig, on_delete=models.CASCADE, related_name="custom_payload")
     key = models.CharField(max_length=100)
     value = models.CharField(max_length=500, help_text="Can use {phone}, {amount}, etc.")
+
+
+class AutoSyncSchedule(models.Model):
+    SERVICE_CHOICES = [
+        ('all', 'All Services'),
+        ('airtime', 'Airtime'),
+        ('data', 'Data'),
+        ('tv', 'Cable TV'),
+        ('electricity', 'Electricity'),
+        ('internet', 'Internet'),
+        ('education', 'Education'),
+    ]
+
+    FREQUENCY_CHOICES = [
+        ('hourly', 'Hourly'),
+        ('daily', 'Daily'),
+        ('weekly', 'Weekly'),
+        ('monthly', 'Monthly'),
+    ]
+
+    name = models.CharField(max_length=255, help_text="Human-readable name for this scheduled sync job")
+    provider = models.ForeignKey(
+        'VTUProviderConfig', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='sync_schedules',
+        help_text="Select a specific provider or leave empty for All Active Providers."
+    )
+    service_type = models.CharField(max_length=20, choices=SERVICE_CHOICES, default='all')
+    frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES, default='daily')
+    start_date_time = models.DateTimeField(default=timezone.now, help_text="Date and time when the schedule should start running")
+    is_active = models.BooleanField(default=True, help_text="Enable or disable this job schedule")
+    last_run = models.DateTimeField(null=True, blank=True, editable=False)
+    next_run = models.DateTimeField(null=True, blank=True, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Auto Sync Schedule"
+        verbose_name_plural = "Auto Sync Schedules"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        provider_str = self.provider.get_name_display() if self.provider else "All Providers"
+        return f"{self.name} ({provider_str} - {self.get_service_type_display()} - {self.get_frequency_display()})"
+
+
+class AutoSyncLog(models.Model):
+    """
+    Immutable execution log created after each auto-sync job run.
+    Records cannot be modified or deleted once created.
+    """
+    STATUS_CHOICES = [
+        ('SUCCESS', 'Success'),
+        ('FAILED', 'Failed'),
+        ('PARTIAL', 'Partial Success'),
+    ]
+
+    schedule = models.ForeignKey(
+        AutoSyncSchedule, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='logs'
+    )
+    schedule_name = models.CharField(max_length=255)
+    provider_name = models.CharField(max_length=100)
+    service_type = models.CharField(max_length=50)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES)
+    items_synced = models.PositiveIntegerField(default=0)
+    details = models.JSONField(default=dict, blank=True)
+    error_message = models.TextField(blank=True, null=True)
+    started_at = models.DateTimeField()
+    finished_at = models.DateTimeField()
+    duration_seconds = models.FloatField(default=0.0)
+
+    class Meta:
+        verbose_name = "Auto Sync Log"
+        verbose_name_plural = "Auto Sync Logs"
+        ordering = ['-started_at']
+
+    def __str__(self):
+        return f"[{self.status}] {self.schedule_name} - {self.items_synced} items ({self.started_at.strftime('%Y-%m-%d %H:%M:%S')})"
+
+    def save(self, *args, **kwargs):
+        # Prevent modifications to existing log entries
+        if self.pk:
+            raise ValueError("AutoSyncLog entries are immutable and cannot be updated once created.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        # Prevent deletion unless explicitly allowed via force kwarg
+        if not kwargs.pop('force', False):
+            raise ValueError("AutoSyncLog entries are immutable and cannot be deleted.")
+        super().delete(*args, **kwargs)
+

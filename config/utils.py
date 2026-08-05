@@ -216,7 +216,7 @@ class ZohoService:
             return False
 
         payload = {
-            "from": {"address": from_email, "name": "A-Star Data"},
+            "from": {"address": from_email, "name": "Starboy Global"},
             "to": [
                 {
                     "email_address": {

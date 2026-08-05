@@ -1,0 +1,48 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}All Education Variations - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}All Education Variations & Pricing{% endblock %}
+{% block content %}
+<div class="space-y-6">
+  <div class="portal-card p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+    <div>
+      <h3 class="font-bold text-white text-sm">All Education PIN Variations</h3>
+      <p class="text-xs text-slate-400">Click any price cell to edit inline.</p>
+    </div>
+    <input type="text" data-table-search="table-education-variations" placeholder="Filter variations..." class="portal-input text-xs w-64">
+  </div>
+  <div class="portal-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table id="table-education-variations" class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+          <tr>
+            <th class="p-3">Service</th>
+            <th class="p-3">Variation Name</th>
+            <th class="p-3">Variation ID</th>
+            <th class="p-3">Cost Price</th>
+            <th class="p-3">Customer Price</th>
+            <th class="p-3">Agent Price</th>
+            <th class="p-3">Developer Price</th>
+            <th class="p-3">Status</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for v in variations %}
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-3 font-semibold text-emerald-400">{{ v.service.service_name }}</td>
+              <td class="p-3 font-bold text-white">{{ v.name }}</td>
+              <td class="p-3 font-mono text-slate-400">{{ v.variation_id }}</td>
+              <td class="p-3 font-mono text-slate-300 inline-edit-cell cursor-pointer hover:bg-slate-800" data-field="cost_price" data-value="{{ v.cost_price }}" data-endpoint="{% url 'portal:education_variation_detail' v.pk %}">₦{{ v.cost_price|floatformat:2 }}</td>
+              <td class="p-3 font-mono font-bold text-emerald-400 inline-edit-cell cursor-pointer hover:bg-slate-800" data-field="selling_price" data-value="{{ v.selling_price }}" data-endpoint="{% url 'portal:education_variation_detail' v.pk %}">₦{{ v.selling_price|floatformat:2 }}</td>
+              <td class="p-3 font-mono font-bold text-blue-400 inline-edit-cell cursor-pointer hover:bg-slate-800" data-field="agent_price" data-value="{{ v.agent_price }}" data-endpoint="{% url 'portal:education_variation_detail' v.pk %}">₦{{ v.agent_price|floatformat:2 }}</td>
+              <td class="p-3 font-mono font-bold text-purple-400 inline-edit-cell cursor-pointer hover:bg-slate-800" data-field="developer_price" data-value="{{ v.developer_price }}" data-endpoint="{% url 'portal:education_variation_detail' v.pk %}">₦{{ v.developer_price|floatformat:2 }}</td>
+              <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {% if v.is_active %}badge-success{% else %}badge-danger{% endif %}">{% if v.is_active %}Active{% else %}Inactive{% endif %}</span></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="8" class="p-8 text-center text-slate-500">No education variations found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

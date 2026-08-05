@@ -1,0 +1,79 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Support Tickets - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Support Tickets{% endblock %}
+{% block content %}
+<div class="space-y-6">
+
+  <div class="portal-card p-4 flex items-center justify-between">
+    <div>
+      <h3 class="font-bold text-white text-sm">Support Tickets</h3>
+      <p class="text-xs text-slate-400">Manage user support requests and inquiries.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="{% url 'portal:support_tickets' %}" class="px-3 py-1.5 rounded text-xs font-semibold {% if not status_filter %}bg-blue-600 text-white{% else %}bg-slate-800 text-slate-300 hover:text-white{% endif %}">
+        All Tickets
+      </a>
+      <a href="?status=open" class="px-3 py-1.5 rounded text-xs font-semibold {% if status_filter == 'open' %}bg-amber-600 text-white{% else %}bg-slate-800 text-slate-300 hover:text-white{% endif %}">
+        OPEN
+      </a>
+      <a href="?status=closed" class="px-3 py-1.5 rounded text-xs font-semibold {% if status_filter == 'closed' %}bg-emerald-600 text-white{% else %}bg-slate-800 text-slate-300 hover:text-white{% endif %}">
+        CLOSED
+      </a>
+    </div>
+  </div>
+
+  <div class="portal-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+          <tr>
+            <th class="p-3">Ticket ID</th>
+            <th class="p-3">User</th>
+            <th class="p-3">Subject</th>
+            <th class="p-3">Category</th>
+            <th class="p-3">Status</th>
+            <th class="p-3">Created</th>
+            <th class="p-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for t in tickets %}
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-3 font-mono text-blue-400 font-medium">#{{ t.id }}</td>
+              <td class="p-3 font-medium text-slate-200">
+                <a href="{% url 'portal:users_detail' t.user.pk %}" class="hover:text-blue-400">{{ t.user.phone_number }}</a>
+              </td>
+              <td class="p-3 font-bold text-white max-w-xs truncate">{{ t.subject }}</td>
+              <td class="p-3 uppercase text-purple-300 font-medium">{{ t.category|default:"General" }}</td>
+              <td class="p-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {% if t.status == 'OPEN' %}badge-warning{% elif t.status == 'IN_PROGRESS' %}badge-info{% else %}badge-success{% endif %}">
+                  {{ t.status }}
+                </span>
+              </td>
+              <td class="p-3 text-slate-400">{{ t.created_at|date:"M d, H:i" }}</td>
+              <td class="p-3 text-right">
+                <a href="{% url 'portal:support_detail' t.pk %}" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded text-[11px]">
+                  Reply & View
+                </a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7" class="p-8 text-center text-slate-500">No support tickets found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if tickets.has_other_pages %}
+      <div class="p-4 border-t border-slate-800 flex items-center justify-between text-xs">
+        <span class="text-slate-400">Page {{ tickets.number }} of {{ tickets.paginator.num_pages }}</span>
+        <div class="flex gap-1">
+          {% if tickets.has_previous %}<a href="?page={{ tickets.previous_page_number }}" class="px-3 py-1 bg-slate-800 text-slate-300 rounded hover:bg-slate-700">Prev</a>{% endif %}
+          {% if tickets.has_next %}<a href="?page={{ tickets.next_page_number }}" class="px-3 py-1 bg-slate-800 text-slate-300 rounded hover:bg-slate-700">Next</a>{% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

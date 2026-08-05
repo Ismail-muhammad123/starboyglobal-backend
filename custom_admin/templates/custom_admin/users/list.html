@@ -1,0 +1,136 @@
+{% extends 'custom_admin/base.html' %}
+
+{% block title %}User Management - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}User Management{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Header Controls -->
+  <div class="portal-card p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+    
+    <!-- Search Form -->
+    <form method="GET" class="flex items-center gap-2 w-full md:w-auto flex-1">
+      <input type="text" name="search" value="{{ search_query }}" placeholder="Search phone, email, name..."
+             class="portal-input w-full md:w-80 text-xs">
+      <button type="submit" class="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-xs">
+        Search
+      </button>
+      {% if search_query or role_filter or status_filter %}
+        <a href="{% url 'portal:users_list' %}" class="px-3 py-2 bg-slate-800 text-slate-300 hover:text-white rounded-lg text-xs">Clear</a>
+      {% endif %}
+    </form>
+
+    <!-- Filters -->
+    <div class="flex items-center gap-2 w-full md:w-auto">
+      <select onchange="location = this.value;" class="portal-input text-xs">
+        <option value="{% url 'portal:users_list' %}" {% if not role_filter %}selected{% endif %}>All Roles</option>
+        <option value="?role=customer" {% if role_filter == 'customer' %}selected{% endif %}>Customer</option>
+        <option value="?role=agent" {% if role_filter == 'agent' %}selected{% endif %}>Agent / Reseller</option>
+        <option value="?role=developer" {% if role_filter == 'developer' %}selected{% endif %}>Developer</option>
+      </select>
+
+      <select onchange="location = this.value;" class="portal-input text-xs">
+        <option value="{% url 'portal:users_list' %}" {% if not status_filter %}selected{% endif %}>All Status</option>
+        <option value="?status=active" {% if status_filter == 'active' %}selected{% endif %}>Active Only</option>
+        <option value="?status=inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Suspended Only</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Users Table -->
+  <div class="portal-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+          <tr>
+            <th class="p-3">User</th>
+            <th class="p-3">Phone</th>
+            <th class="p-3">Email</th>
+            <th class="p-3">Role</th>
+            <th class="p-3">Status</th>
+            <th class="p-3">KYC</th>
+            <th class="p-3">Joined</th>
+            <th class="p-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for u in users %}
+            <tr class="hover:bg-slate-800/40 transition-colors">
+              <td class="p-3 font-semibold text-white">
+                <a href="{% url 'portal:users_detail' u.pk %}" class="hover:text-blue-400">
+                  <span class="text-slate-400 text-xs font-mono">({{ u.phone_country_code|default:"+234" }})</span>
+                  {{ u.full_name|default:u.phone_number }}
+                </a>
+              </td>
+              <td class="p-3 font-mono text-blue-300">
+                ({{ u.phone_country_code|default:"+234" }}) {{ u.phone_number }}
+              </td>
+              <td class="p-3 text-slate-400">{{ u.email|default:"-" }}</td>
+              <td class="p-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase
+                  {% if u.role == 'agent' %}bg-blue-950 text-blue-400 border border-blue-800{% elif u.role == 'developer' %}bg-purple-950 text-purple-400 border border-purple-800{% else %}bg-slate-800 text-slate-300{% endif %}">
+                  {{ u.role }}
+                </span>
+              </td>
+              <td class="p-3">
+                {% if u.is_active %}
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase badge-success">Active</span>
+                {% else %}
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase badge-danger">Suspended</span>
+                {% endif %}
+              </td>
+              <td class="p-3">
+                {% if u.is_kyc_verified %}
+                  <span class="text-emerald-400 font-bold">✓ Verified</span>
+                {% else %}
+                  <span class="text-slate-500">Unverified</span>
+                {% endif %}
+              </td>
+              <td class="p-3 text-slate-400">{{ u.created_at|date:"M d, Y" }}</td>
+              <td class="p-3 text-right">
+                <a href="{% url 'portal:users_detail' u.pk %}" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded font-semibold text-[11px]">
+                  View Details
+                </a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="8" class="p-8 text-center text-slate-500">
+                No users found.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% include 'custom_admin/includes/pagination.html' with page_obj=users per_page=per_page %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  async function toggleUserStatus(userId) {
+    if (!confirm('Are you sure you want to change this user status?')) return;
+    try {
+      const res = await fetch(`/portal/users/${userId}/suspend/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': PortalForms.getCookie('csrftoken') }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        PortalForms.toast(data.message, 'success');
+        setTimeout(() => location.reload(), 600);
+      } else {
+        PortalForms.toast(data.message || 'Error updating user.', 'error');
+      }
+    } catch (e) {
+      PortalForms.toast('Action failed.', 'error');
+    }
+  }
+</script>
+{% endblock %}

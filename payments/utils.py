@@ -59,7 +59,7 @@ class PaystackGateway:
             "raw_response": res
         }
 
-    def create_virtual_account(self, email: str, first_name: str, last_name: str, phone: str) -> Dict[str, Any]:
+    def create_virtual_account(self, email: str, first_name: str, last_name: str, phone: str, middle_name: str = "") -> Dict[str, Any]:
         """
         Provision a dedicated virtual account for a customer.
         1. Fetch/Create Paystack Customer
@@ -78,6 +78,8 @@ class PaystackGateway:
                  "last_name": last_name,
                  "phone": phone
              }
+             if middle_name:
+                 payload["middle_name"] = middle_name
              res = self._post("/customer", payload)
              customer_id = res["data"]["id"]
 

@@ -1,0 +1,92 @@
+{% extends 'custom_admin/base.html' %}
+
+{% block title %}KYC Verification Records - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}KYC Verifications{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Filter & Search Controls -->
+  <div class="portal-card p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+    
+    <!-- Status Filter Buttons -->
+    <div class="flex items-center gap-2">
+      <a href="{% url 'portal:kyc_list' %}" class="px-3 py-1.5 rounded text-xs font-semibold {% if not status_filter %}bg-blue-600 text-white{% else %}bg-slate-800 text-slate-300 hover:text-white{% endif %}">
+        All Submissions
+      </a>
+      <a href="?status=pending" class="px-3 py-1.5 rounded text-xs font-semibold {% if status_filter == 'pending' %}bg-amber-600 text-white{% else %}bg-slate-800 text-slate-300 hover:text-white{% endif %}">
+        Pending Only
+      </a>
+      <a href="?status=approved" class="px-3 py-1.5 rounded text-xs font-semibold {% if status_filter == 'approved' %}bg-emerald-600 text-white{% else %}bg-slate-800 text-slate-300 hover:text-white{% endif %}">
+        Approved
+      </a>
+      <a href="?status=rejected" class="px-3 py-1.5 rounded text-xs font-semibold {% if status_filter == 'rejected' %}bg-red-600 text-white{% else %}bg-slate-800 text-slate-300 hover:text-white{% endif %}">
+        Rejected
+      </a>
+    </div>
+
+    <!-- Search Form -->
+    <form method="GET" class="flex items-center gap-2 w-full md:w-auto">
+      {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+      <input type="text" name="search" value="{{ search_query }}" placeholder="Search User, ID Number..." class="portal-input w-48 text-xs">
+      <button type="submit" class="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-xs">Search</button>
+    </form>
+
+  </div>
+
+  <!-- KYC Table -->
+  <div class="portal-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+          <tr>
+            <th class="p-3">User</th>
+            <th class="p-3">Phone</th>
+            <th class="p-3">ID Type</th>
+            <th class="p-3">ID Number</th>
+            <th class="p-3">Status</th>
+            <th class="p-3">Submitted</th>
+            <th class="p-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for k in kycs %}
+            <tr onclick="window.location.href='{% url 'portal:kyc_detail' k.pk %}'" class="hover:bg-slate-800/60 cursor-pointer transition-colors">
+              <td class="p-3 font-semibold text-white">
+                <a href="{% url 'portal:users_detail' k.user.pk %}" class="hover:text-blue-400" onclick="event.stopPropagation()">
+                  {{ k.user.full_name|default:k.user.phone_number }}
+                </a>
+              </td>
+              <td class="p-3 font-mono text-blue-300">({{ k.user.phone_country_code|default:"+234" }}) {{ k.user.phone_number }}</td>
+              <td class="p-3 font-medium uppercase text-purple-300">{{ k.id_type }}</td>
+              <td class="p-3 font-mono text-slate-200">{{ k.id_number }}</td>
+              <td class="p-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase
+                  {% if k.status == 'APPROVED' %}badge-success{% elif k.status == 'PENDING' %}badge-warning{% else %}badge-danger{% endif %}">
+                  {{ k.status }}
+                </span>
+              </td>
+              <td class="p-3 text-slate-400">{{ k.created_at|date:"M d, Y H:i" }}</td>
+              <td class="p-3 text-right" onclick="event.stopPropagation()">
+                <a href="{% url 'portal:kyc_detail' k.pk %}" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded text-[11px]">
+                  Review Details →
+                </a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7" class="p-8 text-center text-slate-500">
+                No KYC records match your criteria.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% include 'custom_admin/includes/pagination.html' with page_obj=kycs per_page=per_page %}
+  </div>
+
+</div>
+{% endblock %}

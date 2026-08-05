@@ -1,0 +1,119 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Staff Members - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Staff Members & Permission Groups{% endblock %}
+{% block content %}
+<div class="space-y-6">
+
+  <div class="portal-card p-4 flex items-center justify-between">
+    <div>
+      <h3 class="font-bold text-white text-sm">Staff Accounts</h3>
+      <p class="text-xs text-slate-400">Personnel with administrative portal access.</p>
+    </div>
+    <div class="flex gap-2">
+      <a href="{% url 'portal:groups_list' %}" class="px-3 py-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-lg text-xs font-semibold">
+        Manage Permission Groups →
+      </a>
+      <button onclick="PortalForms.openModal('modal-new-staff')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-lg shadow">
+        + New Staff Member
+      </button>
+    </div>
+  </div>
+
+  <div class="portal-card overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+          <tr>
+            <th class="p-3">Staff Name</th>
+            <th class="p-3">Phone</th>
+            <th class="p-3">Role</th>
+            <th class="p-3">Assigned Groups</th>
+            <th class="p-3">Status</th>
+            <th class="p-3">Joined</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for s in staff_members %}
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-3 font-bold text-white">{{ s.full_name|default:s.phone_number }}</td>
+              <td class="p-3 font-mono text-blue-400">{{ s.phone_number }}</td>
+              <td class="p-3 uppercase">
+                {% if s.is_superuser %}
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-950 text-purple-300 border border-purple-800">Superuser</span>
+                {% else %}
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-950 text-blue-300 border border-blue-800">Staff Admin</span>
+                {% endif %}
+              </td>
+              <td class="p-3">
+                {% for m in s.portal_group_memberships.all %}
+                  <span class="inline-block px-2 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-300 border border-slate-700 mr-1 mb-1">
+                    {{ m.group.name }}
+                  </span>
+                {% empty %}
+                  <span class="text-slate-500 italic">{% if s.is_superuser %}All (Superuser){% else %}No Group Assigned{% endif %}</span>
+                {% endfor %}
+              </td>
+              <td class="p-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {% if s.is_active %}badge-success{% else %}badge-danger{% endif %}">
+                  {% if s.is_active %}Active{% else %}Inactive{% endif %}
+                </span>
+              </td>
+              <td class="p-3 text-slate-400">{{ s.created_at|date:"M d, Y" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="p-8 text-center text-slate-500">No staff members found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Modal: New Staff Member -->
+<div id="modal-new-staff" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div class="portal-card max-w-md w-full p-6 space-y-4 bg-slate-900 border-slate-700 shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+      <h3 class="font-bold text-white text-base">Create Staff Account</h3>
+      <button onclick="PortalForms.closeModal('modal-new-staff')" class="text-slate-400 hover:text-white">&times;</button>
+    </div>
+
+    <form method="POST" action="{% url 'portal:staff_list' %}" data-ajax="true" data-reload="true" data-close-modal="modal-new-staff" class="space-y-3 text-xs">
+      {% csrf_token %}
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1">First Name</label>
+          <input type="text" name="first_name" required class="portal-input w-full">
+        </div>
+        <div>
+          <label class="block font-semibold text-slate-300 mb-1">Last Name</label>
+          <input type="text" name="last_name" required class="portal-input w-full">
+        </div>
+      </div>
+      <div>
+        <label class="block font-semibold text-slate-300 mb-1">Phone Number</label>
+        <input type="text" name="phone_number" required placeholder="08012345678" class="portal-input w-full font-mono">
+      </div>
+      <div>
+        <label class="block font-semibold text-slate-300 mb-1">Password</label>
+        <input type="password" name="password" required class="portal-input w-full font-mono">
+      </div>
+      <div>
+        <label class="block font-semibold text-slate-300 mb-1">Assign Permission Groups</label>
+        <div class="space-y-1.5 max-h-36 overflow-y-auto p-2 bg-slate-950 rounded border border-slate-800">
+          {% for g in groups %}
+            <label class="flex items-center gap-2 cursor-pointer text-slate-300">
+              <input type="checkbox" name="groups" value="{{ g.pk }}" class="rounded bg-slate-800">
+              <span>{{ g.name }}</span>
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="PortalForms.closeModal('modal-new-staff')" class="px-4 py-2 bg-slate-800 text-slate-300 rounded text-xs">Cancel</button>
+        <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded text-xs">Create Staff</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

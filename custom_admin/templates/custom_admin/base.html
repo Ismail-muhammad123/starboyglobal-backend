@@ -1,0 +1,485 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Starboy Global Admin Dashboard{% endblock %}</title>
+
+  <!-- Tailwind CSS CDN (Play CDN for rapid loading + custom admin styling) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: ['class', '[data-theme="dark"]'],
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#F0F4FF',
+              500: '#2563EB',
+              600: '#1D4ED8',
+              900: '#0A1628',
+              950: '#070F1E',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Custom Admin CSS -->
+  <link rel="stylesheet" href="/static/portal/css/admin.css">
+
+  <!-- Theme Script (Inline early execute to prevent FOUC) -->
+  <script src="/static/portal/js/theme.js"></script>
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body class="bg-[var(--bg-base)] text-[var(--text-primary)] antialiased min-h-screen flex flex-col">
+
+  <!-- Mobile Backdrop Overlay -->
+  <div id="sidebar-backdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden md:hidden"></div>
+
+  <div class="flex flex-1 min-h-screen overflow-hidden">
+
+    <!-- SIDEBAR -->
+    <aside id="portal-sidebar"
+      class="w-64 bg-[var(--bg-surface)] border-r border-[var(--border)] flex flex-col fixed md:static inset-y-0 left-0 z-50 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
+
+      <!-- Brand Header -->
+      <div class="h-16 px-5 border-b border-[var(--border)] flex items-center justify-between">
+        <a href="{% url 'portal:dashboard' %}" class="flex items-center gap-3">
+          <img src="{% static 'img/logo.png' %}" alt="Starboy Global" class="w-10 h-10 object-contain rounded-lg">
+          <div>
+            <div class="font-bold text-base leading-tight tracking-wide text-white">Starboy Global</div>
+            <div class="text-[10px] text-blue-400 font-medium tracking-wider uppercase">Admin Dashboard</div>
+          </div>
+        </a>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-1 text-sm font-medium">
+
+        <!-- Dashboard (Pinned Top) -->
+        <a href="{% url 'portal:dashboard' %}"
+          class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
+          <span class="text-lg">📊</span>
+          <span>Dashboard</span>
+        </a>
+
+        <div class="my-2 border-t border-[var(--border)] opacity-60"></div>
+
+        <!-- Group: Users & Accounts -->
+        <div id="grp-users" class="sidebar-group">
+          <button type="button"
+            class="sidebar-group-header w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">👥</span>
+              <span>Users & Accounts</span>
+            </div>
+            <span class="chevron text-xs text-slate-500">▶</span>
+          </button>
+          <div class="sidebar-group-content pl-9 pr-2 py-1 space-y-1 text-xs">
+            <a href="{% url 'portal:users_list' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">All Users</a>
+            <a href="{% url 'portal:kyc_list' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">KYC Records</a>
+          </div>
+        </div>
+
+        <!-- Group: Purchases -->
+        <div id="grp-purchases" class="sidebar-group">
+          <button type="button"
+            class="sidebar-group-header w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">🛒</span>
+              <span>Purchases</span>
+            </div>
+            <span class="chevron text-xs text-slate-500">▶</span>
+          </button>
+          <div class="sidebar-group-content pl-9 pr-2 py-1 space-y-1 text-xs">
+            <a href="{% url 'portal:purchases_list' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">All Purchases</a>
+          </div>
+        </div>
+
+        <!-- Group: Airtime -->
+        <div id="grp-airtime" class="sidebar-group">
+          <button type="button"
+            class="sidebar-group-header w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">📱</span>
+              <span>Airtime</span>
+            </div>
+            <span class="chevron text-xs text-slate-500">▶</span>
+          </button>
+          <div class="sidebar-group-content pl-9 pr-2 py-1 space-y-1 text-xs">
+            <a href="{% url 'portal:airtime_networks' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Airtime
+              Networks</a>
+          </div>
+        </div>
+
+        <!-- Group: Data -->
+        <div id="grp-data" class="sidebar-group">
+          <button type="button"
+            class="sidebar-group-header w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">📡</span>
+              <span>Data</span>
+            </div>
+            <span class="chevron text-xs text-slate-500">▶</span>
+          </button>
+          <div class="sidebar-group-content pl-9 pr-2 py-1 space-y-1 text-xs">
+            <a href="{% url 'portal:data_services' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Data Services</a>
+            <a href="{% url 'portal:data_variations' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Data Plans
+              (Variations)</a>
+          </div>
+        </div>
+
+        <!-- Group: TV / Cable -->
+        <div id="grp-tv" class="sidebar-group">
+          <button type="button"
+            class="sidebar-group-header w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">📺</span>
+              <span>TV / Cable</span>
+            </div>
+            <span class="chevron text-xs text-slate-500">▶</span>
+          </button>
+          <div class="sidebar-group-content pl-9 pr-2 py-1 space-y-1 text-xs">
+            <a href="{% url 'portal:tv_services' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">TV Services</a>
+            <a href="{% url 'portal:tv_variations' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">TV Variations</a>
+          </div>
+        </div>
+
+        <!-- Group: Electricity -->
+        <div id="grp-electricity" class="sidebar-group">
+          <button type="button"
+            class="sidebar-group-header w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">⚡</span>
+              <span>Electricity</span>
+            </div>
+            <span class="chevron text-xs text-slate-500">▶</span>
+          </button>
+          <div class="sidebar-group-content pl-9 pr-2 py-1 space-y-1 text-xs">
+            <a href="{% url 'portal:electricity_services' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Electricity
+              Discos</a>
+            <a href="{% url 'portal:electricity_variations' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Electricity
+              Variations</a>
+          </div>
+        </div>
+
+        <!-- Group: Internet -->
+        <div id="grp-internet" class="sidebar-group">
+          <button type="button"
+            class="sidebar-group-header w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">🌐</span>
+              <span>Internet</span>
+            </div>
+            <span class="chevron text-xs text-slate-500">▶</span>
+          </button>
+          <div class="sidebar-group-content pl-9 pr-2 py-1 space-y-1 text-xs">
+            <a href="{% url 'portal:internet_services' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Internet
+              Services</a>
+            <a href="{% url 'portal:internet_variations' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Internet
+              Variations</a>
+          </div>
+        </div>
+
+        <!-- Group: Education -->
+        <div id="grp-education" class="sidebar-group">
+          <button type="button"
+            class="sidebar-group-header w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">🎓</span>
+              <span>Education</span>
+            </div>
+            <span class="chevron text-xs text-slate-500">▶</span>
+          </button>
+          <div class="sidebar-group-content pl-9 pr-2 py-1 space-y-1 text-xs">
+            <a href="{% url 'portal:education_services' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Education
+              Services</a>
+            <a href="{% url 'portal:education_variations' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Education
+              Variations</a>
+          </div>
+        </div>
+
+        <!-- Group: Providers & Routing -->
+        <div id="grp-providers" class="sidebar-group">
+          <button type="button"
+            class="sidebar-group-header w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">🏭</span>
+              <span>Providers & Routing</span>
+            </div>
+            <span class="chevron text-xs text-slate-500">▶</span>
+          </button>
+          <div class="sidebar-group-content pl-9 pr-2 py-1 space-y-1 text-xs">
+            <a href="{% url 'portal:providers_list' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">VTU Providers</a>
+            <a href="{% url 'portal:provider_service_configs' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Service
+              Margins</a>
+            <a href="{% url 'portal:service_routings' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Service
+              Routing</a>
+          </div>
+        </div>
+
+        <!-- Group: Wallet & Finance -->
+        <div id="grp-wallet" class="sidebar-group">
+          <button type="button"
+            class="sidebar-group-header w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">💰</span>
+              <span>Wallet & Finance</span>
+            </div>
+            <span class="chevron text-xs text-slate-500">▶</span>
+          </button>
+          <div class="sidebar-group-content pl-9 pr-2 py-1 space-y-1 text-xs">
+            <a href="{% url 'portal:wallets_list' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">User Wallets</a>
+            <a href="{% url 'portal:wallet_transactions' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Wallet
+              Transactions</a>
+            <a href="{% url 'portal:manual_transaction' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Manual Credit /
+              Debit</a>
+            <a href="{% url 'portal:reports_index' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Financial
+              Reports</a>
+          </div>
+        </div>
+
+        <!-- Group: Payments -->
+        <div id="grp-payments" class="sidebar-group">
+          <button type="button"
+            class="sidebar-group-header w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">💳</span>
+              <span>Payments</span>
+            </div>
+            <span class="chevron text-xs text-slate-500">▶</span>
+          </button>
+          <div class="sidebar-group-content pl-9 pr-2 py-1 space-y-1 text-xs">
+            <a href="{% url 'portal:deposits_list' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Deposits</a>
+            <a href="{% url 'portal:withdrawals_list' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Withdrawals</a>
+            <a href="{% url 'portal:admin_transfers' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Admin
+              Transfers</a>
+            <a href="{% url 'portal:paystack_records' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Paystack
+              Records</a>
+          </div>
+        </div>
+
+        <!-- Group: Automation -->
+        <div id="grp-automation" class="sidebar-group">
+          <button type="button"
+            class="sidebar-group-header w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">⚙️</span>
+              <span>Automation</span>
+            </div>
+            <span class="chevron text-xs text-slate-500">▶</span>
+          </button>
+          <div class="sidebar-group-content pl-9 pr-2 py-1 space-y-1 text-xs">
+            <a href="{% url 'portal:sync_schedules' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Sync Schedules</a>
+            <a href="{% url 'portal:sync_logs' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Sync Logs</a>
+          </div>
+        </div>
+
+        <!-- Group: Support -->
+        <div id="grp-support" class="sidebar-group">
+          <button type="button"
+            class="sidebar-group-header w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">🔔</span>
+              <span>Support</span>
+            </div>
+            <span class="chevron text-xs text-slate-500">▶</span>
+          </button>
+          <div class="sidebar-group-content pl-9 pr-2 py-1 space-y-1 text-xs">
+            <a href="{% url 'portal:support_tickets' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Support
+              Tickets</a>
+          </div>
+        </div>
+
+        <!-- Group: Settings -->
+        <div id="grp-settings" class="sidebar-group">
+          <button type="button"
+            class="sidebar-group-header w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">⚙️</span>
+              <span>Settings</span>
+            </div>
+            <span class="chevron text-xs text-slate-500">▶</span>
+          </button>
+          <div class="sidebar-group-content pl-9 pr-2 py-1 space-y-1 text-xs">
+            <a href="{% url 'portal:site_config' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Site Config</a>
+            <a href="{% url 'portal:paystack_config' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Paystack
+              Config</a>
+            <a href="{% url 'portal:referral_config' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Referral
+              Config</a>
+            <a href="{% url 'portal:role_upgrade_config' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Role Upgrade
+              Config</a>
+            <a href="{% url 'portal:cashback_config' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Service
+              Cashback</a>
+            <a href="{% url 'portal:promo_codes' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Promo Codes</a>
+          </div>
+        </div>
+
+        {% if request.user.is_superuser %}
+        <!-- Group: Administration (Superuser only) -->
+        <div id="grp-admin" class="sidebar-group">
+          <button type="button"
+            class="sidebar-group-header w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">🔐</span>
+              <span>Administration</span>
+            </div>
+            <span class="chevron text-xs text-slate-500">▶</span>
+          </button>
+          <div class="sidebar-group-content pl-9 pr-2 py-1 space-y-1 text-xs">
+            <a href="{% url 'portal:staff_list' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Staff Members</a>
+            <a href="{% url 'portal:groups_list' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">Permission
+              Groups</a>
+            <a href="/admin/" target="_blank"
+              class="block py-1.5 px-2 rounded text-amber-400 hover:text-amber-300 hover:bg-slate-800/40">Fallback
+              Django Admin ↗</a>
+          </div>
+        </div>
+        {% endif %}
+
+      </nav>
+
+      <!-- Sidebar Footer User Profile -->
+      <div class="p-4 border-t border-[var(--border)] flex items-center justify-between">
+        <div class="flex items-center gap-3 overflow-hidden">
+          <div
+            class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center font-bold text-xs text-blue-300 shrink-0">
+            {{ request.user.first_name|default:request.user.phone_number|slice:":2"|upper }}
+          </div>
+          <div class="truncate text-xs">
+            <div class="font-semibold text-white truncate">{{ request.user.full_name|default:request.user.phone_number
+              }}</div>
+            <div class="text-[10px] text-slate-400 capitalize">{% if request.user.is_superuser %}Superuser{% else
+              %}Staff Admin{% endif %}</div>
+          </div>
+        </div>
+        <a href="{% url 'portal:logout' %}" title="Logout"
+          class="text-slate-400 hover:text-red-400 text-sm p-1.5 rounded-lg hover:bg-slate-800 transition-colors">
+          🚪
+        </a>
+      </div>
+
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+      <!-- TOP NAVBAR -->
+      <header
+        class="h-16 bg-[var(--bg-surface)] border-b border-[var(--border)] px-4 md:px-6 flex items-center justify-between shrink-0 z-30">
+
+        <!-- Left: Mobile Toggle & Page Title -->
+        <div class="flex items-center gap-3">
+          <button id="mobile-sidebar-toggle"
+            class="md:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800">
+            ☰
+          </button>
+          <h1 class="text-lg font-bold text-white tracking-tight">
+            {% block page_title %}Dashboard{% endblock %}
+          </h1>
+        </div>
+
+        <!-- Right: Actions, Theme Toggle, User Dropdown -->
+        <div class="flex items-center gap-3">
+
+          <!-- Theme Toggle Button -->
+          <button id="theme-toggle-btn"
+            class="p-2 rounded-lg bg-[var(--bg-card)] border border-[var(--border)] text-slate-300 hover:text-white hover:border-slate-600 transition-colors"
+            title="Toggle Theme">
+            <span id="theme-toggle-sun" class="hidden">☀️</span>
+            <span id="theme-toggle-moon">🌙</span>
+          </button>
+
+          <!-- Refresh Balances Quick Action -->
+          <button id="btn-refresh-balances"
+            class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-600/20 text-blue-400 border border-blue-500/30 hover:bg-blue-600/30 transition-colors">
+            <span>🔄</span>
+            <span>Refresh Balances</span>
+          </button>
+
+          <!-- Logout Link -->
+          <a href="{% url 'portal:logout' %}" class="text-xs text-slate-400 hover:text-red-400 font-medium px-2 py-1">
+            Logout
+          </a>
+        </div>
+      </header>
+
+      <!-- PAGE MAIN BODY -->
+      <main class="flex-1 overflow-y-auto p-4 md:p-6">
+        {% block content %}{% endblock %}
+      </main>
+
+    </div>
+  </div>
+
+  <!-- Global JS Modules -->
+  <script src="/static/portal/js/sidebar.js"></script>
+  <script src="/static/portal/js/forms.js"></script>
+  <script src="/static/portal/js/tables.js"></script>
+  <script src="/static/portal/js/charts.js"></script>
+  <script>
+    document.getElementById('btn-refresh-balances')?.addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/admin/quick/refresh-services/', {
+          method: 'POST',
+          headers: { 'X-CSRFToken': PortalForms.getCookie('csrftoken') }
+        });
+        if (res.ok) {
+          PortalForms.toast('Provider balances refreshed successfully.', 'success');
+          setTimeout(() => window.location.reload(), 1000);
+        } else {
+          PortalForms.toast('Failed to refresh balances.', 'error');
+        }
+      } catch (e) {
+        PortalForms.toast('Error refreshing balances.', 'error');
+      }
+    });
+  </script>
+  {% block extra_js %}{% endblock %}
+</body>
+
+</html>

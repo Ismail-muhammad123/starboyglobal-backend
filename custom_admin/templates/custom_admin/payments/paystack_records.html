@@ -1,0 +1,94 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Paystack Gateway Records - Starboy Global Admin Dashboard{% endblock %}
+{% block page_title %}Paystack Live Gateway Records{% endblock %}
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Header -->
+  <div class="portal-card p-4 flex items-center justify-between">
+    <div>
+      <h3 class="font-bold text-white text-sm">Paystack API Live Transaction History</h3>
+      <p class="text-xs text-slate-400">Direct query results fetched from Paystack API Gateway.</p>
+    </div>
+  </div>
+
+  {% if error_msg %}
+    <div class="p-4 rounded-lg bg-red-950/80 border border-red-800 text-red-200 text-xs">
+      ⚠️ {{ error_msg }}
+    </div>
+  {% endif %}
+
+  <!-- Paystack Transactions Table -->
+  <div class="portal-card overflow-hidden">
+    <div class="p-4 border-b border-slate-800 font-bold text-white text-sm">Live Paystack Transactions</div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+          <tr>
+            <th class="p-3">Reference</th>
+            <th class="p-3">Customer Email</th>
+            <th class="p-3">Amount</th>
+            <th class="p-3">Channel</th>
+            <th class="p-3">Gateway Status</th>
+            <th class="p-3">Paid At</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for tx in paystack_txs %}
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-3 font-mono text-blue-400 font-medium">{{ tx.reference }}</td>
+              <td class="p-3 font-medium text-slate-200">{{ tx.customer.email|default:"-" }}</td>
+              <td class="p-3 font-mono font-bold text-emerald-400">₦{{ tx.amount|default:0|stringformat:".2f" }}</td>
+              <td class="p-3 uppercase text-[10px] text-slate-400">{{ tx.channel|default:"card" }}</td>
+              <td class="p-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {% if tx.status == 'success' %}badge-success{% else %}badge-danger{% endif %}">
+                  {{ tx.status }}
+                </span>
+              </td>
+              <td class="p-3 text-slate-400">{{ tx.paid_at|default:tx.created_at }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="p-8 text-center text-slate-500">No Paystack transactions found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- System Payouts (CASHOUT) Table -->
+  <div class="portal-card overflow-hidden">
+    <div class="p-4 border-b border-slate-800 font-bold text-white text-sm">System Cashout Payouts</div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+          <tr>
+            <th class="p-3">Reference</th>
+            <th class="p-3">Type</th>
+            <th class="p-3">Amount</th>
+            <th class="p-3">Status</th>
+            <th class="p-3">Date</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for po in payouts %}
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-3 font-mono text-blue-400 font-medium">{{ po.reference }}</td>
+              <td class="p-3 uppercase text-purple-300 font-medium">{{ po.get_transaction_type_display }}</td>
+              <td class="p-3 font-mono font-bold text-emerald-400">₦{{ po.amount|floatformat:2 }}</td>
+              <td class="p-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {% if po.status == 'SUCCESS' %}badge-success{% else %}badge-warning{% endif %}">
+                  {{ po.status }}
+                </span>
+              </td>
+              <td class="p-3 text-slate-400">{{ po.created_at|date:"M d, H:i" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="p-8 text-center text-slate-500">No cashouts recorded.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

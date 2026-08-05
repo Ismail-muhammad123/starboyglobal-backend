@@ -8,8 +8,9 @@ from .models import (
     InternetService, EducationService, EducationVariation,
     DynamicVTUProvider, DynamicOperationConfig,
     DynamicProviderHeader, DynamicOperationHeader, DynamicOperationPayload,
-    ProviderServiceConfig
+    ProviderServiceConfig, AutoSyncSchedule, AutoSyncLog
 )
+
 
 from django.db.models import Sum, Count, F
 from django.contrib.admin import SimpleListFilter
@@ -668,11 +669,16 @@ class ServiceFallbackInline(admin.TabularInline):
     model = ServiceFallback
     extra = 1
 
+class ProviderServiceConfigInline(admin.StackedInline):
+    model = ProviderServiceConfig
+    extra = 0
+
 @admin.register(VTUProviderConfig)
 class VTUProviderConfigAdmin(admin.ModelAdmin):
     list_display = ('name', 'is_active', 'max_retries', 'auto_refund_on_failure', 'updated_at')
     list_filter = ('is_active',)
     search_fields = ('name',)
+    inlines = [ProviderServiceConfigInline]
     fieldsets = (
         ("Provider Status", {
             "fields": ("name", "is_active")
@@ -685,6 +691,7 @@ class VTUProviderConfigAdmin(admin.ModelAdmin):
             "fields": ("max_retries", "auto_refund_on_failure"),
         }),
     )
+
 
 @admin.register(ServiceRouting)
 class ServiceRoutingAdmin(admin.ModelAdmin):
@@ -701,4 +708,29 @@ class ProviderServiceConfigAdmin(admin.ModelAdmin):
     list_display = ('provider', 'service_type', 'catalogue_source', 'customer_margin_value', 'agent_margin_value', 'developer_margin_value')
     list_filter = ('service_type', 'catalogue_source', 'provider')
     search_fields = ('provider__name',)
+
+
+@admin.register(AutoSyncSchedule)
+class AutoSyncScheduleAdmin(admin.ModelAdmin):
+    list_display = ('name', 'provider', 'service_type', 'frequency', 'start_date_time', 'is_active', 'last_run', 'next_run')
+    list_filter = ('is_active', 'frequency', 'service_type', 'provider')
+    search_fields = ('name',)
+
+
+@admin.register(AutoSyncLog)
+class AutoSyncLogAdmin(admin.ModelAdmin):
+    list_display = ('schedule_name', 'provider_name', 'service_type', 'status', 'items_synced', 'started_at', 'duration_seconds')
+    list_filter = ('status', 'service_type', 'provider_name')
+    search_fields = ('schedule_name', 'provider_name', 'error_message')
+    readonly_fields = [field.name for field in AutoSyncLog._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
 
