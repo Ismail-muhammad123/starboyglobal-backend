@@ -43,13 +43,15 @@ class AutomationGlobalSettingsSerializer(serializers.Serializer):
     delayed_tx_timeout_minutes = serializers.IntegerField(min_value=1)
 
 class VariationPriceUpdateSerializer(serializers.Serializer):
-    selling_price = serializers.DecimalField(max_digits=10, decimal_places=2)
-    agent_price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    selling_price = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    agent_price = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    developer_price = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
 
 class BulkVariationPriceItemSerializer(serializers.Serializer):
     id = serializers.IntegerField()
-    selling_price = serializers.DecimalField(max_digits=10, decimal_places=2)
-    agent_price = serializers.DecimalField(max_digits=10, decimal_places=2)
+    selling_price = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    agent_price = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
+    developer_price = serializers.DecimalField(max_digits=10, decimal_places=2, required=False)
 
 class BulkVariationPriceUpdateSerializer(serializers.Serializer):
     variations = BulkVariationPriceItemSerializer(many=True)

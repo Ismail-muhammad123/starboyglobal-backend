@@ -1,4 +1,5 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, filters
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema
@@ -18,16 +19,21 @@ from admin_api.permissions import CanManageVTU
 class AdminBasePricingViewSet(viewsets.ModelViewSet):
     permission_classes = [CanManageVTU]
     http_method_names = ['get', 'post', 'patch', 'delete']
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
 
 @extend_schema(tags=["Admin Pricing & Plans"])
 class AdminAirtimeNetworkViewSet(AdminBasePricingViewSet):
     queryset = AirtimeNetwork.objects.all()
     serializer_class = AdminAirtimeNetworkSerializer
+    filterset_fields = ['provider', 'is_active']
+    search_fields = ['service_name', 'service_id']
 
 @extend_schema(tags=["Admin Pricing & Plans"])
 class AdminDataServiceViewSet(AdminBasePricingViewSet):
     queryset = DataService.objects.all()
     serializer_class = AdminDataServiceSerializer
+    filterset_fields = ['provider', 'is_active']
+    search_fields = ['service_name', 'service_id']
 
     @extend_schema(responses={200: AdminDataVariationSerializer(many=True)})
     @action(detail=True, methods=['get'])
@@ -41,11 +47,15 @@ class AdminDataServiceViewSet(AdminBasePricingViewSet):
 class AdminDataVariationViewSet(AdminBasePricingViewSet):
     queryset = DataVariation.objects.all()
     serializer_class = AdminDataVariationSerializer
+    filterset_fields = ['service', 'plan_type', 'is_active']
+    search_fields = ['name', 'variation_id']
 
 @extend_schema(tags=["Admin Pricing & Plans"])
 class AdminTVServiceViewSet(AdminBasePricingViewSet):
     queryset = TVService.objects.all()
     serializer_class = AdminTVServiceSerializer
+    filterset_fields = ['provider', 'is_active']
+    search_fields = ['service_name', 'service_id']
 
     @extend_schema(responses={200: AdminTVVariationSerializer(many=True)})
     @action(detail=True, methods=['get'])
@@ -59,11 +69,15 @@ class AdminTVServiceViewSet(AdminBasePricingViewSet):
 class AdminTVVariationViewSet(AdminBasePricingViewSet):
     queryset = TVVariation.objects.all()
     serializer_class = AdminTVVariationSerializer
+    filterset_fields = ['service', 'plan_type', 'is_active']
+    search_fields = ['name', 'variation_id']
 
 @extend_schema(tags=["Admin Pricing & Plans"])
 class AdminInternetServiceViewSet(AdminBasePricingViewSet):
     queryset = InternetService.objects.all()
     serializer_class = AdminInternetServiceSerializer
+    filterset_fields = ['provider', 'is_active']
+    search_fields = ['service_name', 'service_id']
 
     @extend_schema(responses={200: AdminInternetVariationSerializer(many=True)})
     @action(detail=True, methods=['get'])
@@ -77,11 +91,15 @@ class AdminInternetServiceViewSet(AdminBasePricingViewSet):
 class AdminInternetVariationViewSet(AdminBasePricingViewSet):
     queryset = InternetVariation.objects.all()
     serializer_class = AdminInternetVariationSerializer
+    filterset_fields = ['service', 'plan_type', 'is_active']
+    search_fields = ['name', 'variation_id']
 
 @extend_schema(tags=["Admin Pricing & Plans"])
 class AdminEducationServiceViewSet(AdminBasePricingViewSet):
     queryset = EducationService.objects.all()
     serializer_class = AdminEducationServiceSerializer
+    filterset_fields = ['provider', 'is_active']
+    search_fields = ['service_name', 'service_id']
 
     @extend_schema(responses={200: AdminEducationVariationSerializer(many=True)})
     @action(detail=True, methods=['get'])
@@ -95,11 +113,15 @@ class AdminEducationServiceViewSet(AdminBasePricingViewSet):
 class AdminEducationVariationViewSet(AdminBasePricingViewSet):
     queryset = EducationVariation.objects.all()
     serializer_class = AdminEducationVariationSerializer
+    filterset_fields = ['service', 'plan_type', 'is_active']
+    search_fields = ['name', 'variation_id']
 
 @extend_schema(tags=["Admin Pricing & Plans"])
 class AdminElectricityServiceViewSet(AdminBasePricingViewSet):
     queryset = ElectricityService.objects.all()
     serializer_class = AdminElectricityServiceSerializer
+    filterset_fields = ['provider', 'is_active']
+    search_fields = ['service_name', 'service_id']
 
     @extend_schema(responses={200: AdminElectricityVariationSerializer(many=True)})
     @action(detail=True, methods=['get'])
@@ -113,3 +135,5 @@ class AdminElectricityServiceViewSet(AdminBasePricingViewSet):
 class AdminElectricityVariationViewSet(AdminBasePricingViewSet):
     queryset = ElectricityVariation.objects.all()
     serializer_class = AdminElectricityVariationSerializer
+    filterset_fields = ['service', 'plan_type', 'is_active']
+    search_fields = ['name', 'variation_id']

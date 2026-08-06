@@ -346,8 +346,8 @@ class VariationUpdatePriceView(APIView):
     )
     def post(self, request, pk, service_type):
         models_map = {
-            'data': DataVariation, 'tv': TVVariation,
-            'internet': InternetVariation, 'education': EducationVariation
+            'data': DataVariation, 'airtime': AirtimeNetwork, 'tv': TVVariation,
+            'electricity': ElectricityVariation, 'internet': InternetVariation, 'education': EducationVariation
         }
         model = models_map.get(service_type)
         if not model: return Response({"error": "Invalid service type"}, status=400)
@@ -356,8 +356,9 @@ class VariationUpdatePriceView(APIView):
         serializer = VariationPriceUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
-        variation.selling_price = serializer.validated_data['selling_price']
-        variation.agent_price = serializer.validated_data['agent_price']
+        for field in ['selling_price', 'agent_price', 'developer_price']:
+            if field in serializer.validated_data:
+                setattr(variation, field, serializer.validated_data[field])
         variation.save()
         
         return Response({"status": "SUCCESS", "message": "Price updated."})
@@ -373,8 +374,8 @@ class BulkVariationUpdatePriceView(APIView):
     )
     def post(self, request, service_type):
         models_map = {
-            'data': DataVariation, 'tv': TVVariation,
-            'internet': InternetVariation, 'education': EducationVariation
+            'data': DataVariation, 'airtime': AirtimeNetwork, 'tv': TVVariation,
+            'electricity': ElectricityVariation, 'internet': InternetVariation, 'education': EducationVariation
         }
         model = models_map.get(service_type)
         if not model: return Response({"error": "Invalid service type"}, status=400)
@@ -384,10 +385,12 @@ class BulkVariationUpdatePriceView(APIView):
         
         with transaction.atomic():
             for item in serializer.validated_data['variations']:
-                model.objects.filter(id=item['id']).update(
-                    selling_price=item['selling_price'],
-                    agent_price=item['agent_price']
-                )
+                update_fields = {}
+                for field in ['selling_price', 'agent_price', 'developer_price']:
+                    if field in item:
+                        update_fields[field] = item[field]
+                if update_fields:
+                    model.objects.filter(id=item['id']).update(**update_fields)
         
         return Response({"status": "SUCCESS", "message": f"Bulk update for {service_type} variations completed."})
 

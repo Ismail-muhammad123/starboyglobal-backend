@@ -4,6 +4,8 @@
 
 All endpoints require authentication via Bearer token. Staff or superuser privileges are enforced through granular permission classes.
 
+> 💡 **Upgrading a Legacy Admin FE App?** Check out the step-by-step [Admin FE App API Update Guide](file:///c:/Users/Newton/Desktop/projects/starboy/starboyglobal-backend/ADMIN_FE_UPDATE_GUIDE.md) for quick integration of the latest Data Plans, Tier Margins, and Auto-Sync APIs.
+
 ---
 
 ## Table of Contents
