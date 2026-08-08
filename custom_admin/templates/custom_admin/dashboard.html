@@ -8,10 +8,23 @@
 <div class="space-y-6">
 
   <!-- TOP BAR: UNIFIED DATE FILTER & ACTIVE SCOPE INDICATOR -->
-  <div class="portal-card p-4 space-y-3">
-    <form method="GET" action="{% url 'portal:dashboard' %}" id="dashboard-filter-form" class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+  <div class="portal-card p-4 space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--border)] pb-3">
+      <div>
+        <h3 class="font-bold text-white text-sm">Dashboard Overview & Scope</h3>
+        <p class="text-xs text-slate-400 mt-0.5">Filter performance metrics across preset date scopes or a custom date range.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="px-3 py-1 rounded bg-blue-950/80 text-blue-300 border border-blue-800/60 font-bold font-mono text-xs">
+          📅 Filter: {{ active_filter_label }}
+        </span>
+      </div>
+    </div>
+
+    <form method="GET" action="{% url 'portal:dashboard' %}" id="dashboard-filter-form" class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
       
-      <!-- Preset buttons / dropdown -->
+      <!-- Preset buttons -->
       <div class="flex flex-wrap items-center gap-2 text-xs">
         <span class="text-slate-400 font-semibold text-[11px] uppercase mr-1">Date Scope:</span>
         <a href="?range=all" class="px-3 py-1.5 rounded-lg border font-semibold transition-colors {% if selected_range == 'all' or not selected_range %}bg-blue-600 border-blue-500 text-white shadow{% else %}bg-slate-800 border-slate-700 text-slate-300 hover:text-white{% endif %}">
@@ -36,9 +49,9 @@
         <input type="hidden" name="range" id="filter-range-input" value="{{ selected_range|default:'all' }}">
         
         <div class="flex items-center gap-1.5 text-xs">
-          <input type="date" name="date_from" value="{{ date_from }}" class="portal-input py-1 px-2 text-xs" placeholder="From Date" onchange="document.getElementById('filter-range-input').value='custom';">
+          <input type="date" name="date_from" value="{{ date_from }}" class="portal-input py-1.5 px-2 text-xs" placeholder="From Date" onchange="document.getElementById('filter-range-input').value='custom';">
           <span class="text-slate-500">to</span>
-          <input type="date" name="date_to" value="{{ date_to }}" class="portal-input py-1 px-2 text-xs" placeholder="To Date" onchange="document.getElementById('filter-range-input').value='custom';">
+          <input type="date" name="date_to" value="{{ date_to }}" class="portal-input py-1.5 px-2 text-xs" placeholder="To Date" onchange="document.getElementById('filter-range-input').value='custom';">
         </div>
 
         <button type="submit" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs transition-colors shadow">
@@ -51,20 +64,6 @@
         {% endif %}
       </div>
     </form>
-
-    <!-- Active Range Indicator Badge -->
-    <div class="flex items-center justify-between border-t border-[var(--border)] pt-2 text-xs">
-      <div class="flex items-center gap-2">
-        <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span class="text-slate-400 font-medium">Active Range Filter:</span>
-        <span class="px-2.5 py-0.5 rounded bg-blue-950/80 text-blue-300 border border-blue-800/60 font-bold font-mono text-[11px]">
-          📅 {{ active_filter_label }}
-        </span>
-      </div>
-      <div class="text-[11px] text-slate-500 hidden sm:block">
-        Filters Stats, Revenue/Profit Trend, Volume Share, and Transaction Counts.
-      </div>
-    </div>
   </div>
 
   <!-- ROW 1: STATS CARDS (4 PER ROW ON LARGE SCREENS) -->
@@ -89,7 +88,7 @@
         {% else %}Net Profit{% endif %}
       </div>
       <div class="text-lg font-bold text-emerald-400 mt-1">
-        ₦{{ purchases.profit_periods.monthly|default:0|floatformat:2|intcomma }}
+        ₦{{ purchases.total_profit|default:0|floatformat:2|intcomma }}
       </div>
       <div class="text-[10px] text-slate-400 mt-1 truncate">{{ active_filter_label }}</div>
     </div>
