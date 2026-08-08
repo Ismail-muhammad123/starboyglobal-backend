@@ -7,66 +7,6 @@
 {% block content %}
 <div class="space-y-6">
 
-  <!-- TOP BAR: UNIFIED DATE FILTER & ACTIVE SCOPE INDICATOR -->
-  <div class="portal-card p-4 space-y-3">
-    <form method="GET" action="{% url 'portal:dashboard' %}" id="dashboard-filter-form" class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-      
-      <!-- Preset buttons / dropdown -->
-      <div class="flex flex-wrap items-center gap-2 text-xs">
-        <span class="text-slate-400 font-semibold text-[11px] uppercase mr-1">Date Scope:</span>
-        <a href="?range=all" class="px-3 py-1.5 rounded-lg border font-semibold transition-colors {% if selected_range == 'all' or not selected_range %}bg-blue-600 border-blue-500 text-white shadow{% else %}bg-slate-800 border-slate-700 text-slate-300 hover:text-white{% endif %}">
-          All Time
-        </a>
-        <a href="?range=today" class="px-3 py-1.5 rounded-lg border font-semibold transition-colors {% if selected_range == 'today' %}bg-blue-600 border-blue-500 text-white shadow{% else %}bg-slate-800 border-slate-700 text-slate-300 hover:text-white{% endif %}">
-          Today
-        </a>
-        <a href="?range=this_week" class="px-3 py-1.5 rounded-lg border font-semibold transition-colors {% if selected_range == 'this_week' %}bg-blue-600 border-blue-500 text-white shadow{% else %}bg-slate-800 border-slate-700 text-slate-300 hover:text-white{% endif %}">
-          This Week
-        </a>
-        <a href="?range=this_month" class="px-3 py-1.5 rounded-lg border font-semibold transition-colors {% if selected_range == 'this_month' %}bg-blue-600 border-blue-500 text-white shadow{% else %}bg-slate-800 border-slate-700 text-slate-300 hover:text-white{% endif %}">
-          This Month
-        </a>
-        <a href="?range=this_year" class="px-3 py-1.5 rounded-lg border font-semibold transition-colors {% if selected_range == 'this_year' %}bg-blue-600 border-blue-500 text-white shadow{% else %}bg-slate-800 border-slate-700 text-slate-300 hover:text-white{% endif %}">
-          This Year
-        </a>
-      </div>
-
-      <!-- Custom Range Controls -->
-      <div class="flex flex-wrap items-center gap-2">
-        <input type="hidden" name="range" id="filter-range-input" value="{{ selected_range|default:'all' }}">
-        
-        <div class="flex items-center gap-1.5 text-xs">
-          <input type="date" name="date_from" value="{{ date_from }}" class="portal-input py-1 px-2 text-xs" placeholder="From Date" onchange="document.getElementById('filter-range-input').value='custom';">
-          <span class="text-slate-500">to</span>
-          <input type="date" name="date_to" value="{{ date_to }}" class="portal-input py-1 px-2 text-xs" placeholder="To Date" onchange="document.getElementById('filter-range-input').value='custom';">
-        </div>
-
-        <button type="submit" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-xs transition-colors shadow">
-          Apply Filter
-        </button>
-        {% if selected_range and selected_range != 'all' %}
-        <a href="{% url 'portal:dashboard' %}" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition-colors">
-          Reset
-        </a>
-        {% endif %}
-      </div>
-    </form>
-
-    <!-- Active Range Indicator Badge -->
-    <div class="flex items-center justify-between border-t border-[var(--border)] pt-2 text-xs">
-      <div class="flex items-center gap-2">
-        <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span class="text-slate-400 font-medium">Active Range Filter:</span>
-        <span class="px-2.5 py-0.5 rounded bg-blue-950/80 text-blue-300 border border-blue-800/60 font-bold font-mono text-[11px]">
-          📅 {{ active_filter_label }}
-        </span>
-      </div>
-      <div class="text-[11px] text-slate-500 hidden sm:block">
-        Filters Stats, Revenue/Profit Trend, Volume Share, and Transaction Counts.
-      </div>
-    </div>
-  </div>
-
   <!-- ROW 1: STATS CARDS (4 PER ROW ON LARGE SCREENS) -->
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
@@ -79,19 +19,13 @@
       </div>
     </div>
 
-    <!-- Card 2: Profit (Period / Filtered) -->
+    <!-- Card 2: Net Profit -->
     <div class="portal-card p-4 border-l-4 border-l-emerald-500">
-      <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">
-        {% if selected_range == 'today' %}Profit Today
-        {% elif selected_range == 'this_week' %}Profit This Week
-        {% elif selected_range == 'this_month' %}Profit This Month
-        {% elif selected_range == 'this_year' %}Profit This Year
-        {% else %}Net Profit{% endif %}
-      </div>
+      <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Monthly Net Profit</div>
       <div class="text-lg font-bold text-emerald-400 mt-1">
         ₦{{ purchases.profit_periods.monthly|default:0|floatformat:2|intcomma }}
       </div>
-      <div class="text-[10px] text-slate-400 mt-1 truncate">{{ active_filter_label }}</div>
+      <div class="text-[10px] text-slate-400 mt-1">Current Month Profit</div>
     </div>
 
     <!-- Card 3: User Wallets Balance -->
@@ -155,12 +89,12 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
       <div>
         <h3 class="text-base font-bold text-white">Revenue & Profit Performance Trend</h3>
-        <p class="text-xs text-[var(--text-muted)]">Daily transaction volume vs net profit (matching scope: <span id="revenue-chart-scope-label" class="text-blue-300 font-semibold">{{ active_filter_label }}</span>)</p>
+        <p class="text-xs text-[var(--text-muted)]">Daily transaction volume vs net profit</p>
       </div>
       <div class="flex items-center gap-2">
         <button id="btn-chart-7d" class="btn-chart-range px-3 py-1 text-xs rounded bg-slate-800 text-slate-300 hover:text-white border border-slate-700 font-semibold transition-colors"
           onclick="loadRevenueChart(7)">7 Days</button>
-        <button id="btn-chart-30d" class="btn-chart-range px-3 py-1 text-xs rounded bg-slate-800 text-slate-300 hover:text-white border border-slate-700 font-semibold transition-colors"
+        <button id="btn-chart-30d" class="btn-chart-range px-3 py-1 text-xs rounded bg-blue-600 text-white font-bold shadow transition-colors"
           onclick="loadRevenueChart(30)">30 Days</button>
         <button id="btn-chart-90d" class="btn-chart-range px-3 py-1 text-xs rounded bg-slate-800 text-slate-300 hover:text-white border border-slate-700 font-semibold transition-colors"
           onclick="loadRevenueChart(90)">90 Days</button>
@@ -178,7 +112,6 @@
     <div class="portal-card p-5">
       <div class="flex items-center justify-between mb-1">
         <h3 class="text-sm font-bold text-white">Service Type Volume Share</h3>
-        <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 font-mono">{{ active_filter_label }}</span>
       </div>
       <p class="text-xs text-[var(--text-muted)] mb-4">Volume distribution across service types</p>
       <div class="h-64 flex items-center justify-center">
@@ -190,7 +123,6 @@
     <div class="portal-card p-5">
       <div class="flex items-center justify-between mb-1">
         <h3 class="text-sm font-bold text-white">Transactions Count Status</h3>
-        <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 font-mono">{{ active_filter_label }}</span>
       </div>
       <p class="text-xs text-[var(--text-muted)] mb-4">Success vs Failed vs Pending</p>
       <div class="grid grid-cols-3 gap-4 mb-4 text-center">
@@ -353,31 +285,23 @@
 <script>
   let revenueChart = null;
 
-  async function loadRevenueChart(overrideDays = null) {
+  async function loadRevenueChart(days = 30) {
     try {
-      let query = window.location.search;
-      if (overrideDays) {
-        query = `?days=${overrideDays}`;
-      }
-      const res = await fetch(`/portal/api/chart/revenue/${query}`);
-      const data = await res.json();
-      const ctx = document.getElementById('revenueTrendChart').getContext('2d');
-
-      if (data.active_filter_label) {
-        document.getElementById('revenue-chart-scope-label').textContent = data.active_filter_label;
-      }
-
       // Update button highlights
       document.querySelectorAll('.btn-chart-range').forEach(btn => {
         btn.className = "btn-chart-range px-3 py-1 text-xs rounded bg-slate-800 text-slate-300 hover:text-white border border-slate-700 font-semibold transition-colors";
       });
-      if (overrideDays === 7) {
+      if (days === 7) {
         document.getElementById('btn-chart-7d').className = "btn-chart-range px-3 py-1 text-xs rounded bg-blue-600 text-white font-bold shadow transition-colors";
-      } else if (overrideDays === 30) {
+      } else if (days === 30) {
         document.getElementById('btn-chart-30d').className = "btn-chart-range px-3 py-1 text-xs rounded bg-blue-600 text-white font-bold shadow transition-colors";
-      } else if (overrideDays === 90) {
+      } else if (days === 90) {
         document.getElementById('btn-chart-90d').className = "btn-chart-range px-3 py-1 text-xs rounded bg-blue-600 text-white font-bold shadow transition-colors";
       }
+
+      const res = await fetch(`/portal/api/chart/revenue/?days=${days}`);
+      const data = await res.json();
+      const ctx = document.getElementById('revenueTrendChart').getContext('2d');
 
       if (revenueChart) revenueChart.destroy();
       revenueChart = PortalCharts.createLineChart(ctx, data.labels, data.datasets);
@@ -387,7 +311,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    loadRevenueChart();
+    loadRevenueChart(30);
 
     // Service Type Volume Share Bar / Doughnut Chart
     const totalsByService = JSON.parse(document.getElementById('totals-by-service-data').textContent || '{}');
