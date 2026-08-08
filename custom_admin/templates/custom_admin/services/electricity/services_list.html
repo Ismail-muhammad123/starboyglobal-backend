@@ -42,7 +42,7 @@
 
   <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
     {% for s in services %}
-      <div onclick="window.location.href='{% url 'portal:electricity_service_detail' s.pk %}'" class="portal-card p-5 space-y-4 hover:border-amber-500/50 cursor-pointer transition-colors">
+      <div onclick="window.location.href='{% url "portal:electricity_service_detail" s.pk %}'" class="portal-card p-5 space-y-4 hover:border-amber-500/50 cursor-pointer transition-colors">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-lg bg-amber-600/20 text-amber-400 font-bold text-base flex items-center justify-center border border-amber-500/30">⚡</div>

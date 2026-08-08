@@ -369,7 +369,7 @@
           </thead>
           <tbody class="divide-y divide-slate-800">
             {% for f in alerts.failed_transactions %}
-            <tr class="hover:bg-slate-800/40 cursor-pointer transition-colors" onclick="window.location.href='{% url 'portal:purchases_detail' f.id %}'">
+            <tr class="hover:bg-slate-800/40 cursor-pointer transition-colors" onclick="window.location.href='{% url "portal:purchases_detail" f.id %}'">
               <td class="p-2 font-mono text-blue-400 hover:underline">
                 <a href="{% url 'portal:purchases_detail' f.id %}">{{ f.ref }}</a>
               </td>
