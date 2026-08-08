@@ -5,62 +5,60 @@
 {% block page_title %}Dashboard Overview{% endblock %}
 
 {% block content %}
-<div class="space-y-8">
+<div class="space-y-6">
 
   <!-- ==================================================================== -->
-  <!-- SECTION 1: FINANCIAL & SYSTEM STATISTICS (INDEPENDENT FILTER)       -->
+  <!-- SECTION 1: FINANCIAL & SYSTEM STATISTICS (UNIFIED CARD CONTAINER)   -->
   <!-- ==================================================================== -->
-  <div class="space-y-3">
+  <div class="portal-card p-5 space-y-4 border-l-4 border-l-blue-500">
     
-    <!-- Section Header & Independent Filter Bar -->
-    <div class="portal-card p-4 space-y-3 border-l-4 border-l-blue-500">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div>
-          <h3 class="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            <span>📊</span> Financial & System Statistics
-          </h3>
-          <p class="text-xs text-slate-400 mt-0.5">Key balance & transaction volume metrics (Independent section filter)</p>
-        </div>
-
-        <!-- Filter Controls -->
-        <div class="flex flex-wrap items-center gap-2 text-xs">
-          <!-- Preset buttons -->
-          <div class="flex flex-wrap items-center gap-1.5 bg-slate-900/80 p-1 rounded-lg border border-slate-800">
-            <button onclick="filterStatsSection('all')" id="stats-preset-all" class="stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors bg-blue-600 text-white">All Time</button>
-            <button onclick="filterStatsSection('today')" id="stats-preset-today" class="stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">Today</button>
-            <button onclick="filterStatsSection('this_week')" id="stats-preset-this_week" class="stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Week</button>
-            <button onclick="filterStatsSection('this_month')" id="stats-preset-this_month" class="stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Month</button>
-            <button onclick="filterStatsSection('this_year')" id="stats-preset-this_year" class="stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Year</button>
-          </div>
-
-          <!-- Date Inputs -->
-          <form onsubmit="filterStatsCustom(event)" class="flex items-center gap-1">
-            <input type="date" id="stats-date-from" class="portal-input py-1 px-2 text-xs" placeholder="From">
-            <span class="text-slate-500 text-[10px]">to</span>
-            <input type="date" id="stats-date-to" class="portal-input py-1 px-2 text-xs" placeholder="To">
-            <button type="submit" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors">Apply</button>
-          </form>
-        </div>
+    <!-- Section Header & Filter Controls -->
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
+      <div>
+        <h3 class="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
+          <span>📊</span> Financial & System Statistics
+        </h3>
+        <p class="text-xs text-slate-400 mt-0.5">Key balance & transaction volume metrics</p>
       </div>
 
-      <!-- Scope Indicator -->
-      <div class="flex items-center justify-between border-t border-[var(--border)] pt-2 text-xs">
-        <div class="flex items-center gap-2">
-          <span class="inline-block w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
-          <span class="text-slate-400 text-[11px]">Stats Filter Scope:</span>
-          <span id="stats-scope-badge" class="px-2.5 py-0.5 rounded bg-blue-950/80 text-blue-300 border border-blue-800/60 font-bold font-mono text-[11px]">
-            📅 All Time
-          </span>
+      <!-- Filter Controls -->
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <!-- Preset buttons -->
+        <div class="flex flex-wrap items-center gap-1 bg-slate-900/90 p-1 rounded-lg border border-slate-800">
+          <button onclick="filterStatsSection('all')" id="stats-preset-all" class="stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors bg-blue-600 text-white">All Time</button>
+          <button onclick="filterStatsSection('today')" id="stats-preset-today" class="stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">Today</button>
+          <button onclick="filterStatsSection('this_week')" id="stats-preset-this_week" class="stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Week</button>
+          <button onclick="filterStatsSection('this_month')" id="stats-preset-this_month" class="stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Month</button>
+          <button onclick="filterStatsSection('this_year')" id="stats-preset-this_year" class="stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Year</button>
         </div>
-        <span id="stats-loading-spinner" class="text-[11px] text-blue-400 hidden animate-pulse">Updating metrics…</span>
+
+        <!-- Date Inputs -->
+        <form onsubmit="filterStatsCustom(event)" class="flex items-center gap-1">
+          <input type="date" id="stats-date-from" class="portal-input py-1 px-2 text-xs" placeholder="From">
+          <span class="text-slate-500 text-[10px]">to</span>
+          <input type="date" id="stats-date-to" class="portal-input py-1 px-2 text-xs" placeholder="To">
+          <button type="submit" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors">Apply</button>
+        </form>
       </div>
     </div>
 
+    <!-- Scope Badge & Loading Indicator -->
+    <div class="flex items-center justify-between text-xs text-slate-400">
+      <div class="flex items-center gap-2">
+        <span class="inline-block w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+        <span>Active Scope:</span>
+        <span id="stats-scope-badge" class="px-2 py-0.5 rounded bg-blue-950/80 text-blue-300 border border-blue-800/60 font-bold font-mono text-[11px]">
+          📅 All Time
+        </span>
+      </div>
+      <span id="stats-loading-spinner" class="text-[11px] text-blue-400 hidden animate-pulse">Updating stats…</span>
+    </div>
+
     <!-- STATS CARDS GRID (4 PER ROW ON LARGE SCREENS) -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
 
       <!-- Card 1: Total Volume -->
-      <div class="portal-card p-4">
+      <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-colors">
         <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Total Volume</div>
         <div id="card-total-volume" class="text-lg font-bold text-white mt-1">₦{{ purchases.total_volume|default:0|floatformat:2|intcomma }}</div>
         <div class="text-[10px] text-emerald-400 mt-1 flex items-center gap-1">
@@ -69,7 +67,7 @@
       </div>
 
       <!-- Card 2: Net Profit -->
-      <div class="portal-card p-4 border-l-4 border-l-emerald-500">
+      <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 border-l-4 border-l-emerald-500 hover:border-slate-700 transition-colors">
         <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Net Profit</div>
         <div id="card-net-profit" class="text-lg font-bold text-emerald-400 mt-1">
           ₦{{ purchases.profit_periods.monthly|default:0|floatformat:2|intcomma }}
@@ -78,7 +76,7 @@
       </div>
 
       <!-- Card 3: User Wallets Balance -->
-      <div class="portal-card p-4 border-l-4 border-l-purple-500">
+      <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 border-l-4 border-l-purple-500 hover:border-slate-700 transition-colors">
         <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">User Wallets</div>
         <div class="text-lg font-bold text-purple-400 mt-1">
           ₦{{ wallets.total_balance|default:0|floatformat:2|intcomma }}
@@ -87,7 +85,7 @@
       </div>
 
       <!-- Card 4: Total Deposits (Inflow) -->
-      <div class="portal-card p-4 border-l-4 border-l-blue-500">
+      <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 border-l-4 border-l-blue-500 hover:border-slate-700 transition-colors">
         <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Total Deposits</div>
         <div id="card-total-deposits" class="text-lg font-bold text-teal-400 mt-1">
           ₦{{ financial.total_deposits|default:0|floatformat:2|intcomma }}
@@ -96,7 +94,7 @@
       </div>
 
       <!-- Card 5: Paystack Balance -->
-      <div class="portal-card p-4">
+      <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-colors">
         <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Paystack Balance</div>
         <div class="text-lg font-bold text-cyan-400 mt-1">
           ₦{{ financial.paystack_balance|default:0|floatformat:2|intcomma }}
@@ -105,7 +103,7 @@
       </div>
 
       <!-- Card 6: VTU Provider Balance -->
-      <div class="portal-card p-4">
+      <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-colors">
         <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">VTU Balance</div>
         <div class="text-lg font-bold text-amber-400 mt-1">
           ₦{{ stats.provider_balances.vtu|default:0|floatformat:2|intcomma }}
@@ -114,7 +112,7 @@
       </div>
 
       <!-- Card 7: Total Withdrawals -->
-      <div class="portal-card p-4">
+      <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-colors">
         <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Total Withdrawals</div>
         <div id="card-total-withdrawals" class="text-lg font-bold text-red-400 mt-1">
           ₦{{ financial.total_withdrawals|default:0|floatformat:2|intcomma }}
@@ -123,7 +121,7 @@
       </div>
 
       <!-- Card 8: Total Users -->
-      <div class="portal-card p-4">
+      <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-colors">
         <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Total Users</div>
         <div class="text-lg font-bold text-indigo-400 mt-1">
           {{ users.total|default:0|intcomma }}
@@ -139,8 +137,8 @@
   <!-- ==================================================================== -->
   <!-- SECTION 2: REVENUE & PROFIT PERFORMANCE TREND CHART                 -->
   <!-- ==================================================================== -->
-  <div class="portal-card p-5">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+  <div class="portal-card p-5 space-y-4">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
       <div>
         <h3 class="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
           <span>📈</span> Revenue & Profit Performance Trend
@@ -163,59 +161,57 @@
 
 
   <!-- ==================================================================== -->
-  <!-- SECTION 3: SERVICE VOLUME & TRANSACTIONS (INDEPENDENT FILTER)       -->
+  <!-- SECTION 3: SERVICE VOLUME & TRANSACTIONS (UNIFIED CARD CONTAINER)   -->
   <!-- ==================================================================== -->
-  <div class="space-y-4">
+  <div class="portal-card p-5 space-y-4 border-l-4 border-l-purple-500">
 
-    <!-- Section Header & Independent Filter Bar -->
-    <div class="portal-card p-4 space-y-3 border-l-4 border-l-purple-500">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div>
-          <h3 class="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
-            <span>🍕</span> Service Volume Share & Transaction Status
-          </h3>
-          <p class="text-xs text-slate-400 mt-0.5">Breakdown by VTU service type & status counts (Independent section filter)</p>
-        </div>
-
-        <!-- Filter Controls -->
-        <div class="flex flex-wrap items-center gap-2 text-xs">
-          <!-- Preset buttons -->
-          <div class="flex flex-wrap items-center gap-1.5 bg-slate-900/80 p-1 rounded-lg border border-slate-800">
-            <button onclick="filterServiceSection('all')" id="service-preset-all" class="service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors bg-blue-600 text-white">All Time</button>
-            <button onclick="filterServiceSection('today')" id="service-preset-today" class="service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">Today</button>
-            <button onclick="filterServiceSection('this_week')" id="service-preset-this_week" class="service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Week</button>
-            <button onclick="filterServiceSection('this_month')" id="service-preset-this_month" class="service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Month</button>
-            <button onclick="filterServiceSection('this_year')" id="service-preset-this_year" class="service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Year</button>
-          </div>
-
-          <!-- Date Inputs -->
-          <form onsubmit="filterServiceCustom(event)" class="flex items-center gap-1">
-            <input type="date" id="service-date-from" class="portal-input py-1 px-2 text-xs" placeholder="From">
-            <span class="text-slate-500 text-[10px]">to</span>
-            <input type="date" id="service-date-to" class="portal-input py-1 px-2 text-xs" placeholder="To">
-            <button type="submit" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors">Apply</button>
-          </form>
-        </div>
+    <!-- Section Header & Filter Controls -->
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
+      <div>
+        <h3 class="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
+          <span>🍕</span> Service Volume Share & Transaction Status
+        </h3>
+        <p class="text-xs text-slate-400 mt-0.5">Breakdown by VTU service type & status counts</p>
       </div>
 
-      <!-- Scope Indicator -->
-      <div class="flex items-center justify-between border-t border-[var(--border)] pt-2 text-xs">
-        <div class="flex items-center gap-2">
-          <span class="inline-block w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
-          <span class="text-slate-400 text-[11px]">Service Scope:</span>
-          <span id="service-scope-badge" class="px-2.5 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800/60 font-bold font-mono text-[11px]">
-            📅 All Time
-          </span>
+      <!-- Filter Controls -->
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <!-- Preset buttons -->
+        <div class="flex flex-wrap items-center gap-1 bg-slate-900/90 p-1 rounded-lg border border-slate-800">
+          <button onclick="filterServiceSection('all')" id="service-preset-all" class="service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors bg-blue-600 text-white">All Time</button>
+          <button onclick="filterServiceSection('today')" id="service-preset-today" class="service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">Today</button>
+          <button onclick="filterServiceSection('this_week')" id="service-preset-this_week" class="service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Week</button>
+          <button onclick="filterServiceSection('this_month')" id="service-preset-this_month" class="service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Month</button>
+          <button onclick="filterServiceSection('this_year')" id="service-preset-this_year" class="service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Year</button>
         </div>
-        <span id="service-loading-spinner" class="text-[11px] text-purple-400 hidden animate-pulse">Updating breakdown…</span>
+
+        <!-- Date Inputs -->
+        <form onsubmit="filterServiceCustom(event)" class="flex items-center gap-1">
+          <input type="date" id="service-date-from" class="portal-input py-1 px-2 text-xs" placeholder="From">
+          <span class="text-slate-500 text-[10px]">to</span>
+          <input type="date" id="service-date-to" class="portal-input py-1 px-2 text-xs" placeholder="To">
+          <button type="submit" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors">Apply</button>
+        </form>
       </div>
     </div>
 
-    <!-- Charts Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+    <!-- Scope Badge & Loading Indicator -->
+    <div class="flex items-center justify-between text-xs text-slate-400">
+      <div class="flex items-center gap-2">
+        <span class="inline-block w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+        <span>Active Scope:</span>
+        <span id="service-scope-badge" class="px-2 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800/60 font-bold font-mono text-[11px]">
+          📅 All Time
+        </span>
+      </div>
+      <span id="service-loading-spinner" class="text-[11px] text-purple-400 hidden animate-pulse">Updating breakdown…</span>
+    </div>
+
+    <!-- Inner Charts Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 pt-1">
 
       <!-- Service Type Volume Share -->
-      <div class="portal-card p-5">
+      <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80">
         <div class="mb-3">
           <h4 class="text-sm font-bold text-white">Service Type Volume Share</h4>
           <p class="text-xs text-[var(--text-muted)]">Volume distribution across service types</p>
@@ -226,7 +222,7 @@
       </div>
 
       <!-- Transactions Count Status -->
-      <div class="portal-card p-5">
+      <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80">
         <div class="mb-3">
           <h4 class="text-sm font-bold text-white">Transactions Count Status</h4>
           <p class="text-xs text-[var(--text-muted)]">Success vs Failed vs Pending</p>
