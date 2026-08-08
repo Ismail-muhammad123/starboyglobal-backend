@@ -15,6 +15,10 @@ from support.models import SupportTicket
 User = get_user_model()
 
 
+from django.db.models import F, Sum, Q, FloatField, ExpressionWrapper
+from django.db.models.functions import Cast
+
+
 class SummaryDashboard(Wallet):
     """
     A proxy model that doesn't store data — it aggregates statistics
@@ -26,7 +30,6 @@ class SummaryDashboard(Wallet):
         verbose_name = "Summary Dashboard"
         verbose_name_plural = "Summary Dashboard"
 
-    # ------------------------------------------------------------------
     # ------------------------------------------------------------------
     # helpers
     # ------------------------------------------------------------------
@@ -40,12 +43,37 @@ class SummaryDashboard(Wallet):
         
         if stored_profit == 0 and qs.exists():
             profit = 0.0
-            profit += float(qs.filter(purchase_type='data', data_variation__isnull=False).annotate(p=F('amount') - F('data_variation__cost_price')).aggregate(total=Sum('p'))['total'] or 0)
-            profit += float(qs.filter(purchase_type='tv', tv_variation__isnull=False).annotate(p=F('amount') - F('tv_variation__cost_price')).aggregate(total=Sum('p'))['total'] or 0)
-            profit += float(qs.filter(purchase_type='electricity', electricity_variation__isnull=False).annotate(p=F('amount') - F('electricity_variation__cost_price')).aggregate(total=Sum('p'))['total'] or 0)
-            profit += float(qs.filter(purchase_type='internet', internet_variation__isnull=False).annotate(p=F('amount') - F('internet_variation__cost_price')).aggregate(total=Sum('p'))['total'] or 0)
-            profit += float(qs.filter(purchase_type='education', education_variation__isnull=False).annotate(p=F('amount') - F('education_variation__cost_price')).aggregate(total=Sum('p'))['total'] or 0)
-            profit += float(qs.filter(purchase_type='airtime', airtime_service__isnull=False).annotate(p=F('amount') * F('airtime_service__discount') / 100.0).aggregate(total=Sum('p'))['total'] or 0)
+            profit += float(
+                qs.filter(purchase_type='data', data_variation__isnull=False)
+                .annotate(p=ExpressionWrapper(F('amount') - F('data_variation__cost_price'), output_field=FloatField()))
+                .aggregate(total=Sum('p'))['total'] or 0
+            )
+            profit += float(
+                qs.filter(purchase_type='tv', tv_variation__isnull=False)
+                .annotate(p=ExpressionWrapper(F('amount') - F('tv_variation__cost_price'), output_field=FloatField()))
+                .aggregate(total=Sum('p'))['total'] or 0
+            )
+            profit += float(
+                qs.filter(purchase_type='electricity', electricity_variation__isnull=False)
+                .annotate(p=ExpressionWrapper(F('amount') - F('electricity_variation__cost_price'), output_field=FloatField()))
+                .aggregate(total=Sum('p'))['total'] or 0
+            )
+            profit += float(
+                qs.filter(purchase_type='internet', internet_variation__isnull=False)
+                .annotate(p=ExpressionWrapper(F('amount') - F('internet_variation__cost_price'), output_field=FloatField()))
+                .aggregate(total=Sum('p'))['total'] or 0
+            )
+            profit += float(
+                qs.filter(purchase_type='education', education_variation__isnull=False)
+                .annotate(p=ExpressionWrapper(F('amount') - F('education_variation__cost_price'), output_field=FloatField()))
+                .aggregate(total=Sum('p'))['total'] or 0
+            )
+            profit += float(
+                qs.filter(purchase_type='airtime', airtime_service__isnull=False)
+                .annotate(disc_num=Cast(F('airtime_service__discount'), output_field=FloatField()))
+                .annotate(p=ExpressionWrapper(F('amount') * F('disc_num') / 100.0, output_field=FloatField()))
+                .aggregate(total=Sum('p'))['total'] or 0
+            )
             return profit
 
         return stored_profit
@@ -60,27 +88,28 @@ class SummaryDashboard(Wallet):
 
         commission += float(
             agent_purchases.filter(purchase_type='data', data_variation__isnull=False)
-            .annotate(c=F('amount') - F('data_variation__agent_price'))
+            .annotate(c=ExpressionWrapper(F('amount') - F('data_variation__agent_price'), output_field=FloatField()))
             .aggregate(total=Sum('c'))['total'] or 0
         )
         commission += float(
             agent_purchases.filter(purchase_type='tv', tv_variation__isnull=False)
-            .annotate(c=F('amount') - F('tv_variation__agent_price'))
+            .annotate(c=ExpressionWrapper(F('amount') - F('tv_variation__agent_price'), output_field=FloatField()))
             .aggregate(total=Sum('c'))['total'] or 0
         )
         commission += float(
             agent_purchases.filter(purchase_type='internet', internet_variation__isnull=False)
-            .annotate(c=F('amount') - F('internet_variation__agent_price'))
+            .annotate(c=ExpressionWrapper(F('amount') - F('internet_variation__agent_price'), output_field=FloatField()))
             .aggregate(total=Sum('c'))['total'] or 0
         )
         commission += float(
             agent_purchases.filter(purchase_type='education', education_variation__isnull=False)
-            .annotate(c=F('amount') - F('education_variation__agent_price'))
+            .annotate(c=ExpressionWrapper(F('amount') - F('education_variation__agent_price'), output_field=FloatField()))
             .aggregate(total=Sum('c'))['total'] or 0
         )
         commission += float(
             agent_purchases.filter(purchase_type='airtime', airtime_service__isnull=False)
-            .annotate(c=F('amount') * F('airtime_service__agent_discount') / 100.0)
+            .annotate(disc_num=Cast(F('airtime_service__agent_discount'), output_field=FloatField()))
+            .annotate(c=ExpressionWrapper(F('amount') * F('disc_num') / 100.0, output_field=FloatField()))
             .aggregate(total=Sum('c'))['total'] or 0
         )
 
