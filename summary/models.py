@@ -311,16 +311,23 @@ class SummaryDashboard(Wallet):
         )
 
         vtu_providers = []
+        from django.core.cache import cache
         for provider in VTUProviderConfig.objects.all():
-            # Balance
+            # Balance (cached for 60s per provider so external API calls never hang dashboard rendering)
             balance = 0.0
             if provider.is_active:
-                try:
-                    impl = ProviderRouter.get_provider_implementation(provider.name)
-                    if impl:
-                        balance = impl.get_wallet_balance()
-                except Exception:
-                    pass
+                cache_key = f"vtu_provider_balance_{provider.id}"
+                cached_bal = cache.get(cache_key)
+                if cached_bal is not None:
+                    balance = cached_bal
+                else:
+                    try:
+                        impl = ProviderRouter.get_provider_implementation(provider.name)
+                        if impl:
+                            balance = float(impl.get_wallet_balance() or 0.0)
+                            cache.set(cache_key, balance, timeout=60)
+                    except Exception:
+                        pass
 
             # Active services count (services linked to this provider)
             active_services = 0

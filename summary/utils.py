@@ -20,17 +20,22 @@ def get_api_wallet_balance():
     return 0.0
 
 def get_paystack_balance():
+    from django.core.cache import cache
+    cached_bal = cache.get("paystack_api_balance")
+    if cached_bal is not None:
+        return cached_bal
+
     gateway = PaystackGateway()
     try:
         url = f"{gateway.base_url}/balance"
-        response = requests.get(url, headers=gateway.headers)
+        response = requests.get(url, headers=gateway.headers, timeout=3)
         if response.ok:
             data = response.json().get("data", [])
             for item in data:
                 if item.get("currency") == "NGN":
-                    return (float(item.get("balance", 0)) / 100) + 40000
-                    # return (float(item.get("balance", 0)) / 100)
-
+                    bal = (float(item.get("balance", 0)) / 100) + 40000
+                    cache.set("paystack_api_balance", bal, timeout=60)
+                    return bal
         return 0.0
     except Exception:
         return 0.0

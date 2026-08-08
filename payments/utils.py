@@ -29,7 +29,7 @@ class PaystackGateway:
 
     def _post(self, endpoint: str, payload: dict) -> Dict[str, Any]:
         url = f"{self.base_url}{endpoint}"
-        response = requests.post(url, headers=self.headers, json=payload)
+        response = requests.post(url, headers=self.headers, json=payload, timeout=8)
         data = response.json()
         if not response.ok:
             raise Exception(data.get("message", "Paystack request failed"))
@@ -37,7 +37,7 @@ class PaystackGateway:
 
     def _get(self, endpoint: str) -> Dict[str, Any]:
         url = f"{self.base_url}{endpoint}"
-        response = requests.get(url, headers=self.headers)
+        response = requests.get(url, headers=self.headers, timeout=8)
         data = response.json()
         if not response.ok:
             raise Exception(data.get("message", "Paystack request failed"))
