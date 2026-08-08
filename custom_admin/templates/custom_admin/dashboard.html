@@ -5,91 +5,147 @@
 {% block page_title %}Dashboard Overview{% endblock %}
 
 {% block content %}
-<div class="space-y-6">
+<div class="space-y-8">
 
-  <!-- ROW 1: STATS CARDS (4 PER ROW ON LARGE SCREENS) -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+  <!-- ==================================================================== -->
+  <!-- SECTION 1: FINANCIAL & SYSTEM STATISTICS (INDEPENDENT FILTER)       -->
+  <!-- ==================================================================== -->
+  <div class="space-y-3">
+    
+    <!-- Section Header & Independent Filter Bar -->
+    <div class="portal-card p-4 space-y-3 border-l-4 border-l-blue-500">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div>
+          <h3 class="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <span>📊</span> Financial & System Statistics
+          </h3>
+          <p class="text-xs text-slate-400 mt-0.5">Key balance & transaction volume metrics (Independent section filter)</p>
+        </div>
 
-    <!-- Card 1: Total Volume -->
-    <div class="portal-card p-4">
-      <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Total Volume</div>
-      <div class="text-lg font-bold text-white mt-1">₦{{ purchases.total_volume|default:0|floatformat:2|intcomma }}</div>
-      <div class="text-[10px] text-emerald-400 mt-1 flex items-center gap-1">
-        <span>✓</span> Successful Transactions
+        <!-- Filter Controls -->
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+          <!-- Preset buttons -->
+          <div class="flex flex-wrap items-center gap-1.5 bg-slate-900/80 p-1 rounded-lg border border-slate-800">
+            <button onclick="filterStatsSection('all')" id="stats-preset-all" class="stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors bg-blue-600 text-white">All Time</button>
+            <button onclick="filterStatsSection('today')" id="stats-preset-today" class="stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">Today</button>
+            <button onclick="filterStatsSection('this_week')" id="stats-preset-this_week" class="stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Week</button>
+            <button onclick="filterStatsSection('this_month')" id="stats-preset-this_month" class="stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Month</button>
+            <button onclick="filterStatsSection('this_year')" id="stats-preset-this_year" class="stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Year</button>
+          </div>
+
+          <!-- Date Inputs -->
+          <form onsubmit="filterStatsCustom(event)" class="flex items-center gap-1">
+            <input type="date" id="stats-date-from" class="portal-input py-1 px-2 text-xs" placeholder="From">
+            <span class="text-slate-500 text-[10px]">to</span>
+            <input type="date" id="stats-date-to" class="portal-input py-1 px-2 text-xs" placeholder="To">
+            <button type="submit" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors">Apply</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Scope Indicator -->
+      <div class="flex items-center justify-between border-t border-[var(--border)] pt-2 text-xs">
+        <div class="flex items-center gap-2">
+          <span class="inline-block w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
+          <span class="text-slate-400 text-[11px]">Stats Filter Scope:</span>
+          <span id="stats-scope-badge" class="px-2.5 py-0.5 rounded bg-blue-950/80 text-blue-300 border border-blue-800/60 font-bold font-mono text-[11px]">
+            📅 All Time
+          </span>
+        </div>
+        <span id="stats-loading-spinner" class="text-[11px] text-blue-400 hidden animate-pulse">Updating metrics…</span>
       </div>
     </div>
 
-    <!-- Card 2: Net Profit -->
-    <div class="portal-card p-4 border-l-4 border-l-emerald-500">
-      <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Monthly Net Profit</div>
-      <div class="text-lg font-bold text-emerald-400 mt-1">
-        ₦{{ purchases.profit_periods.monthly|default:0|floatformat:2|intcomma }}
-      </div>
-      <div class="text-[10px] text-slate-400 mt-1">Current Month Profit</div>
-    </div>
+    <!-- STATS CARDS GRID (4 PER ROW ON LARGE SCREENS) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
-    <!-- Card 3: User Wallets Balance -->
-    <div class="portal-card p-4 border-l-4 border-l-purple-500">
-      <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">User Wallets</div>
-      <div class="text-lg font-bold text-purple-400 mt-1">
-        ₦{{ wallets.total_balance|default:0|floatformat:2|intcomma }}
+      <!-- Card 1: Total Volume -->
+      <div class="portal-card p-4">
+        <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Total Volume</div>
+        <div id="card-total-volume" class="text-lg font-bold text-white mt-1">₦{{ purchases.total_volume|default:0|floatformat:2|intcomma }}</div>
+        <div class="text-[10px] text-emerald-400 mt-1 flex items-center gap-1">
+          <span>✓</span> Successful Transactions
+        </div>
       </div>
-      <div class="text-[10px] text-slate-400 mt-1">System Liabilities</div>
-    </div>
 
-    <!-- Card 4: Total Deposits (Inflow) -->
-    <div class="portal-card p-4 border-l-4 border-l-blue-500">
-      <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Total Deposits</div>
-      <div class="text-lg font-bold text-teal-400 mt-1">
-        ₦{{ financial.total_deposits|default:0|floatformat:2|intcomma }}
+      <!-- Card 2: Net Profit -->
+      <div class="portal-card p-4 border-l-4 border-l-emerald-500">
+        <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Net Profit</div>
+        <div id="card-net-profit" class="text-lg font-bold text-emerald-400 mt-1">
+          ₦{{ purchases.profit_periods.monthly|default:0|floatformat:2|intcomma }}
+        </div>
+        <div class="text-[10px] text-slate-400 mt-1">Filtered Margin Profit</div>
       </div>
-      <div class="text-[10px] text-slate-400 mt-1">Successful Inflow</div>
-    </div>
 
-    <!-- Card 5: Paystack Balance -->
-    <div class="portal-card p-4">
-      <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Paystack Balance</div>
-      <div class="text-lg font-bold text-cyan-400 mt-1">
-        ₦{{ financial.paystack_balance|default:0|floatformat:2|intcomma }}
+      <!-- Card 3: User Wallets Balance -->
+      <div class="portal-card p-4 border-l-4 border-l-purple-500">
+        <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">User Wallets</div>
+        <div class="text-lg font-bold text-purple-400 mt-1">
+          ₦{{ wallets.total_balance|default:0|floatformat:2|intcomma }}
+        </div>
+        <div class="text-[10px] text-slate-400 mt-1">System Liabilities</div>
       </div>
-      <div class="text-[10px] text-slate-400 mt-1">Gateway API Balance</div>
-    </div>
 
-    <!-- Card 6: VTU Provider Balance -->
-    <div class="portal-card p-4">
-      <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">VTU Balance</div>
-      <div class="text-lg font-bold text-amber-400 mt-1">
-        ₦{{ stats.provider_balances.vtu|default:0|floatformat:2|intcomma }}
+      <!-- Card 4: Total Deposits (Inflow) -->
+      <div class="portal-card p-4 border-l-4 border-l-blue-500">
+        <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Total Deposits</div>
+        <div id="card-total-deposits" class="text-lg font-bold text-teal-400 mt-1">
+          ₦{{ financial.total_deposits|default:0|floatformat:2|intcomma }}
+        </div>
+        <div class="text-[10px] text-slate-400 mt-1">Successful Inflow</div>
       </div>
-      <div class="text-[10px] text-slate-400 mt-1">Provider Wallet</div>
-    </div>
 
-    <!-- Card 7: Total Withdrawals -->
-    <div class="portal-card p-4">
-      <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Total Withdrawals</div>
-      <div class="text-lg font-bold text-red-400 mt-1">
-        ₦{{ financial.total_withdrawals|default:0|floatformat:2|intcomma }}
+      <!-- Card 5: Paystack Balance -->
+      <div class="portal-card p-4">
+        <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Paystack Balance</div>
+        <div class="text-lg font-bold text-cyan-400 mt-1">
+          ₦{{ financial.paystack_balance|default:0|floatformat:2|intcomma }}
+        </div>
+        <div class="text-[10px] text-slate-400 mt-1">Gateway API Balance</div>
       </div>
-      <div class="text-[10px] text-slate-400 mt-1">Approved Payouts</div>
-    </div>
 
-    <!-- Card 8: Total Users -->
-    <div class="portal-card p-4">
-      <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Total Users</div>
-      <div class="text-lg font-bold text-indigo-400 mt-1">
-        {{ users.total|default:0|intcomma }}
+      <!-- Card 6: VTU Provider Balance -->
+      <div class="portal-card p-4">
+        <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">VTU Balance</div>
+        <div class="text-lg font-bold text-amber-400 mt-1">
+          ₦{{ stats.provider_balances.vtu|default:0|floatformat:2|intcomma }}
+        </div>
+        <div class="text-[10px] text-slate-400 mt-1">Provider Wallet</div>
       </div>
-      <div class="text-[10px] text-slate-400 mt-1">Registered Accounts</div>
+
+      <!-- Card 7: Total Withdrawals -->
+      <div class="portal-card p-4">
+        <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Total Withdrawals</div>
+        <div id="card-total-withdrawals" class="text-lg font-bold text-red-400 mt-1">
+          ₦{{ financial.total_withdrawals|default:0|floatformat:2|intcomma }}
+        </div>
+        <div class="text-[10px] text-slate-400 mt-1">Approved Payouts</div>
+      </div>
+
+      <!-- Card 8: Total Users -->
+      <div class="portal-card p-4">
+        <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Total Users</div>
+        <div class="text-lg font-bold text-indigo-400 mt-1">
+          {{ users.total|default:0|intcomma }}
+        </div>
+        <div class="text-[10px] text-slate-400 mt-1">Registered Accounts</div>
+      </div>
+
     </div>
 
   </div>
 
-  <!-- ROW 2: REVENUE & PROFIT TREND CHART -->
+
+  <!-- ==================================================================== -->
+  <!-- SECTION 2: REVENUE & PROFIT PERFORMANCE TREND CHART                 -->
+  <!-- ==================================================================== -->
   <div class="portal-card p-5">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
       <div>
-        <h3 class="text-base font-bold text-white">Revenue & Profit Performance Trend</h3>
-        <p class="text-xs text-[var(--text-muted)]">Daily transaction volume vs net profit</p>
+        <h3 class="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
+          <span>📈</span> Revenue & Profit Performance Trend
+        </h3>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">Daily transaction volume vs net profit</p>
       </div>
       <div class="flex items-center gap-2">
         <button id="btn-chart-7d" class="btn-chart-range px-3 py-1 text-xs rounded bg-slate-800 text-slate-300 hover:text-white border border-slate-700 font-semibold transition-colors"
@@ -105,48 +161,103 @@
     </div>
   </div>
 
-  <!-- ROW 3: CHARTS - SERVICE DISTRIBUTION & TRANSACTION STATUS -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-    <!-- Service Type Volume Share -->
-    <div class="portal-card p-5">
-      <div class="flex items-center justify-between mb-1">
-        <h3 class="text-sm font-bold text-white">Service Type Volume Share</h3>
+  <!-- ==================================================================== -->
+  <!-- SECTION 3: SERVICE VOLUME & TRANSACTIONS (INDEPENDENT FILTER)       -->
+  <!-- ==================================================================== -->
+  <div class="space-y-4">
+
+    <!-- Section Header & Independent Filter Bar -->
+    <div class="portal-card p-4 space-y-3 border-l-4 border-l-purple-500">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div>
+          <h3 class="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <span>🍕</span> Service Volume Share & Transaction Status
+          </h3>
+          <p class="text-xs text-slate-400 mt-0.5">Breakdown by VTU service type & status counts (Independent section filter)</p>
+        </div>
+
+        <!-- Filter Controls -->
+        <div class="flex flex-wrap items-center gap-2 text-xs">
+          <!-- Preset buttons -->
+          <div class="flex flex-wrap items-center gap-1.5 bg-slate-900/80 p-1 rounded-lg border border-slate-800">
+            <button onclick="filterServiceSection('all')" id="service-preset-all" class="service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors bg-blue-600 text-white">All Time</button>
+            <button onclick="filterServiceSection('today')" id="service-preset-today" class="service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">Today</button>
+            <button onclick="filterServiceSection('this_week')" id="service-preset-this_week" class="service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Week</button>
+            <button onclick="filterServiceSection('this_month')" id="service-preset-this_month" class="service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Month</button>
+            <button onclick="filterServiceSection('this_year')" id="service-preset-this_year" class="service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Year</button>
+          </div>
+
+          <!-- Date Inputs -->
+          <form onsubmit="filterServiceCustom(event)" class="flex items-center gap-1">
+            <input type="date" id="service-date-from" class="portal-input py-1 px-2 text-xs" placeholder="From">
+            <span class="text-slate-500 text-[10px]">to</span>
+            <input type="date" id="service-date-to" class="portal-input py-1 px-2 text-xs" placeholder="To">
+            <button type="submit" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors">Apply</button>
+          </form>
+        </div>
       </div>
-      <p class="text-xs text-[var(--text-muted)] mb-4">Volume distribution across service types</p>
-      <div class="h-64 flex items-center justify-center">
-        <canvas id="serviceShareChart"></canvas>
+
+      <!-- Scope Indicator -->
+      <div class="flex items-center justify-between border-t border-[var(--border)] pt-2 text-xs">
+        <div class="flex items-center gap-2">
+          <span class="inline-block w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
+          <span class="text-slate-400 text-[11px]">Service Scope:</span>
+          <span id="service-scope-badge" class="px-2.5 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800/60 font-bold font-mono text-[11px]">
+            📅 All Time
+          </span>
+        </div>
+        <span id="service-loading-spinner" class="text-[11px] text-purple-400 hidden animate-pulse">Updating breakdown…</span>
       </div>
     </div>
 
-    <!-- Transactions Count Status -->
-    <div class="portal-card p-5">
-      <div class="flex items-center justify-between mb-1">
-        <h3 class="text-sm font-bold text-white">Transactions Count Status</h3>
-      </div>
-      <p class="text-xs text-[var(--text-muted)] mb-4">Success vs Failed vs Pending</p>
-      <div class="grid grid-cols-3 gap-4 mb-4 text-center">
-        <div class="p-3 rounded-lg bg-emerald-950/40 border border-emerald-800/40">
-          <div class="text-xs text-emerald-400 font-medium">Successful</div>
-          <div class="text-xl font-bold text-emerald-300 mt-1">{{ purchases.success_count|default:0|intcomma }}</div>
+    <!-- Charts Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+      <!-- Service Type Volume Share -->
+      <div class="portal-card p-5">
+        <div class="mb-3">
+          <h4 class="text-sm font-bold text-white">Service Type Volume Share</h4>
+          <p class="text-xs text-[var(--text-muted)]">Volume distribution across service types</p>
         </div>
-        <div class="p-3 rounded-lg bg-red-950/40 border border-red-800/40">
-          <div class="text-xs text-red-400 font-medium">Failed</div>
-          <div class="text-xl font-bold text-red-300 mt-1">{{ purchases.failed_count|default:0|intcomma }}</div>
-        </div>
-        <div class="p-3 rounded-lg bg-amber-950/40 border border-amber-800/40">
-          <div class="text-xs text-amber-400 font-medium">Pending</div>
-          <div class="text-xl font-bold text-amber-300 mt-1">{{ purchases.pending_count|default:0|intcomma }}</div>
+        <div class="h-64 flex items-center justify-center">
+          <canvas id="serviceShareChart"></canvas>
         </div>
       </div>
-      <div class="h-44">
-        <canvas id="statusDistributionChart"></canvas>
+
+      <!-- Transactions Count Status -->
+      <div class="portal-card p-5">
+        <div class="mb-3">
+          <h4 class="text-sm font-bold text-white">Transactions Count Status</h4>
+          <p class="text-xs text-[var(--text-muted)]">Success vs Failed vs Pending</p>
+        </div>
+        <div class="grid grid-cols-3 gap-4 mb-4 text-center">
+          <div class="p-3 rounded-lg bg-emerald-950/40 border border-emerald-800/40">
+            <div class="text-xs text-emerald-400 font-medium">Successful</div>
+            <div id="count-success" class="text-xl font-bold text-emerald-300 mt-1">{{ purchases.success_count|default:0|intcomma }}</div>
+          </div>
+          <div class="p-3 rounded-lg bg-red-950/40 border border-red-800/40">
+            <div class="text-xs text-red-400 font-medium">Failed</div>
+            <div id="count-failed" class="text-xl font-bold text-red-300 mt-1">{{ purchases.failed_count|default:0|intcomma }}</div>
+          </div>
+          <div class="p-3 rounded-lg bg-amber-950/40 border border-amber-800/40">
+            <div class="text-xs text-amber-400 font-medium">Pending</div>
+            <div id="count-pending" class="text-xl font-bold text-amber-300 mt-1">{{ purchases.pending_count|default:0|intcomma }}</div>
+          </div>
+        </div>
+        <div class="h-44">
+          <canvas id="statusDistributionChart"></canvas>
+        </div>
       </div>
+
     </div>
 
   </div>
 
-  <!-- ROW 4: PROVIDER PERFORMANCE CARDS -->
+
+  <!-- ==================================================================== -->
+  <!-- SECTION 4: PROVIDER PERFORMANCE CARDS                               -->
+  <!-- ==================================================================== -->
   <div>
     <div class="flex items-center justify-between mb-3">
       <h3 class="text-sm font-bold text-white uppercase tracking-wider">VTU Provider Health & Balances</h3>
@@ -193,7 +304,10 @@
     </div>
   </div>
 
-  <!-- ROW 5: NETWORK & SYSTEM HEALTH -->
+
+  <!-- ==================================================================== -->
+  <!-- SECTION 5: NETWORK & SYSTEM HEALTH                                   -->
+  <!-- ==================================================================== -->
   <div class="portal-card p-5">
     <h3 class="text-sm font-bold text-white mb-3">Network & Service Health Indicators</h3>
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -210,7 +324,10 @@
     </div>
   </div>
 
-  <!-- ROW 6: USERS SUMMARY & ALERTS -->
+
+  <!-- ==================================================================== -->
+  <!-- SECTION 6: USERS SUMMARY & ALERTS                                    -->
+  <!-- ==================================================================== -->
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
     <!-- User Stats Card -->
@@ -284,20 +401,64 @@
 {{ purchases.totals_by_service|json_script:"totals-by-service-data" }}
 <script>
   let revenueChart = null;
+  let serviceShareChart = null;
 
+  function formatMoney(num) {
+    return '₦' + (Number(num) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  // ── 1. SECTION 1: STATS CARDS FILTERING ────────────────────────────
+  async function fetchStatsSection(queryParams) {
+    const spinner = document.getElementById('stats-loading-spinner');
+    if (spinner) spinner.classList.remove('hidden');
+    try {
+      const res = await fetch(`/portal/api/dashboard/stats/?${queryParams}`);
+      const json = await res.json();
+      if (json.status === 'success') {
+        const d = json.data;
+        document.getElementById('card-total-volume').textContent = formatMoney(d.total_volume);
+        document.getElementById('card-net-profit').textContent = formatMoney(d.profit);
+        document.getElementById('card-total-deposits').textContent = formatMoney(d.total_deposits);
+        document.getElementById('card-total-withdrawals').textContent = formatMoney(d.total_withdrawals);
+        document.getElementById('stats-scope-badge').textContent = '📅 ' + json.active_label;
+      }
+    } catch (e) {
+      console.error('Stats section filter failed', e);
+    } finally {
+      if (spinner) spinner.classList.add('hidden');
+    }
+  }
+
+  function filterStatsSection(rangeKey) {
+    document.querySelectorAll('.stats-preset-btn').forEach(btn => {
+      btn.className = "stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors";
+    });
+    document.getElementById('stats-preset-' + rangeKey)?.classList.add('bg-blue-600', 'text-white');
+    document.getElementById('stats-date-from').value = '';
+    document.getElementById('stats-date-to').value = '';
+    fetchStatsSection(`range=${rangeKey}`);
+  }
+
+  function filterStatsCustom(e) {
+    e.preventDefault();
+    const fromVal = document.getElementById('stats-date-from').value;
+    const toVal = document.getElementById('stats-date-to').value;
+    document.querySelectorAll('.stats-preset-btn').forEach(btn => {
+      btn.className = "stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors";
+    });
+    fetchStatsSection(`date_from=${fromVal}&date_to=${toVal}`);
+  }
+
+
+  // ── 2. SECTION 2: REVENUE TREND CHART ────────────────────────────────
   async function loadRevenueChart(days = 30) {
     try {
-      // Update button highlights
       document.querySelectorAll('.btn-chart-range').forEach(btn => {
         btn.className = "btn-chart-range px-3 py-1 text-xs rounded bg-slate-800 text-slate-300 hover:text-white border border-slate-700 font-semibold transition-colors";
       });
-      if (days === 7) {
-        document.getElementById('btn-chart-7d').className = "btn-chart-range px-3 py-1 text-xs rounded bg-blue-600 text-white font-bold shadow transition-colors";
-      } else if (days === 30) {
-        document.getElementById('btn-chart-30d').className = "btn-chart-range px-3 py-1 text-xs rounded bg-blue-600 text-white font-bold shadow transition-colors";
-      } else if (days === 90) {
-        document.getElementById('btn-chart-90d').className = "btn-chart-range px-3 py-1 text-xs rounded bg-blue-600 text-white font-bold shadow transition-colors";
-      }
+      if (days === 7) document.getElementById('btn-chart-7d').className = "btn-chart-range px-3 py-1 text-xs rounded bg-blue-600 text-white font-bold shadow transition-colors";
+      if (days === 30) document.getElementById('btn-chart-30d').className = "btn-chart-range px-3 py-1 text-xs rounded bg-blue-600 text-white font-bold shadow transition-colors";
+      if (days === 90) document.getElementById('btn-chart-90d').className = "btn-chart-range px-3 py-1 text-xs rounded bg-blue-600 text-white font-bold shadow transition-colors";
 
       const res = await fetch(`/portal/api/chart/revenue/?days=${days}`);
       const data = await res.json();
@@ -310,19 +471,75 @@
     }
   }
 
+
+  // ── 3. SECTION 3: SERVICE VOLUME & TRANSACTIONS FILTERING ────────────
+  async function fetchServiceSection(queryParams) {
+    const spinner = document.getElementById('service-loading-spinner');
+    if (spinner) spinner.classList.remove('hidden');
+    try {
+      const res = await fetch(`/portal/api/dashboard/service-stats/?${queryParams}`);
+      const json = await res.json();
+      if (json.status === 'success') {
+        const d = json.data;
+        document.getElementById('count-success').textContent = (d.success_count || 0).toLocaleString();
+        document.getElementById('count-failed').textContent = (d.failed_count || 0).toLocaleString();
+        document.getElementById('count-pending').textContent = (d.pending_count || 0).toLocaleString();
+        document.getElementById('service-scope-badge').textContent = '📅 ' + json.active_label;
+
+        // Re-render service share chart
+        const totalsByService = d.totals_by_service || {};
+        const labels = Object.keys(totalsByService).map(k => k.toUpperCase());
+        const values = Object.values(totalsByService).map(v => v.total_amount || 0);
+
+        const shareCtx = document.getElementById('serviceShareChart').getContext('2d');
+        if (serviceShareChart) serviceShareChart.destroy();
+        if (PortalCharts.createBarChart) {
+          serviceShareChart = PortalCharts.createBarChart(shareCtx, labels, values);
+        } else {
+          serviceShareChart = PortalCharts.createDoughnutChart(shareCtx, labels, values);
+        }
+      }
+    } catch (e) {
+      console.error('Service section filter failed', e);
+    } finally {
+      if (spinner) spinner.classList.add('hidden');
+    }
+  }
+
+  function filterServiceSection(rangeKey) {
+    document.querySelectorAll('.service-preset-btn').forEach(btn => {
+      btn.className = "service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors";
+    });
+    document.getElementById('service-preset-' + rangeKey)?.classList.add('bg-blue-600', 'text-white');
+    document.getElementById('service-date-from').value = '';
+    document.getElementById('service-date-to').value = '';
+    fetchServiceSection(`range=${rangeKey}`);
+  }
+
+  function filterServiceCustom(e) {
+    e.preventDefault();
+    const fromVal = document.getElementById('service-date-from').value;
+    const toVal = document.getElementById('service-date-to').value;
+    document.querySelectorAll('.service-preset-btn').forEach(btn => {
+      btn.className = "service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors";
+    });
+    fetchServiceSection(`date_from=${fromVal}&date_to=${toVal}`);
+  }
+
+
   document.addEventListener('DOMContentLoaded', () => {
     loadRevenueChart(30);
 
-    // Service Type Volume Share Bar / Doughnut Chart
+    // Initial Service Share Chart render
     const totalsByService = JSON.parse(document.getElementById('totals-by-service-data').textContent || '{}');
     const labels = Object.keys(totalsByService).map(k => k.toUpperCase());
     const values = Object.values(totalsByService).map(v => v.total_amount || 0);
 
     const shareCtx = document.getElementById('serviceShareChart').getContext('2d');
     if (PortalCharts.createBarChart) {
-      PortalCharts.createBarChart(shareCtx, labels, values);
+      serviceShareChart = PortalCharts.createBarChart(shareCtx, labels, values);
     } else {
-      PortalCharts.createDoughnutChart(shareCtx, labels, values);
+      serviceShareChart = PortalCharts.createDoughnutChart(shareCtx, labels, values);
     }
   });
 </script>

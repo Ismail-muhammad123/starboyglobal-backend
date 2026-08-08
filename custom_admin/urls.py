@@ -1,6 +1,8 @@
 from django.urls import path
 from custom_admin.views.auth import PortalLoginView, PortalLogoutView
-from custom_admin.views.dashboard import DashboardView, RevenueChartDataView
+from custom_admin.views.dashboard import (
+    DashboardView, RevenueChartDataView, DashboardStatsApiView, DashboardServiceStatsApiView
+)
 from custom_admin.views.users import (
     UserListView, UserDetailView, UserEditView, UserSuspendView, UserRoleUpdateView, UserPermissionsUpdateView,
     KYCListView, KYCDetailView, KYCApproveView
@@ -57,6 +59,8 @@ urlpatterns = [
     path('logout/', PortalLogoutView.as_view(), name='logout'),
     path('', DashboardView.as_view(), name='dashboard'),
     path('api/chart/revenue/', RevenueChartDataView.as_view(), name='chart_revenue'),
+    path('api/dashboard/stats/', DashboardStatsApiView.as_view(), name='api_dashboard_stats'),
+    path('api/dashboard/service-stats/', DashboardServiceStatsApiView.as_view(), name='api_dashboard_service_stats'),
 
     # Users & KYC
     path('users/', UserListView.as_view(), name='users_list'),
