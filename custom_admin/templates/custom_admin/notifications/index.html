@@ -1,0 +1,470 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Notifications & Announcements - Admin Dashboard{% endblock %}
+{% block page_title %}Notifications & Announcements{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+
+  <!-- Tab Bar -->
+  <div class="portal-card px-2 flex gap-0.5" id="notif-tabs">
+    <button id="tab-send-btn" onclick="switchTab('send')"
+      class="tab-btn px-4 py-3 text-xs font-bold uppercase tracking-wide border-b-2 transition-colors">
+      📤 Send Notification
+    </button>
+    <button id="tab-announcements-btn" onclick="switchTab('announcements')"
+      class="tab-btn px-4 py-3 text-xs font-bold uppercase tracking-wide border-b-2 transition-colors">
+      📣 Announcements
+    </button>
+    <button id="tab-logs-btn" onclick="switchTab('logs')"
+      class="tab-btn px-4 py-3 text-xs font-bold uppercase tracking-wide border-b-2 transition-colors">
+      📋 Notification Logs
+    </button>
+  </div>
+
+  <!-- ============================= TAB 1: SEND NOTIFICATION ============================= -->
+  <div id="tab-send" class="tab-content space-y-0 hidden">
+    <div class="portal-card p-6 space-y-5">
+      <div>
+        <h3 class="font-bold text-white text-sm">Compose & Send Notification</h3>
+        <p class="text-xs text-slate-400 mt-0.5">Send a push, email, SMS or WhatsApp blast to a targeted audience immediately.</p>
+      </div>
+
+      <form id="form-send-notif" method="POST" action="{% url 'portal:send_notification' %}" class="space-y-5">
+        {% csrf_token %}
+
+        <!-- Title & Body -->
+        <div class="grid grid-cols-1 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Notification Title <span class="text-red-400">*</span></label>
+            <input type="text" name="title" required maxlength="255"
+              class="portal-input w-full" placeholder="e.g. System Maintenance Tonight">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Message Body <span class="text-red-400">*</span></label>
+            <textarea name="body" required rows="4"
+              class="portal-input w-full resize-none" placeholder="Write your notification message here..."></textarea>
+          </div>
+        </div>
+
+        <!-- Channels -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Delivery Channels <span class="text-red-400">*</span></label>
+          <div class="flex flex-wrap gap-3">
+            <label class="channel-chip flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer hover:border-blue-500 transition-colors text-xs font-medium text-slate-300">
+              <input type="checkbox" name="channels" value="fcm" checked class="w-3.5 h-3.5 rounded accent-blue-500">
+              📲 FCM Push
+            </label>
+            <label class="channel-chip flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer hover:border-blue-500 transition-colors text-xs font-medium text-slate-300">
+              <input type="checkbox" name="channels" value="email" class="w-3.5 h-3.5 rounded accent-blue-500">
+              📧 Email
+            </label>
+            <label class="channel-chip flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer hover:border-blue-500 transition-colors text-xs font-medium text-slate-300">
+              <input type="checkbox" name="channels" value="sms" class="w-3.5 h-3.5 rounded accent-blue-500">
+              💬 SMS
+            </label>
+            <label class="channel-chip flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer hover:border-blue-500 transition-colors text-xs font-medium text-slate-300">
+              <input type="checkbox" name="channels" value="whatsapp" class="w-3.5 h-3.5 rounded accent-blue-500">
+              🟢 WhatsApp
+            </label>
+          </div>
+        </div>
+
+        <!-- Target Audience -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Target Audience <span class="text-red-400">*</span></label>
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+            {% for val, label, icon in target_options %}
+            <label class="target-option flex flex-col items-center gap-1 p-3 rounded-lg bg-slate-800 border cursor-pointer hover:border-blue-500 text-center transition-colors text-xs font-medium text-slate-300 {% if val == 'all' %}border-blue-500 text-white{% else %}border-slate-700{% endif %}">
+              <input type="radio" name="target" value="{{ val }}" class="sr-only" {% if val == 'all' %}checked{% endif %} onchange="onTargetChange(this)">
+              <span class="text-xl">{{ icon }}</span>
+              <span>{{ label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Conditional Sub-fields -->
+        <div id="target-extra" class="hidden space-y-3">
+          <div id="extra-role" class="hidden">
+            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">User Role</label>
+            <select name="role" class="portal-input w-full">
+              <option value="customer">Customer</option>
+              <option value="agent">Agent / Reseller</option>
+              <option value="developer">Developer</option>
+            </select>
+          </div>
+          <div id="extra-kyc" class="hidden">
+            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">KYC Status</label>
+            <select name="kyc_status" class="portal-input w-full">
+              <option value="verified">KYC Verified</option>
+              <option value="unverified">KYC Not Verified</option>
+            </select>
+          </div>
+          <div id="extra-specific" class="hidden">
+            <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">
+              Phone Numbers <span class="text-slate-500 normal-case font-normal">(one per line or comma-separated)</span>
+            </label>
+            <textarea name="phones" rows="4" class="portal-input w-full font-mono resize-none"
+              placeholder="08012345678&#10;08098765432"></textarea>
+          </div>
+        </div>
+
+        <!-- Audience summary hint -->
+        <div class="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-950/50 border border-blue-800/40 text-xs text-blue-300">
+          <span>📋</span>
+          <span id="target-summary-text">Will send to: <strong>All active users</strong></span>
+        </div>
+
+        <div class="flex justify-end pt-2 border-t border-[var(--border)]">
+          <button type="submit" id="btn-send-notif"
+            class="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-sm shadow flex items-center gap-2 transition-colors">
+            📤 Send Notification
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================= TAB 2: ANNOUNCEMENTS ============================= -->
+  <div id="tab-announcements" class="tab-content space-y-4 hidden">
+
+    <!-- Create form card -->
+    <div class="portal-card p-5 space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-white text-sm">Announcements & Promotions</h3>
+          <p class="text-xs text-slate-400 mt-0.5">Banners shown in the mobile app within a defined time window.</p>
+        </div>
+        <button onclick="toggleCreateForm()"
+          class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-colors">
+          + New Announcement
+        </button>
+      </div>
+
+      <div id="create-announcement-form" class="hidden border-t border-[var(--border)] pt-4">
+        <form method="POST" action="{% url 'portal:announcement_create' %}" data-ajax="true" data-reload="true"
+          enctype="multipart/form-data" class="space-y-4 text-xs">
+          {% csrf_token %}
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="md:col-span-2">
+              <label class="block font-semibold text-slate-300 uppercase mb-1">Title <span class="text-red-400">*</span></label>
+              <input type="text" name="title" required maxlength="255" class="portal-input w-full" placeholder="e.g. 🎉 Double Data Weekend!">
+            </div>
+            <div class="md:col-span-2">
+              <label class="block font-semibold text-slate-300 uppercase mb-1">Body <span class="text-red-400">*</span></label>
+              <textarea name="body" required rows="3" class="portal-input w-full resize-none" placeholder="Message shown to users..."></textarea>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-300 uppercase mb-1">Audience</label>
+              <select name="audience" class="portal-input w-full">
+                {% for val, label in audience_choices %}
+                <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-300 uppercase mb-1">Banner Image <span class="text-slate-500 normal-case font-normal">(optional)</span></label>
+              <input type="file" name="image" accept="image/*"
+                class="portal-input w-full file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-slate-700 file:text-slate-300">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-300 uppercase mb-1">Start Date & Time <span class="text-slate-500 normal-case font-normal">(optional)</span></label>
+              <input type="datetime-local" name="starts_at" class="portal-input w-full">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-300 uppercase mb-1">Expiry Date & Time <span class="text-slate-500 normal-case font-normal">(optional)</span></label>
+              <input type="datetime-local" name="expires_at" class="portal-input w-full">
+            </div>
+            <div class="flex items-center gap-2 md:col-span-2">
+              <input type="checkbox" name="is_active" id="ann_is_active" checked class="w-4 h-4 rounded accent-blue-500">
+              <label for="ann_is_active" class="font-semibold text-slate-300">Publish immediately (Active)</label>
+            </div>
+          </div>
+          <div class="flex justify-end gap-2 pt-2 border-t border-[var(--border)]">
+            <button type="button" onclick="toggleCreateForm()" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg font-semibold">Cancel</button>
+            <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow">Create Announcement</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Announcements table -->
+    <div class="portal-card overflow-hidden">
+      <div class="px-4 py-3 border-b border-[var(--border)]">
+        <h4 class="font-bold text-white text-xs uppercase tracking-wider">All Announcements ({{ announcements|length }})</h4>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+            <tr>
+              <th class="p-3">Title</th>
+              <th class="p-3">Audience</th>
+              <th class="p-3">Status</th>
+              <th class="p-3">Starts</th>
+              <th class="p-3">Expires</th>
+              <th class="p-3">Created By</th>
+              <th class="p-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800">
+            {% for ann in announcements %}
+            <tr class="hover:bg-slate-800/40" id="ann-row-{{ ann.id }}">
+              <td class="p-3">
+                <div class="font-semibold text-white">{{ ann.title }}</div>
+                <div class="text-slate-500 text-[10px] mt-0.5 max-w-xs truncate">{{ ann.body }}</div>
+              </td>
+              <td class="p-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-purple-900/50 text-purple-300">
+                  {{ ann.get_audience_display }}
+                </span>
+              </td>
+              <td class="p-3">
+                <span id="ann-badge-{{ ann.id }}" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {% if ann.is_active %}badge-success{% else %}badge-danger{% endif %}">
+                  {% if ann.is_active %}Active{% else %}Inactive{% endif %}
+                </span>
+              </td>
+              <td class="p-3 font-mono text-[10px] text-slate-400">
+                {% if ann.starts_at %}{{ ann.starts_at|date:"d M Y H:i" }}{% else %}-{% endif %}
+              </td>
+              <td class="p-3 font-mono text-[10px] text-slate-400">
+                {% if ann.expires_at %}{{ ann.expires_at|date:"d M Y H:i" }}{% else %}<span class="text-slate-600">No expiry</span>{% endif %}
+              </td>
+              <td class="p-3 text-slate-400">
+                {% if ann.created_by %}
+                  {{ ann.created_by.full_name|default:ann.created_by.phone_number }}
+                {% else %}-{% endif %}
+              </td>
+              <td class="p-3 text-right">
+                <div class="flex gap-1.5 justify-end">
+                  <button onclick="toggleAnnouncement({{ ann.id }})"
+                    class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 font-semibold text-[10px] rounded transition-colors">
+                    Toggle
+                  </button>
+                  <button onclick="deleteAnnouncement({{ ann.id }}, '{{ ann.title|escapejs }}')"
+                    class="px-2.5 py-1 bg-red-900/50 hover:bg-red-800 text-red-300 font-semibold text-[10px] rounded transition-colors">
+                    Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="p-8 text-center text-slate-500">No announcements yet. Click "+ New Announcement" to create one.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================= TAB 3: NOTIFICATION LOGS ============================= -->
+  <div id="tab-logs" class="tab-content hidden">
+    <div class="portal-card overflow-hidden">
+      <div class="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
+        <h4 class="font-bold text-white text-xs uppercase tracking-wider">Notification Log — Last 200</h4>
+        <span class="text-[10px] text-slate-500">Each row = one notification dispatch (one channel). Shows sent & failed recipient counts.</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+            <tr>
+              <th class="p-3">#</th>
+              <th class="p-3">Title</th>
+              <th class="p-3">Channel</th>
+              <th class="p-3">Recipients</th>
+              <th class="p-3">Sent ✅</th>
+              <th class="p-3">Failed ❌</th>
+              <th class="p-3">Sent By</th>
+              <th class="p-3">Created</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800">
+            {% for notif in notification_logs %}
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-3 text-slate-600 font-mono">{{ notif.id }}</td>
+              <td class="p-3">
+                <div class="font-semibold text-white max-w-xs truncate">{{ notif.title }}</div>
+                <div class="text-slate-500 text-[10px] mt-0.5 max-w-xs truncate">{{ notif.body }}</div>
+              </td>
+              <td class="p-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase
+                  {% if notif.channel == 'fcm' %}bg-blue-900/50 text-blue-300
+                  {% elif notif.channel == 'email' %}bg-indigo-900/50 text-indigo-300
+                  {% elif notif.channel == 'sms' %}bg-amber-900/50 text-amber-300
+                  {% elif notif.channel == 'whatsapp' %}bg-green-900/50 text-green-300
+                  {% else %}bg-slate-800 text-slate-400{% endif %}">
+                  {{ notif.get_channel_display }}
+                </span>
+              </td>
+              <td class="p-3 font-mono font-bold text-white">{{ notif.total }}</td>
+              <td class="p-3 font-mono font-bold text-emerald-400">{{ notif.sent }}</td>
+              <td class="p-3 font-mono font-bold {% if notif.failed > 0 %}text-red-400{% else %}text-slate-600{% endif %}">
+                {{ notif.failed }}
+              </td>
+              <td class="p-3 text-slate-400">
+                {% if notif.created_by %}
+                  {{ notif.created_by.full_name|default:notif.created_by.phone_number }}
+                {% else %}<span class="text-slate-600">System</span>{% endif %}
+              </td>
+              <td class="p-3 font-mono text-[10px] text-slate-400">{{ notif.created_at|date:"d M Y H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" class="p-8 text-center text-slate-500">No notifications sent yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // ── Tab switching ─────────────────────────────────────────────
+  const ACTIVE   = ['border-blue-500', 'text-white'];
+  const INACTIVE = ['border-transparent', 'text-slate-400'];
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(el => {
+      el.classList.remove(...ACTIVE);
+      el.classList.add(...INACTIVE);
+    });
+    document.getElementById('tab-' + tab).classList.remove('hidden');
+    const btn = document.getElementById('tab-' + tab + '-btn');
+    btn.classList.remove(...INACTIVE);
+    btn.classList.add(...ACTIVE);
+  }
+
+  // Activate tab from URL ?tab=
+  switchTab(new URLSearchParams(window.location.search).get('tab') || 'send');
+
+  // ── Target audience ───────────────────────────────────────────
+  const summaryMap = {
+    all:      'All active users (non-staff)',
+    role:     'Users by selected role',
+    kyc:      'Users filtered by KYC status',
+    specific: 'Specific users by phone number',
+    staff:    'Staff members only',
+  };
+
+  function onTargetChange(radio) {
+    const val = radio.value;
+    document.getElementById('target-summary-text').innerHTML =
+      'Will send to: <strong>' + summaryMap[val] + '</strong>';
+
+    const extra = document.getElementById('target-extra');
+    ['extra-role', 'extra-kyc', 'extra-specific'].forEach(id =>
+      document.getElementById(id).classList.add('hidden'));
+
+    if (val === 'all' || val === 'staff') {
+      extra.classList.add('hidden');
+    } else {
+      extra.classList.remove('hidden');
+      if (val === 'role')     document.getElementById('extra-role').classList.remove('hidden');
+      if (val === 'kyc')      document.getElementById('extra-kyc').classList.remove('hidden');
+      if (val === 'specific') document.getElementById('extra-specific').classList.remove('hidden');
+    }
+
+    document.querySelectorAll('.target-option').forEach(lbl => {
+      const selected = lbl.querySelector('input').value === val;
+      lbl.classList.toggle('border-blue-500', selected);
+      lbl.classList.toggle('text-white', selected);
+      lbl.classList.toggle('border-slate-700', !selected);
+    });
+  }
+
+  // ── Send Notification AJAX ────────────────────────────────────
+  document.getElementById('form-send-notif').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-send-notif');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="inline-block animate-spin">🌀</span> Sending...';
+
+    try {
+      const res = await fetch(this.action, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': PortalForms.getCookie('csrftoken'),
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: new FormData(this),
+      });
+      const data = await res.json();
+      if (res.ok && data.status !== 'error') {
+        PortalForms.toast(data.message, 'success');
+        this.reset();
+        // Reset audience selection back to "all"
+        const allRadio = this.querySelector('input[name="target"][value="all"]');
+        if (allRadio) { allRadio.checked = true; onTargetChange(allRadio); }
+        // Re-check FCM by default
+        const fcmBox = this.querySelector('input[value="fcm"]');
+        if (fcmBox) fcmBox.checked = true;
+      } else {
+        PortalForms.toast(data.message || 'Failed to send.', 'error');
+      }
+    } catch {
+      PortalForms.toast('An unexpected error occurred.', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '📤 Send Notification';
+    }
+  });
+
+  // ── Announcement create form toggle ──────────────────────────
+  function toggleCreateForm() {
+    const form = document.getElementById('create-announcement-form');
+    form.classList.toggle('hidden');
+  }
+
+  // ── Toggle announcement active state ─────────────────────────
+  async function toggleAnnouncement(id) {
+    try {
+      const res = await fetch(`/portal/notifications/announcements/${id}/toggle/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': PortalForms.getCookie('csrftoken'),
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        PortalForms.toast(data.message, 'success');
+        const badge = document.getElementById('ann-badge-' + id);
+        if (badge) {
+          badge.textContent = data.is_active ? 'Active' : 'Inactive';
+          badge.className = `px-2 py-0.5 rounded text-[10px] font-bold uppercase ${data.is_active ? 'badge-success' : 'badge-danger'}`;
+        }
+      } else {
+        PortalForms.toast(data.message || 'Toggle failed.', 'error');
+      }
+    } catch {
+      PortalForms.toast('Request error.', 'error');
+    }
+  }
+
+  // ── Delete announcement ───────────────────────────────────────
+  async function deleteAnnouncement(id, title) {
+    if (!confirm(`Delete announcement "${title}"?`)) return;
+    try {
+      const res = await fetch(`/portal/notifications/announcements/${id}/delete/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': PortalForms.getCookie('csrftoken'),
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        PortalForms.toast(data.message, 'success');
+        document.getElementById('ann-row-' + id)?.remove();
+      } else {
+        PortalForms.toast(data.message || 'Delete failed.', 'error');
+      }
+    } catch {
+      PortalForms.toast('Request error.', 'error');
+    }
+  }
+</script>
+{% endblock %}

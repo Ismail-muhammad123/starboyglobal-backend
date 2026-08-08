@@ -39,16 +39,16 @@
   {% block extra_head %}{% endblock %}
 </head>
 
-<body class="bg-[var(--bg-base)] text-[var(--text-primary)] antialiased min-h-screen flex flex-col">
+<body class="bg-[var(--bg-base)] text-[var(--text-primary)] antialiased h-screen overflow-hidden flex flex-col">
 
   <!-- Mobile Backdrop Overlay -->
   <div id="sidebar-backdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden md:hidden"></div>
 
-  <div class="flex flex-1 min-h-screen overflow-hidden">
+  <div class="flex flex-1 h-screen overflow-hidden">
 
     <!-- SIDEBAR -->
     <aside id="portal-sidebar"
-      class="w-64 bg-[var(--bg-surface)] border-r border-[var(--border)] flex flex-col fixed md:static inset-y-0 left-0 z-50 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
+      class="w-64 bg-[var(--bg-surface)] border-r border-[var(--border)] flex flex-col h-full fixed md:static inset-y-0 left-0 z-50 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out overflow-hidden">
 
       <!-- Brand Header -->
       <div class="h-16 px-5 border-b border-[var(--border)] flex items-center justify-between">
@@ -317,7 +317,7 @@
           <button type="button"
             class="sidebar-group-header w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
             <div class="flex items-center gap-3">
-              <span class="text-lg">🔔</span>
+              <span class="text-lg">🎫</span>
               <span>Support</span>
             </div>
             <span class="chevron text-xs text-slate-500">▶</span>
@@ -328,6 +328,30 @@
               Tickets</a>
           </div>
         </div>
+
+        <!-- Group: Notifications & Announcements -->
+        {% if request.user.is_superuser or request.user.staff_permissions.can_manage_notifications %}
+        <div id="grp-notifications" class="sidebar-group">
+          <button type="button"
+            class="sidebar-group-header w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">🔔</span>
+              <span>Notifications</span>
+            </div>
+            <span class="chevron text-xs text-slate-500">▶</span>
+          </button>
+          <div class="sidebar-group-content pl-9 pr-2 py-1 space-y-1 text-xs">
+            <a href="{% url 'portal:send_notification' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">📤 Send Notification</a>
+            <a href="{% url 'portal:notification_log' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">📋 Notification Log</a>
+            <a href="{% url 'portal:announcements_list' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">📣 Announcements</a>
+            <a href="{% url 'portal:announcement_create' %}"
+              class="block py-1.5 px-2 rounded text-slate-400 hover:text-white hover:bg-slate-800/40">➕ New Announcement</a>
+          </div>
+        </div>
+        {% endif %}
 
         <!-- Group: Settings -->
         <div id="grp-settings" class="sidebar-group">

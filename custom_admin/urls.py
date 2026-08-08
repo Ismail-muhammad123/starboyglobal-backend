@@ -26,8 +26,8 @@ from custom_admin.views.wallet import (
     WalletListView, WalletDetailView, TransactionListView, ManualTransactionView, WalletUserLookupView
 )
 from custom_admin.views.payments import (
-    DepositListView, WithdrawalListView, WithdrawalApproveView, AdminTransferListView, PaystackRecordsView,
-    AdminBankListView, AdminAccountResolveView
+    DepositListView, DepositDetailView, WithdrawalListView, WithdrawalDetailView, WithdrawalApproveView,
+    AdminTransferListView, PaystackRecordsView, AdminBankListView, AdminAccountResolveView
 )
 from custom_admin.views.automation import (
     SyncScheduleListView, SyncScheduleToggleView, SyncLogListView, ManualSyncTriggerView
@@ -42,6 +42,11 @@ from custom_admin.views.staff import (
 )
 from custom_admin.views.support import (
     SupportListView, SupportDetailView
+)
+from custom_admin.views.notifications import (
+    SendNotificationView, NotificationLogView,
+    AnnouncementListView, AnnouncementCreateView, AnnouncementEditView,
+    AnnouncementToggleView, AnnouncementDeleteView
 )
 
 app_name = 'custom_admin'
@@ -129,7 +134,9 @@ urlpatterns = [
 
     # Payments
     path('payments/deposits/', DepositListView.as_view(), name='deposits_list'),
+    path('payments/deposits/<int:pk>/', DepositDetailView.as_view(), name='deposit_detail'),
     path('payments/withdrawals/', WithdrawalListView.as_view(), name='withdrawals_list'),
+    path('payments/withdrawals/<int:pk>/', WithdrawalDetailView.as_view(), name='withdrawal_detail'),
     path('payments/withdrawals/<int:pk>/approve/', WithdrawalApproveView.as_view(), name='withdrawal_approve'),
     path('payments/transfers/', AdminTransferListView.as_view(), name='admin_transfers'),
     path('payments/banks/', AdminBankListView.as_view(), name='admin_bank_list'),
@@ -161,4 +168,13 @@ urlpatterns = [
     # Support
     path('support/', SupportListView.as_view(), name='support_tickets'),
     path('support/<int:pk>/', SupportDetailView.as_view(), name='support_detail'),
+
+    # Notifications
+    path('notifications/send/', SendNotificationView.as_view(), name='send_notification'),
+    path('notifications/log/', NotificationLogView.as_view(), name='notification_log'),
+    path('notifications/announcements/', AnnouncementListView.as_view(), name='announcements_list'),
+    path('notifications/announcements/create/', AnnouncementCreateView.as_view(), name='announcement_create'),
+    path('notifications/announcements/<int:pk>/edit/', AnnouncementEditView.as_view(), name='announcement_edit'),
+    path('notifications/announcements/<int:pk>/toggle/', AnnouncementToggleView.as_view(), name='announcement_toggle'),
+    path('notifications/announcements/<int:pk>/delete/', AnnouncementDeleteView.as_view(), name='announcement_delete'),
 ]

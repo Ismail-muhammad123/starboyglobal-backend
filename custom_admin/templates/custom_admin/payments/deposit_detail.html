@@ -1,0 +1,164 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Deposit Details - {{ deposit.reference }} - Admin Dashboard{% endblock %}
+{% block page_title %}Deposit Details{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+
+  <!-- Breadcrumb -->
+  <div class="flex items-center gap-2 text-xs text-slate-400">
+    <a href="{% url 'portal:deposits_list' %}" class="hover:text-white transition-colors">Deposits</a>
+    <span>›</span>
+    <span class="text-slate-200 font-mono">{{ deposit.reference }}</span>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+    <!-- Deposit Summary Card -->
+    <div class="portal-card p-6 lg:col-span-2 space-y-6">
+
+      <!-- Header info -->
+      <div class="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--border)] pb-4">
+        <div>
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Deposit Reference</span>
+          <h3 class="text-lg font-mono font-bold text-blue-400 mt-0.5">{{ deposit.reference }}</h3>
+        </div>
+        <div>
+          <span class="px-3 py-1 rounded-full text-xs font-bold uppercase
+            {% if deposit.status == 'SUCCESS' %}bg-emerald-950/80 text-emerald-400 border border-emerald-800/60
+            {% elif deposit.status == 'PENDING' %}bg-amber-950/80 text-amber-400 border border-amber-800/60
+            {% else %}bg-red-950/80 text-red-400 border border-red-800/60{% endif %}">
+            {{ deposit.status }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Key metrics -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <div class="bg-slate-900/60 p-4 rounded-lg border border-slate-800">
+          <p class="text-[10px] font-semibold uppercase text-slate-400">Amount</p>
+          <p class="text-xl font-bold text-emerald-400 font-mono mt-1">₦{{ deposit.amount|floatformat:2 }}</p>
+        </div>
+        <div class="bg-slate-900/60 p-4 rounded-lg border border-slate-800">
+          <p class="text-[10px] font-semibold uppercase text-slate-400">Payment Type</p>
+          <p class="text-sm font-bold text-slate-200 uppercase mt-1">{{ deposit.payment_type }}</p>
+        </div>
+        <div class="bg-slate-900/60 p-4 rounded-lg border border-slate-800">
+          <p class="text-[10px] font-semibold uppercase text-slate-400">Funds Received?</p>
+          <p class="text-sm font-bold mt-1 {% if deposit.recieved %}text-emerald-400{% else %}text-amber-400{% endif %}">
+            {% if deposit.recieved %}✓ Received{% else %}✗ Pending / Failed{% endif %}
+          </p>
+        </div>
+      </div>
+
+      <!-- Remarks / Failure Reason -->
+      <div class="bg-slate-900/60 p-4 rounded-lg border border-slate-800 space-y-1">
+        <p class="text-[10px] font-semibold uppercase text-slate-400">Remarks / Failure Reason</p>
+        {% if deposit.remarks %}
+          <p class="text-xs text-slate-200 font-medium whitespace-pre-wrap">{{ deposit.remarks }}</p>
+        {% else %}
+          <p class="text-xs text-slate-500 italic">No remarks recorded.</p>
+        {% endif %}
+      </div>
+
+      <!-- Additional Details -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-slate-300">
+        <div>
+          <span class="block text-[10px] uppercase font-semibold text-slate-500">Timestamp</span>
+          <span class="font-mono text-slate-200">{{ deposit.timestamp|date:"d M Y, H:i:s" }}</span>
+        </div>
+        <div>
+          <span class="block text-[10px] uppercase font-semibold text-slate-500">Processed By</span>
+          <span class="text-slate-200 font-medium">
+            {% if deposit.processed_by %}
+              {{ deposit.processed_by.full_name|default:deposit.processed_by.phone_number }}
+            {% else %}
+              <span class="text-slate-500">System / Automated Webhook</span>
+            {% endif %}
+          </span>
+        </div>
+      </div>
+
+      <!-- Linked Wallet Transaction -->
+      {% if wallet_tx %}
+      <div class="border-t border-[var(--border)] pt-4 space-y-3">
+        <h4 class="font-bold text-white text-xs uppercase tracking-wider flex items-center gap-2">
+          <span>🔗</span> Linked Wallet Transaction
+        </h4>
+        <div class="bg-slate-900/80 p-4 rounded-lg border border-slate-800 space-y-2 text-xs">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+              <span class="block text-[10px] uppercase text-slate-500 font-semibold">Tx Reference</span>
+              <span class="font-mono text-blue-400 font-medium">{{ wallet_tx.reference }}</span>
+            </div>
+            <div>
+              <span class="block text-[10px] uppercase text-slate-500 font-semibold">Type</span>
+              <span class="font-bold uppercase text-emerald-400">{{ wallet_tx.transaction_type }}</span>
+            </div>
+            <div>
+              <span class="block text-[10px] uppercase text-slate-500 font-semibold">Bal Before</span>
+              <span class="font-mono text-slate-300">₦{{ wallet_tx.balance_before|floatformat:2 }}</span>
+            </div>
+            <div>
+              <span class="block text-[10px] uppercase text-slate-500 font-semibold">Bal After</span>
+              <span class="font-mono text-slate-200 font-bold">₦{{ wallet_tx.balance_after|floatformat:2 }}</span>
+            </div>
+          </div>
+          {% if wallet_tx.description %}
+          <div class="pt-2 border-t border-slate-800/60 text-[11px] text-slate-400">
+            <span class="font-semibold text-slate-300">Description:</span> {{ wallet_tx.description }}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+    </div>
+
+    <!-- User Information Sidebar -->
+    <div class="space-y-4">
+      <div class="portal-card p-5 space-y-4">
+        <h4 class="font-bold text-white text-xs uppercase tracking-wider border-b border-[var(--border)] pb-2">
+          User Account Info
+        </h4>
+        <div class="space-y-3 text-xs">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
+              {{ deposit.user.first_name|first|upper }}{{ deposit.user.last_name|first|upper }}
+            </div>
+            <div>
+              <p class="font-bold text-white">{{ deposit.user.full_name|default:"—" }}</p>
+              <p class="text-xs text-blue-300 font-mono">{{ deposit.user.phone_number }}</p>
+            </div>
+          </div>
+          <div class="space-y-2 pt-2 border-t border-slate-800 text-slate-300">
+            <div class="flex justify-between">
+              <span class="text-slate-500">Email:</span>
+              <span class="font-mono">{{ deposit.user.email|default:"—" }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Role:</span>
+              <span class="uppercase font-semibold text-purple-300">{{ deposit.user.role }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Wallet Balance:</span>
+              <span class="font-mono font-bold text-emerald-400">₦{{ deposit.user.wallet.balance|floatformat:2|default:"0.00" }}</span>
+            </div>
+          </div>
+          <div class="pt-3 border-t border-slate-800 flex gap-2">
+            <a href="{% url 'portal:users_detail' deposit.user.pk %}" class="flex-1 text-center py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded text-xs transition-colors">
+              User Profile
+            </a>
+            <a href="{% url 'portal:wallet_detail' deposit.user.wallet.pk %}" class="flex-1 text-center py-2 bg-blue-900/60 hover:bg-blue-800 text-blue-300 font-semibold rounded text-xs transition-colors">
+              Wallet History
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,166 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Send Notification - Admin Dashboard{% endblock %}
+{% block page_title %}Send Notification{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl space-y-4">
+
+  <div class="portal-card p-6 space-y-5">
+    <div>
+      <h3 class="font-bold text-white text-sm">Compose & Send Notification</h3>
+      <p class="text-xs text-slate-400 mt-0.5">Send a push, email, SMS or WhatsApp blast to a targeted audience immediately.</p>
+    </div>
+
+    <form id="form-send-notif" method="POST" action="{% url 'portal:send_notification' %}" class="space-y-5">
+      {% csrf_token %}
+
+      <div class="grid grid-cols-1 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Notification Title <span class="text-red-400">*</span></label>
+          <input type="text" name="title" required maxlength="255"
+            class="portal-input w-full" placeholder="e.g. System Maintenance Tonight">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">Message Body <span class="text-red-400">*</span></label>
+          <textarea name="body" required rows="5"
+            class="portal-input w-full resize-none" placeholder="Write your notification message here..."></textarea>
+        </div>
+      </div>
+
+      <!-- Channels -->
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Delivery Channels <span class="text-red-400">*</span></label>
+        <div class="flex flex-wrap gap-3">
+          <label class="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer hover:border-blue-500 transition-colors text-xs font-medium text-slate-300">
+            <input type="checkbox" name="channels" value="fcm" checked class="w-3.5 h-3.5 accent-blue-500"> 📲 FCM Push
+          </label>
+          <label class="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer hover:border-blue-500 transition-colors text-xs font-medium text-slate-300">
+            <input type="checkbox" name="channels" value="email" class="w-3.5 h-3.5 accent-blue-500"> 📧 Email
+          </label>
+          <label class="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 cursor-pointer hover:border-blue-500 transition-colors text-xs font-medium text-slate-300">
+            <input type="checkbox" name="channels" value="sms" class="w-3.5 h-3.5 accent-blue-500"> 💬 SMS
+          </label>
+        </div>
+      </div>
+
+      <!-- Target Audience -->
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 uppercase mb-2">Target Audience <span class="text-red-400">*</span></label>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+          {% for val, label, icon in target_options %}
+          <label class="target-option flex flex-col items-center gap-1 p-3 rounded-lg bg-slate-800 border cursor-pointer hover:border-blue-500 text-center transition-colors text-xs font-medium text-slate-300 {% if val == 'all' %}border-blue-500 text-white{% else %}border-slate-700{% endif %}">
+            <input type="radio" name="target" value="{{ val }}" class="sr-only" {% if val == 'all' %}checked{% endif %} onchange="onTargetChange(this)">
+            <span class="text-xl">{{ icon }}</span>
+            <span>{{ label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Conditional sub-fields -->
+      <div id="target-extra" class="hidden space-y-3">
+        <div id="extra-role" class="hidden">
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">User Role</label>
+          <select name="role" class="portal-input w-full">
+            <option value="customer">Customer</option>
+            <option value="agent">Agent / Reseller</option>
+            <option value="developer">Developer</option>
+          </select>
+        </div>
+        <div id="extra-kyc" class="hidden">
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">KYC Status</label>
+          <select name="kyc_status" class="portal-input w-full">
+            <option value="verified">KYC Verified</option>
+            <option value="unverified">KYC Not Verified</option>
+          </select>
+        </div>
+        <div id="extra-specific" class="hidden">
+          <label class="block text-xs font-semibold text-slate-300 uppercase mb-1">
+            Phone Numbers <span class="text-slate-500 normal-case font-normal">(one per line or comma-separated)</span>
+          </label>
+          <textarea name="phones" rows="4" class="portal-input w-full font-mono resize-none"
+            placeholder="08012345678&#10;08098765432"></textarea>
+        </div>
+      </div>
+
+      <!-- Summary hint -->
+      <div class="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-blue-950/50 border border-blue-800/40 text-xs text-blue-300">
+        <span>📋</span>
+        <span id="target-summary-text">Will send to: <strong>All active users (non-staff)</strong></span>
+      </div>
+
+      <div class="flex items-center justify-between pt-2 border-t border-[var(--border)]">
+        <a href="{% url 'portal:notification_log' %}" class="text-xs text-slate-400 hover:text-white transition-colors">
+          View notification history →
+        </a>
+        <button type="submit" id="btn-send"
+          class="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-sm shadow flex items-center gap-2 transition-colors">
+          📤 Send Notification
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const summaryMap = {
+    all: 'All active users (non-staff)',
+    role: 'Users by selected role',
+    kyc: 'Users filtered by KYC status',
+    specific: 'Specific users by phone number',
+    staff: 'Staff members only',
+  };
+
+  function onTargetChange(radio) {
+    const val = radio.value;
+    document.getElementById('target-summary-text').innerHTML =
+      'Will send to: <strong>' + summaryMap[val] + '</strong>';
+    const extra = document.getElementById('target-extra');
+    ['extra-role','extra-kyc','extra-specific'].forEach(id => document.getElementById(id).classList.add('hidden'));
+    if (val === 'all' || val === 'staff') {
+      extra.classList.add('hidden');
+    } else {
+      extra.classList.remove('hidden');
+      if (val === 'role')     document.getElementById('extra-role').classList.remove('hidden');
+      if (val === 'kyc')      document.getElementById('extra-kyc').classList.remove('hidden');
+      if (val === 'specific') document.getElementById('extra-specific').classList.remove('hidden');
+    }
+    document.querySelectorAll('.target-option').forEach(lbl => {
+      const sel = lbl.querySelector('input').value === val;
+      lbl.classList.toggle('border-blue-500', sel);
+      lbl.classList.toggle('text-white', sel);
+      lbl.classList.toggle('border-slate-700', !sel);
+    });
+  }
+
+  document.getElementById('form-send-notif').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-send');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="animate-spin inline-block">🌀</span> Sending...';
+    try {
+      const res = await fetch(this.action, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': PortalForms.getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest' },
+        body: new FormData(this),
+      });
+      const data = await res.json();
+      if (res.ok && data.status !== 'error') {
+        PortalForms.toast(data.message, 'success');
+        this.reset();
+        document.querySelector('input[name="target"][value="all"]').checked = true;
+        onTargetChange(document.querySelector('input[name="target"][value="all"]'));
+        document.querySelector('input[value="fcm"]').checked = true;
+      } else {
+        PortalForms.toast(data.message || 'Failed to send.', 'error');
+      }
+    } catch { PortalForms.toast('Unexpected error.', 'error'); }
+    finally {
+      btn.disabled = false;
+      btn.innerHTML = '📤 Send Notification';
+    }
+  });
+</script>
+{% endblock %}

@@ -72,29 +72,109 @@ class WithdrawalListView(PortalPermissionMixin, View):
         })
 
 
+class DepositDetailView(PortalPermissionMixin, View):
+    required_permission = ('payments.Deposit', 'view')
+
+    def get(self, request, pk):
+        deposit = get_object_or_404(Deposit.objects.select_related('user', 'processed_by'), pk=pk)
+        from wallet.models import WalletTransaction
+        wallet_tx = WalletTransaction.objects.filter(deposit=deposit).first()
+        return render(request, 'custom_admin/payments/deposit_detail.html', {
+            'deposit': deposit,
+            'wallet_tx': wallet_tx
+        })
+
+
+class WithdrawalDetailView(PortalPermissionMixin, View):
+    required_permission = ('payments.Withdrawal', 'view')
+
+    def get(self, request, pk):
+        withdrawal = get_object_or_404(Withdrawal.objects.select_related('user', 'processed_by'), pk=pk)
+        return render(request, 'custom_admin/payments/withdrawal_detail.html', {
+            'withdrawal': withdrawal
+        })
+
+
 class WithdrawalApproveView(PortalPermissionMixin, View):
     required_permission = ('payments.Withdrawal', 'change')
 
     def post(self, request, pk):
-        withdrawal = get_object_or_404(Withdrawal, pk=pk)
-        action_type = request.POST.get('action_type')  # APPROVED / REJECTED
+        withdrawal = get_object_or_404(Withdrawal.objects.select_related('user'), pk=pk)
+        action_type = request.POST.get('action_type', '').strip().upper()  # APPROVED / REJECTED
         remarks = request.POST.get('remarks', '').strip()
+        refund_wallet_option = request.POST.get('refund_wallet', 'true').strip().lower() in ('true', 'on', '1')
 
         if action_type not in ['APPROVED', 'REJECTED']:
             return JsonResponse({'status': 'error', 'message': 'Invalid action type.'}, status=400)
 
-        withdrawal.status = action_type
-        withdrawal.processed_by = request.user
-        withdrawal.remarks = remarks
-        withdrawal.save()
+        if withdrawal.status != 'PENDING':
+            return JsonResponse({'status': 'error', 'message': f'Withdrawal is already {withdrawal.status}.'}, status=400)
 
-        AdminActionLog.objects.create(
-            admin_user=request.user,
-            action_type=f"WITHDRAWAL_{action_type}",
-            target_model="Withdrawal",
-            target_id=str(withdrawal.pk),
-            description=f"Withdrawal of ₦{withdrawal.amount} for {withdrawal.user.phone_number} set to {action_type}."
-        )
+        from django.db import transaction
+        from wallet.utils import fund_wallet
+        from notifications.utils import NotificationService
+
+        with transaction.atomic():
+            withdrawal.status = action_type
+            withdrawal.processed_by = request.user
+            withdrawal.remarks = remarks
+            withdrawal.save(update_fields=['status', 'processed_by', 'remarks', 'updated_at'])
+
+            if action_type == 'REJECTED':
+                withdrawal.reason = remarks or 'Rejected by Admin'
+                withdrawal.transaction_status = 'FAILED'
+                withdrawal.save(update_fields=['reason', 'transaction_status', 'updated_at'])
+
+                if refund_wallet_option:
+                    # Refund the user's debited wallet balance
+                    fund_wallet(
+                        user_id=withdrawal.user.id,
+                        amount=withdrawal.amount,
+                        description=f"Refund: Withdrawal rejected by admin ({withdrawal.reference})",
+                        initiator='admin',
+                        initiated_by=request.user,
+                    )
+
+                # Send notification to user
+                notif_reason = remarks or "Rejected by Admin"
+                if refund_wallet_option:
+                    notif_reason += " (Amount refunded to wallet)"
+                else:
+                    notif_reason += " (No refund issued)"
+
+                NotificationService.send_from_template(
+                    withdrawal.user,
+                    "withdrawal-rejected",
+                    {
+                        "amount": withdrawal.amount,
+                        "reference": withdrawal.reference,
+                        "reason": notif_reason
+                    }
+                )
+
+            elif action_type == 'APPROVED':
+                withdrawal.transaction_status = 'SUCCESS'
+                withdrawal.save(update_fields=['transaction_status', 'updated_at'])
+
+                # Send notification to user
+                NotificationService.send_from_template(
+                    withdrawal.user,
+                    "withdrawal-approved",
+                    {
+                        "amount": withdrawal.amount,
+                        "reference": withdrawal.reference,
+                        "bank_name": withdrawal.bank_name
+                    }
+                )
+
+            refund_msg = " (Refunded to wallet)" if (action_type == 'REJECTED' and refund_wallet_option) else ""
+            AdminActionLog.objects.create(
+                admin_user=request.user,
+                action_type=f"WITHDRAWAL_{action_type}",
+                target_model="Withdrawal",
+                target_id=str(withdrawal.pk),
+                description=f"Withdrawal of ₦{withdrawal.amount} for {withdrawal.user.phone_number} set to {action_type}{refund_msg}. Remarks: {remarks or 'None'}"
+            )
 
         return JsonResponse({'status': 'success', 'message': f"Withdrawal status updated to {action_type}."})
 

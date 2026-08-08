@@ -49,10 +49,16 @@
                   {% if cb.is_active %}Active{% else %}Inactive{% endif %}
                 </span>
               </td>
-              <td class="p-3 text-right">
-                <button onclick="editCashbackRule('{{ cb.service_type }}', '{{ cb.cashback_type }}', '{{ cb.cashback_value }}', '{{ cb.min_purchase_amount }}', {{ cb.is_active|yesno:'true,false' }})" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-blue-400 font-semibold text-[11px] rounded">
-                  Edit Rule
+              <td class="p-3 text-right flex gap-2 justify-end">
+                <button onclick="editCashbackRule('{{ cb.id }}', '{{ cb.service_type }}', '{{ cb.cashback_type }}', '{{ cb.cashback_value }}', '{{ cb.min_purchase_amount }}', {{ cb.is_active|yesno:'true,false' }})" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-blue-400 font-semibold text-[11px] rounded">
+                  Edit
                 </button>
+                <form method="POST" action="{% url 'portal:cashback_config' %}" data-ajax="true" data-reload="true" style="display:inline" onsubmit="return confirm('Delete this cashback rule?');">
+                  {% csrf_token %}
+                  <input type="hidden" name="_delete" value="1">
+                  <input type="hidden" name="cashback_id" value="{{ cb.id }}">
+                  <button type="submit" class="px-3 py-1 bg-red-900/60 hover:bg-red-800 text-red-300 font-semibold text-[11px] rounded">Delete</button>
+                </form>
               </td>
             </tr>
           {% empty %}
@@ -69,12 +75,13 @@
 <div id="modal-add-cashback" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
   <div class="portal-card max-w-md w-full p-6 space-y-4 bg-slate-900 border-slate-700 shadow-2xl">
     <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-      <h3 class="font-bold text-white text-base">Add / Edit Cashback Rule</h3>
+      <h3 id="modal-cashback-title" class="font-bold text-white text-base">Add Cashback Rule</h3>
       <button onclick="PortalForms.closeModal('modal-add-cashback')" class="text-slate-400 hover:text-white">&times;</button>
     </div>
 
-    <form method="POST" action="{% url 'portal:settings_cashback' %}" data-ajax="true" data-reload="true" data-close-modal="modal-add-cashback" class="space-y-4 text-xs">
+    <form method="POST" action="{% url 'portal:cashback_config' %}" data-ajax="true" data-reload="true" data-close-modal="modal-add-cashback" class="space-y-4 text-xs">
       {% csrf_token %}
+      <input type="hidden" name="cashback_id" id="cb_cashback_id" value="">
 
       <div>
         <label class="block font-semibold text-slate-300 uppercase mb-1">Target Service</label>
@@ -119,13 +126,29 @@
 </div>
 
 <script>
-  function editCashbackRule(stype, type, value, minAmount, isActive) {
+  function editCashbackRule(id, stype, type, value, minAmount, isActive) {
+    document.getElementById('cb_cashback_id').value = id;
     document.getElementById('cb_service_type').value = stype;
+    // Lock the service_type select when editing to prevent changing primary key field
+    document.getElementById('cb_service_type').disabled = true;
     document.getElementById('cb_cashback_type').value = type;
     document.getElementById('cb_cashback_value').value = value;
     document.getElementById('cb_min_amount').value = minAmount;
     document.getElementById('cb_is_active').checked = isActive;
+    document.getElementById('modal-cashback-title').textContent = 'Edit Cashback Rule';
     PortalForms.openModal('modal-add-cashback');
   }
+
+  // Reset modal when opened via the "Add" button
+  document.querySelector('[onclick="PortalForms.openModal(\'modal-add-cashback\')"]').addEventListener('click', function() {
+    document.getElementById('cb_cashback_id').value = '';
+    document.getElementById('cb_service_type').disabled = false;
+    document.getElementById('cb_service_type').selectedIndex = 0;
+    document.getElementById('cb_cashback_type').selectedIndex = 0;
+    document.getElementById('cb_cashback_value').value = '0.00';
+    document.getElementById('cb_min_amount').value = '0.00';
+    document.getElementById('cb_is_active').checked = true;
+    document.getElementById('modal-cashback-title').textContent = 'Add Cashback Rule';
+  });
 </script>
 {% endblock %}

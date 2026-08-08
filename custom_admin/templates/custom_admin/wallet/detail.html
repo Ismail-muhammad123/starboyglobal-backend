@@ -1,0 +1,156 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Wallet — {{ wallet.user.full_name|default:wallet.user.phone_number }} - Admin Dashboard{% endblock %}
+{% block page_title %}Wallet Detail{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+
+  <!-- Breadcrumb -->
+  <div class="flex items-center gap-2 text-xs text-slate-400">
+    <a href="{% url 'portal:wallets_list' %}" class="hover:text-white transition-colors">Wallets</a>
+    <span>›</span>
+    <span class="text-slate-200">{{ wallet.user.full_name|default:wallet.user.phone_number }}</span>
+  </div>
+
+  <!-- Header cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+    <!-- Current balance -->
+    <div class="portal-card p-5 flex items-center gap-4 lg:col-span-1">
+      <div class="w-11 h-11 rounded-xl bg-emerald-500/10 flex items-center justify-center text-2xl shrink-0">💰</div>
+      <div>
+        <p class="text-[10px] font-semibold uppercase text-slate-400 tracking-wider">Current Balance</p>
+        <p class="text-xl font-bold text-emerald-400 mt-0.5 font-mono">₦{{ wallet.balance|floatformat:2 }}</p>
+      </div>
+    </div>
+
+    <!-- Total credits -->
+    <div class="portal-card p-5 flex items-center gap-4">
+      <div class="w-11 h-11 rounded-xl bg-blue-500/10 flex items-center justify-center text-2xl shrink-0">📥</div>
+      <div>
+        <p class="text-[10px] font-semibold uppercase text-slate-400 tracking-wider">Total Credited</p>
+        <p class="text-xl font-bold text-blue-400 mt-0.5 font-mono">₦{{ total_credits|floatformat:2 }}</p>
+      </div>
+    </div>
+
+    <!-- Total debits -->
+    <div class="portal-card p-5 flex items-center gap-4">
+      <div class="w-11 h-11 rounded-xl bg-red-500/10 flex items-center justify-center text-2xl shrink-0">📤</div>
+      <div>
+        <p class="text-[10px] font-semibold uppercase text-slate-400 tracking-wider">Total Debited</p>
+        <p class="text-xl font-bold text-red-400 mt-0.5 font-mono">₦{{ total_debits|floatformat:2 }}</p>
+      </div>
+    </div>
+
+    <!-- Transaction count -->
+    <div class="portal-card p-5 flex items-center gap-4">
+      <div class="w-11 h-11 rounded-xl bg-purple-500/10 flex items-center justify-center text-2xl shrink-0">📋</div>
+      <div>
+        <p class="text-[10px] font-semibold uppercase text-slate-400 tracking-wider">Transactions</p>
+        <p class="text-xl font-bold text-purple-400 mt-0.5">{{ tx_count }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- User info card -->
+  <div class="portal-card p-5">
+    <div class="flex items-start justify-between">
+      <div class="space-y-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+            {{ wallet.user.first_name|first|upper }}{{ wallet.user.last_name|first|upper }}
+          </div>
+          <div>
+            <p class="font-bold text-white text-sm">{{ wallet.user.full_name|default:"—" }}</p>
+            <p class="text-xs text-slate-400 font-mono">{{ wallet.user.phone_number }}</p>
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-4 text-xs text-slate-400">
+          {% if wallet.user.email %}<span>📧 {{ wallet.user.email }}</span>{% endif %}
+          <span class="uppercase font-semibold text-purple-300">{{ wallet.user.role }}</span>
+          <span class="{% if wallet.user.is_active %}text-emerald-400{% else %}text-red-400{% endif %} font-semibold">
+            {% if wallet.user.is_active %}● Active{% else %}● Inactive{% endif %}
+          </span>
+          <span class="text-slate-500">Wallet created {{ wallet.created_at|date:"d M Y" }}</span>
+        </div>
+      </div>
+      <div class="flex gap-2 shrink-0">
+        <a href="{% url 'portal:users_detail' wallet.user.pk %}"
+          class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg transition-colors">
+          View Profile
+        </a>
+        <a href="{% url 'portal:manual_transaction' %}?user={{ wallet.user.phone_number }}"
+          class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg transition-colors">
+          + Adjust Balance
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Transaction history -->
+  <div class="portal-card overflow-hidden">
+    <div class="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
+      <h4 class="font-bold text-white text-xs uppercase tracking-wider">
+        Transaction History <span class="text-slate-500 font-normal normal-case">(last 50)</span>
+      </h4>
+      <a href="{% url 'portal:wallet_transactions' %}?search={{ wallet.user.phone_number }}"
+        class="text-xs text-blue-400 hover:text-blue-300 transition-colors">View all →</a>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+          <tr>
+            <th class="p-3">Reference</th>
+            <th class="p-3">Type</th>
+            <th class="p-3">Amount</th>
+            <th class="p-3">Bal Before</th>
+            <th class="p-3">Bal After</th>
+            <th class="p-3">Initiator</th>
+            <th class="p-3">Description</th>
+            <th class="p-3">Status</th>
+            <th class="p-3">Date</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for t in transactions %}
+          <tr class="hover:bg-slate-800/40">
+            <td class="p-3 font-mono text-blue-300 text-[10px] max-w-[160px] truncate">{{ t.reference }}</td>
+            <td class="p-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {% if t.transaction_type == 'credit' %}badge-success{% else %}badge-danger{% endif %}">
+                {{ t.transaction_type }}
+              </span>
+            </td>
+            <td class="p-3 font-mono font-bold {% if t.transaction_type == 'credit' %}text-emerald-400{% else %}text-red-400{% endif %}">
+              {% if t.transaction_type == 'credit' %}+{% else %}-{% endif %}₦{{ t.amount|floatformat:2 }}
+            </td>
+            <td class="p-3 font-mono text-slate-400">₦{{ t.balance_before|floatformat:2 }}</td>
+            <td class="p-3 font-mono text-slate-200">₦{{ t.balance_after|floatformat:2 }}</td>
+            <td class="p-3">
+              {% if t.initiator == 'admin' %}
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-900/40 text-amber-300 uppercase">Admin</span>
+                {% if t.initiated_by %}<div class="text-[10px] text-slate-500 mt-0.5">{{ t.initiated_by.phone_number }}</div>{% endif %}
+              {% else %}
+                <span class="text-[10px] text-slate-400 uppercase">Self</span>
+              {% endif %}
+            </td>
+            <td class="p-3 text-slate-400 max-w-[180px] truncate" title="{{ t.description }}">{{ t.description|default:"—" }}</td>
+            <td class="p-3">
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase
+                {% if t.status == 'success' %}text-emerald-400{% elif t.status == 'pending' %}text-amber-400{% else %}text-red-400{% endif %}">
+                {{ t.status }}
+              </span>
+            </td>
+            <td class="p-3 text-slate-400 whitespace-nowrap">{{ t.timestamp|date:"d M Y H:i" }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="9" class="p-10 text-center text-slate-500">No transactions recorded yet.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

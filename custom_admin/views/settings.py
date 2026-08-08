@@ -109,28 +109,58 @@ class CashbackConfigView(PortalPermissionMixin, View):
         })
 
     def post(self, request):
-        service_type = request.POST.get('service_type')
-        cashback_type = request.POST.get('cashback_type', 'flat')
+        # --- Delete action ---
+        if request.POST.get('_delete') == '1':
+            cashback_id = request.POST.get('cashback_id')
+            try:
+                cb = ServiceCashback.objects.get(pk=cashback_id)
+                label = cb.get_service_type_display()
+                cb.delete()
+                return JsonResponse({'status': 'success', 'message': f'{label} cashback rule deleted.'})
+            except ServiceCashback.DoesNotExist:
+                return JsonResponse({'status': 'error', 'message': 'Cashback rule not found.'}, status=404)
+
+        # --- Create / Edit ---
         try:
             cashback_value = float(request.POST.get('cashback_value', 0))
             min_purchase_amount = float(request.POST.get('min_purchase_amount', 0))
         except (ValueError, TypeError):
             return JsonResponse({'status': 'error', 'message': 'Invalid numeric values.'}, status=400)
 
-        is_active = request.POST.get('is_active') == 'true' or request.POST.get('is_active') == 'on'
+        cashback_type = request.POST.get('cashback_type', 'flat')
+        is_active = request.POST.get('is_active') in ('true', 'on')
 
-        cb, created = ServiceCashback.objects.update_or_create(
-            service_type=service_type,
-            defaults={
-                'cashback_type': cashback_type,
-                'cashback_value': cashback_value,
-                'min_purchase_amount': min_purchase_amount,
-                'is_active': is_active,
-            }
-        )
+        cashback_id = request.POST.get('cashback_id', '').strip()
 
-        action = "created" if created else "updated"
-        return JsonResponse({'status': 'success', 'message': f'Cashback rule for {cb.get_service_type_display()} {action} successfully.'})
+        if cashback_id:
+            # Edit existing rule by PK
+            try:
+                cb = ServiceCashback.objects.get(pk=cashback_id)
+                cb.cashback_type = cashback_type
+                cb.cashback_value = cashback_value
+                cb.min_purchase_amount = min_purchase_amount
+                cb.is_active = is_active
+                cb.save()
+                return JsonResponse({'status': 'success', 'message': f'Cashback rule for {cb.get_service_type_display()} updated successfully.'})
+            except ServiceCashback.DoesNotExist:
+                return JsonResponse({'status': 'error', 'message': 'Cashback rule not found.'}, status=404)
+        else:
+            # Create new rule (service_type is the unique key)
+            service_type = request.POST.get('service_type')
+            if not service_type:
+                return JsonResponse({'status': 'error', 'message': 'Service type is required.'}, status=400)
+
+            cb, created = ServiceCashback.objects.update_or_create(
+                service_type=service_type,
+                defaults={
+                    'cashback_type': cashback_type,
+                    'cashback_value': cashback_value,
+                    'min_purchase_amount': min_purchase_amount,
+                    'is_active': is_active,
+                }
+            )
+            action = "created" if created else "updated"
+            return JsonResponse({'status': 'success', 'message': f'Cashback rule for {cb.get_service_type_display()} {action} successfully.'})
 
 
 class PromoCodesView(PortalPermissionMixin, View):

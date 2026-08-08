@@ -1,0 +1,299 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Withdrawal Details - {{ withdrawal.reference }} - Admin Dashboard{% endblock %}
+{% block page_title %}Withdrawal Details{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+
+  <!-- Breadcrumb -->
+  <div class="flex items-center gap-2 text-xs text-slate-400">
+    <a href="{% url 'portal:withdrawals_list' %}" class="hover:text-white transition-colors">Withdrawals</a>
+    <span>›</span>
+    <span class="text-slate-200 font-mono">{{ withdrawal.reference }}</span>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+    <!-- Withdrawal Details Card -->
+    <div class="portal-card p-6 lg:col-span-2 space-y-6">
+
+      <!-- Header info & Badges -->
+      <div class="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--border)] pb-4">
+        <div>
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Withdrawal Reference</span>
+          <h3 class="text-lg font-mono font-bold text-blue-400 mt-0.5">{{ withdrawal.reference }}</h3>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="px-3 py-1 rounded-full text-xs font-bold uppercase
+            {% if withdrawal.status == 'APPROVED' %}bg-emerald-950/80 text-emerald-400 border border-emerald-800/60
+            {% elif withdrawal.status == 'PENDING' %}bg-amber-950/80 text-amber-400 border border-amber-800/60
+            {% else %}bg-red-950/80 text-red-400 border border-red-800/60{% endif %}">
+            Approval: {{ withdrawal.status }}
+          </span>
+          <span class="px-3 py-1 rounded-full text-xs font-bold uppercase
+            {% if withdrawal.transaction_status == 'SUCCESS' %}bg-emerald-950/80 text-emerald-400 border border-emerald-800/60
+            {% elif withdrawal.transaction_status == 'PENDING' %}bg-amber-950/80 text-amber-400 border border-amber-800/60
+            {% else %}bg-red-950/80 text-red-400 border border-red-800/60{% endif %}">
+            Transfer: {{ withdrawal.transaction_status }}
+          </span>
+        </div>
+      </div>
+
+      <!-- Amount and Transfer Details -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-slate-900/60 p-4 rounded-lg border border-slate-800">
+          <p class="text-[10px] font-semibold uppercase text-slate-400">Withdrawal Amount</p>
+          <p class="text-xl font-bold text-white font-mono mt-1">₦{{ withdrawal.amount|floatformat:2 }}</p>
+        </div>
+        <div class="bg-slate-900/60 p-4 rounded-lg border border-slate-800">
+          <p class="text-[10px] font-semibold uppercase text-slate-400">Paystack Transfer Code</p>
+          <p class="text-sm font-mono font-semibold text-slate-300 mt-1">{{ withdrawal.transfer_code|default:"—" }}</p>
+        </div>
+        <div class="bg-slate-900/60 p-4 rounded-lg border border-slate-800">
+          <p class="text-[10px] font-semibold uppercase text-slate-400">Created At</p>
+          <p class="text-xs font-mono text-slate-300 mt-1">{{ withdrawal.created_at|date:"d M Y, H:i" }}</p>
+        </div>
+      </div>
+
+      <!-- Destination Bank Details -->
+      <div class="bg-slate-900/80 p-5 rounded-lg border border-slate-800 space-y-3">
+        <h4 class="font-bold text-white text-xs uppercase tracking-wider flex items-center gap-2">
+          <span>🏦</span> Destination Bank Account
+        </h4>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <div>
+            <span class="block text-[10px] uppercase text-slate-500 font-semibold">Account Name</span>
+            <span class="font-bold text-slate-100 text-sm">{{ withdrawal.account_name }}</span>
+          </div>
+          <div>
+            <span class="block text-[10px] uppercase text-slate-500 font-semibold">Account Number</span>
+            <span class="font-mono font-bold text-blue-300 text-sm">{{ withdrawal.account_number }}</span>
+          </div>
+          <div>
+            <span class="block text-[10px] uppercase text-slate-500 font-semibold">Bank Name</span>
+            <span class="font-medium text-slate-300">{{ withdrawal.bank_name }}</span>
+          </div>
+          <div>
+            <span class="block text-[10px] uppercase text-slate-500 font-semibold">Bank Code</span>
+            <span class="font-mono text-slate-400">{{ withdrawal.bank_code|default:"—" }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Failure / Rejection Reason & Remarks Section -->
+      <div class="space-y-3">
+        <h4 class="font-bold text-white text-xs uppercase tracking-wider flex items-center gap-2">
+          <span>📝</span> Reason / Admin Remarks
+        </h4>
+        
+        {% if withdrawal.status == 'REJECTED' or withdrawal.transaction_status == 'FAILED' or withdrawal.reason or withdrawal.remarks %}
+        <div class="p-4 rounded-lg bg-red-950/30 border border-red-800/50 space-y-2">
+          {% if withdrawal.reason %}
+          <div>
+            <span class="text-[10px] font-bold uppercase text-red-400">Failure / Rejection Reason:</span>
+            <p class="text-xs text-red-200 font-medium mt-0.5">{{ withdrawal.reason }}</p>
+          </div>
+          {% endif %}
+          {% if withdrawal.remarks %}
+          <div class="pt-2 border-t border-red-900/40">
+            <span class="text-[10px] font-bold uppercase text-slate-400">Admin Remarks:</span>
+            <p class="text-xs text-slate-300 font-medium mt-0.5">{{ withdrawal.remarks }}</p>
+          </div>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="p-4 rounded-lg bg-slate-900/60 border border-slate-800 text-xs text-slate-500 italic">
+          No failure reasons or remarks recorded for this transaction.
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Admin Actions (If Pending) -->
+      {% if withdrawal.status == 'PENDING' %}
+      <div class="border-t border-[var(--border)] pt-4 flex items-center justify-between gap-4">
+        <div>
+          <span class="text-xs font-semibold text-slate-300">Action Required:</span>
+          <p class="text-[11px] text-slate-400">Review request and either approve or reject with a reason (rejecting automatically refunds user wallet).</p>
+        </div>
+        <div class="flex gap-2 shrink-0">
+          <button onclick="approveWithdrawalDirect('{{ withdrawal.pk }}')"
+            class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-colors shadow">
+            ✓ Approve Request
+          </button>
+          <button onclick="openRejectModal('{{ withdrawal.pk }}')"
+            class="px-4 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg text-xs transition-colors shadow">
+            ✕ Reject Request
+          </button>
+        </div>
+      </div>
+      {% else %}
+      <div class="border-t border-[var(--border)] pt-3 text-xs text-slate-400 flex justify-between">
+        <span>Processed By: <strong>{% if withdrawal.processed_by %}{{ withdrawal.processed_by.full_name|default:withdrawal.processed_by.phone_number }}{% else %}System / Auto{% endif %}</strong></span>
+        <span>Last Updated: <strong class="font-mono">{{ withdrawal.updated_at|date:"d M Y, H:i" }}</strong></span>
+      </div>
+      {% endif %}
+
+    </div>
+
+    <!-- User Information Sidebar -->
+    <div class="space-y-4">
+      <div class="portal-card p-5 space-y-4">
+        <h4 class="font-bold text-white text-xs uppercase tracking-wider border-b border-[var(--border)] pb-2">
+          User Account Info
+        </h4>
+        <div class="space-y-3 text-xs">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
+              {{ withdrawal.user.first_name|first|upper }}{{ withdrawal.user.last_name|first|upper }}
+            </div>
+            <div>
+              <p class="font-bold text-white">{{ withdrawal.user.full_name|default:"—" }}</p>
+              <p class="text-xs text-blue-300 font-mono">{{ withdrawal.user.phone_number }}</p>
+            </div>
+          </div>
+          <div class="space-y-2 pt-2 border-t border-slate-800 text-slate-300">
+            <div class="flex justify-between">
+              <span class="text-slate-500">Email:</span>
+              <span class="font-mono">{{ withdrawal.user.email|default:"—" }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Role:</span>
+              <span class="uppercase font-semibold text-purple-300">{{ withdrawal.user.role }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-500">Current Wallet:</span>
+              <span class="font-mono font-bold text-emerald-400">₦{{ withdrawal.user.wallet.balance|floatformat:2|default:"0.00" }}</span>
+            </div>
+          </div>
+          <div class="pt-3 border-t border-slate-800 flex gap-2">
+            <a href="{% url 'portal:users_detail' withdrawal.user.pk %}" class="flex-1 text-center py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded text-xs transition-colors">
+              User Profile
+            </a>
+            <a href="{% url 'portal:wallet_detail' withdrawal.user.wallet.pk %}" class="flex-1 text-center py-2 bg-blue-900/60 hover:bg-blue-800 text-blue-300 font-semibold rounded text-xs transition-colors">
+              Wallet History
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Rejection Modal -->
+<div id="reject-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div class="portal-card max-w-md w-full p-6 space-y-4 bg-slate-900 border-slate-700 shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+      <h3 class="font-bold text-white text-base">Reject Withdrawal Request</h3>
+      <button onclick="closeRejectModal()" class="text-slate-400 hover:text-white text-xl">&times;</button>
+    </div>
+
+    <form id="reject-form" onsubmit="submitRejection(event)" class="space-y-4 text-xs">
+      <input type="hidden" id="reject-withdrawal-id" value="{{ withdrawal.pk }}">
+      <div>
+        <label class="block font-semibold text-slate-300 uppercase mb-1">Reason for Rejection <span class="text-red-400">*</span></label>
+        <textarea id="reject-remarks" required rows="3" class="portal-input w-full resize-none text-xs"
+          placeholder="e.g. Account name mismatch / Invalid bank details / Customer request"></textarea>
+      </div>
+
+      <div class="flex items-center gap-2 p-3 rounded-lg bg-slate-800/80 border border-slate-700">
+        <input type="checkbox" id="reject-refund-wallet" checked class="w-4 h-4 rounded accent-blue-500">
+        <label for="reject-refund-wallet" class="font-semibold text-slate-200 cursor-pointer select-none">
+          Refund ₦{{ withdrawal.amount|floatformat:2 }} back to user's wallet (Default)
+        </label>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+        <button type="button" onclick="closeRejectModal()" class="px-4 py-2 bg-slate-800 text-slate-300 rounded font-semibold text-xs">Cancel</button>
+        <button type="submit" id="btn-submit-reject" class="px-5 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded text-xs shadow">Confirm Rejection</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  let targetWithdrawalId = '{{ withdrawal.pk }}';
+
+  function openRejectModal(id) {
+    if (id) targetWithdrawalId = id;
+    document.getElementById('reject-refund-wallet').checked = true;
+    document.getElementById('reject-modal').classList.remove('hidden');
+    document.getElementById('reject-modal').classList.add('flex');
+    document.getElementById('reject-remarks').focus();
+  }
+
+  function closeRejectModal() {
+    document.getElementById('reject-modal').classList.add('hidden');
+    document.getElementById('reject-modal').classList.remove('flex');
+  }
+
+  async function approveWithdrawalDirect(id) {
+    if (!confirm('Are you sure you want to APPROVE this withdrawal?')) return;
+    try {
+      const formData = new FormData();
+      formData.append('action_type', 'APPROVED');
+      formData.append('remarks', 'Approved by admin');
+
+      const res = await fetch(`/portal/payments/withdrawals/${id}/approve/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': PortalForms.getCookie('csrftoken') },
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok && data.status !== 'error') {
+        PortalForms.toast(data.message, 'success');
+        setTimeout(() => location.reload(), 600);
+      } else {
+        PortalForms.toast(data.message || 'Error processing request.', 'error');
+      }
+    } catch {
+      PortalForms.toast('Action failed.', 'error');
+    }
+  }
+
+  async function submitRejection(e) {
+    e.preventDefault();
+    const remarks = document.getElementById('reject-remarks').value.trim();
+    const shouldRefund = document.getElementById('reject-refund-wallet').checked;
+    if (!remarks) {
+      PortalForms.toast('Please enter a rejection reason.', 'error');
+      return;
+    }
+
+    const btn = document.getElementById('btn-submit-reject');
+    btn.disabled = true;
+    btn.textContent = 'Processing…';
+
+    try {
+      const formData = new FormData();
+      formData.append('action_type', 'REJECTED');
+      formData.append('remarks', remarks);
+      formData.append('refund_wallet', shouldRefund ? 'true' : 'false');
+
+      const res = await fetch(`/portal/payments/withdrawals/${targetWithdrawalId}/approve/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': PortalForms.getCookie('csrftoken') },
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok && data.status !== 'error') {
+        PortalForms.toast(data.message, 'success');
+        closeRejectModal();
+        setTimeout(() => location.reload(), 600);
+      } else {
+        PortalForms.toast(data.message || 'Error rejecting withdrawal.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Confirm Rejection';
+      }
+    } catch {
+      PortalForms.toast('Action failed.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Confirm Rejection';
+    }
+  }
+</script>
+{% endblock %}

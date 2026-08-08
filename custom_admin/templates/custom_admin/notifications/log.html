@@ -1,0 +1,174 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Notification Log - Admin Dashboard{% endblock %}
+{% block page_title %}Notification Log{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+
+  <!-- Filters -->
+  <form method="GET" action="{% url 'portal:notification_log' %}" class="portal-card p-4 space-y-3">
+    <!-- Row 1: Search + Channel + Sent By -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div class="sm:col-span-1">
+        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Search title / body</label>
+        <input type="text" name="q" value="{{ q }}" class="portal-input w-full text-xs" placeholder="Type to search…">
+      </div>
+      <div>
+        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Channel</label>
+        <select name="channel" class="portal-input w-full text-xs">
+          <option value="">All Channels</option>
+          {% for val, label in channel_choices %}
+          <option value="{{ val }}" {% if channel == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Sent By (phone / name)</label>
+        <input type="text" name="sent_by" value="{{ sent_by }}" class="portal-input w-full text-xs" placeholder="e.g. 0801234…">
+      </div>
+    </div>
+    <!-- Row 2: Date range + Sort -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div>
+        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Date From</label>
+        <input type="date" name="date_from" value="{{ date_from }}" class="portal-input w-full text-xs">
+      </div>
+      <div>
+        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Date To</label>
+        <input type="date" name="date_to" value="{{ date_to }}" class="portal-input w-full text-xs">
+      </div>
+      <div>
+        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Sort By</label>
+        <select name="sort" class="portal-input w-full text-xs">
+          <option value="-created_at" {% if sort == '-created_at' %}selected{% endif %}>Newest first</option>
+          <option value="created_at"  {% if sort == 'created_at'  %}selected{% endif %}>Oldest first</option>
+          <option value="-total"      {% if sort == '-total'      %}selected{% endif %}>Most recipients</option>
+          <option value="-sent"       {% if sort == '-sent'       %}selected{% endif %}>Most sent</option>
+          <option value="-failed"     {% if sort == '-failed'     %}selected{% endif %}>Most failed</option>
+        </select>
+      </div>
+    </div>
+    <!-- Actions -->
+    <div class="flex justify-end gap-2 pt-1 border-t border-[var(--border)]">
+      <a href="{% url 'portal:notification_log' %}" class="px-3 py-1.5 bg-slate-800 text-slate-300 rounded text-xs font-semibold hover:bg-slate-700 transition-colors">Reset</a>
+      <button type="submit" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-bold transition-colors">Apply Filters</button>
+    </div>
+  </form>
+
+  <!-- Active filter chips -->
+  {% if q or channel or sent_by or date_from or date_to %}
+  <div class="flex flex-wrap gap-2 text-xs">
+    <span class="text-slate-500">Active filters:</span>
+    {% if q %}<span class="px-2 py-1 bg-blue-900/40 text-blue-300 rounded-full border border-blue-800/40">Search: {{ q }}</span>{% endif %}
+    {% if channel %}<span class="px-2 py-1 bg-blue-900/40 text-blue-300 rounded-full border border-blue-800/40">Channel: {{ channel }}</span>{% endif %}
+    {% if sent_by %}<span class="px-2 py-1 bg-blue-900/40 text-blue-300 rounded-full border border-blue-800/40">Sent by: {{ sent_by }}</span>{% endif %}
+    {% if date_from %}<span class="px-2 py-1 bg-blue-900/40 text-blue-300 rounded-full border border-blue-800/40">From: {{ date_from }}</span>{% endif %}
+    {% if date_to %}<span class="px-2 py-1 bg-blue-900/40 text-blue-300 rounded-full border border-blue-800/40">To: {{ date_to }}</span>{% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Table -->
+  <div class="portal-card overflow-hidden">
+    <div class="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
+      <h4 class="font-bold text-white text-xs uppercase tracking-wider">
+        {{ total_count }} record{% if total_count != 1 %}s{% endif %} found
+      </h4>
+      <a href="{% url 'portal:send_notification' %}" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded transition-colors">
+        📤 Send New
+      </a>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+          <tr>
+            <th class="p-3">
+              <a href="?q={{ q }}&channel={{ channel }}&sent_by={{ sent_by }}&date_from={{ date_from }}&date_to={{ date_to }}&sort={% if sort == '-created_at' %}created_at{% else %}-created_at{% endif %}"
+                class="flex items-center gap-1 hover:text-white whitespace-nowrap">
+                Date {% if sort == '-created_at' %}↓{% elif sort == 'created_at' %}↑{% endif %}
+              </a>
+            </th>
+            <th class="p-3">Title / Body</th>
+            <th class="p-3">Channel</th>
+            <th class="p-3">
+              <a href="?q={{ q }}&channel={{ channel }}&sent_by={{ sent_by }}&date_from={{ date_from }}&date_to={{ date_to }}&sort={% if sort == '-total' %}-created_at{% else %}-total{% endif %}"
+                class="flex items-center gap-1 hover:text-white">
+                Recipients {% if sort == '-total' %}↓{% endif %}
+              </a>
+            </th>
+            <th class="p-3">
+              <a href="?q={{ q }}&channel={{ channel }}&sent_by={{ sent_by }}&date_from={{ date_from }}&date_to={{ date_to }}&sort={% if sort == '-sent' %}-created_at{% else %}-sent{% endif %}"
+                class="flex items-center gap-1 hover:text-white">
+                ✅ Sent {% if sort == '-sent' %}↓{% endif %}
+              </a>
+            </th>
+            <th class="p-3">
+              <a href="?q={{ q }}&channel={{ channel }}&sent_by={{ sent_by }}&date_from={{ date_from }}&date_to={{ date_to }}&sort={% if sort == '-failed' %}-created_at{% else %}-failed{% endif %}"
+                class="flex items-center gap-1 hover:text-white">
+                ❌ Failed {% if sort == '-failed' %}↓{% endif %}
+              </a>
+            </th>
+            <th class="p-3">Sent By</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for notif in page_obj %}
+          <tr class="hover:bg-slate-800/40">
+            <td class="p-3 font-mono text-[10px] text-slate-400 whitespace-nowrap">
+              {{ notif.created_at|date:"d M Y H:i" }}
+            </td>
+            <td class="p-3 max-w-sm">
+              <div class="font-semibold text-white truncate">{{ notif.title }}</div>
+              <div class="text-slate-500 text-[10px] mt-0.5 truncate">{{ notif.body }}</div>
+            </td>
+            <td class="p-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase
+                {% if notif.channel == 'fcm' %}bg-blue-900/50 text-blue-300
+                {% elif notif.channel == 'email' %}bg-indigo-900/50 text-indigo-300
+                {% elif notif.channel == 'sms' %}bg-amber-900/50 text-amber-300
+                {% elif notif.channel == 'whatsapp' %}bg-green-900/50 text-green-300
+                {% else %}bg-slate-800 text-slate-400{% endif %}">
+                {{ notif.get_channel_display }}
+              </span>
+            </td>
+            <td class="p-3 font-mono font-bold text-white">{{ notif.total }}</td>
+            <td class="p-3 font-mono font-bold text-emerald-400">{{ notif.sent }}</td>
+            <td class="p-3 font-mono font-bold {% if notif.failed > 0 %}text-red-400{% else %}text-slate-600{% endif %}">
+              {{ notif.failed }}
+            </td>
+            <td class="p-3 text-slate-400 whitespace-nowrap">
+              {% if notif.created_by %}
+                {{ notif.created_by.full_name|default:notif.created_by.phone_number }}
+              {% else %}<span class="text-slate-600">System</span>{% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="p-12 text-center text-slate-500">
+              No notifications found{% if q or channel or sent_by or date_from %} matching your filters{% endif %}.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="px-4 py-3 border-t border-[var(--border)] flex items-center justify-between text-xs text-slate-400">
+      <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} &mdash; {{ total_count }} total</span>
+      <div class="flex gap-1">
+        {% if page_obj.has_previous %}
+        <a href="?q={{ q }}&channel={{ channel }}&sent_by={{ sent_by }}&date_from={{ date_from }}&date_to={{ date_to }}&sort={{ sort }}&page={{ page_obj.previous_page_number }}"
+          class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded font-semibold transition-colors">← Prev</a>
+        {% endif %}
+        {% if page_obj.has_next %}
+        <a href="?q={{ q }}&channel={{ channel }}&sent_by={{ sent_by }}&date_from={{ date_from }}&date_to={{ date_to }}&sort={{ sort }}&page={{ page_obj.next_page_number }}"
+          class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded font-semibold transition-colors">Next →</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}

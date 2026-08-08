@@ -1,6 +1,7 @@
 {% extends 'custom_admin/base.html' %}
 {% block title %}Deposits - Starboy Global Admin Dashboard{% endblock %}
 {% block page_title %}Deposit Log & Inflows{% endblock %}
+
 {% block content %}
 <div class="space-y-6">
 
@@ -30,14 +31,18 @@
             <th class="p-3">Amount</th>
             <th class="p-3">Payment Type</th>
             <th class="p-3">Status</th>
+            <th class="p-3">Remarks / Failure Reason</th>
             <th class="p-3">Processed By</th>
             <th class="p-3">Timestamp</th>
+            <th class="p-3 text-right">Actions</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-800">
           {% for d in deposits %}
             <tr class="hover:bg-slate-800/40">
-              <td class="p-3 font-mono text-blue-400 font-medium">{{ d.reference }}</td>
+              <td class="p-3 font-mono text-blue-400 font-medium">
+                <a href="{% url 'portal:deposit_detail' d.pk %}" class="hover:underline">{{ d.reference }}</a>
+              </td>
               <td class="p-3 font-medium text-slate-200">
                 <a href="{% url 'portal:users_detail' d.user.pk %}" class="hover:text-blue-400">{{ d.user.phone_number }}</a>
               </td>
@@ -48,11 +53,23 @@
                   {{ d.status }}
                 </span>
               </td>
+              <td class="p-3 max-w-[200px] truncate text-slate-400">
+                {% if d.remarks %}
+                  <span class="text-slate-300" title="{{ d.remarks }}">{{ d.remarks }}</span>
+                {% else %}
+                  <span class="text-slate-600">—</span>
+                {% endif %}
+              </td>
               <td class="p-3 text-slate-400">{{ d.processed_by.phone_number|default:"System / Auto" }}</td>
-              <td class="p-3 text-slate-400">{{ d.timestamp|date:"M d, H:i:s" }}</td>
+              <td class="p-3 text-slate-400 whitespace-nowrap">{{ d.timestamp|date:"M d, H:i:s" }}</td>
+              <td class="p-3 text-right whitespace-nowrap">
+                <a href="{% url 'portal:deposit_detail' d.pk %}" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-blue-300 rounded font-semibold text-[11px]">
+                  Details
+                </a>
+              </td>
             </tr>
           {% empty %}
-            <tr><td colspan="7" class="p-8 text-center text-slate-500">No deposits found.</td></tr>
+            <tr><td colspan="9" class="p-8 text-center text-slate-500">No deposits found.</td></tr>
           {% endfor %}
         </tbody>
       </table>

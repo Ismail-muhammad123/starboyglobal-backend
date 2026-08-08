@@ -1,0 +1,203 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}Announcements - Admin Dashboard{% endblock %}
+{% block page_title %}Announcements & Promotions{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+
+  <!-- Filters -->
+  <form method="GET" action="{% url 'portal:announcements_list' %}" class="portal-card p-4">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+      <div class="lg:col-span-2">
+        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Search title / body</label>
+        <input type="text" name="q" value="{{ q }}" class="portal-input w-full text-xs" placeholder="Type to search…">
+      </div>
+      <div>
+        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Audience</label>
+        <select name="audience" class="portal-input w-full text-xs">
+          <option value="">All Audiences</option>
+          {% for val, label in audience_choices %}
+          <option value="{{ val }}" {% if audience == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Status</label>
+        <select name="status" class="portal-input w-full text-xs">
+          <option value="">All</option>
+          <option value="active"   {% if status == 'active'   %}selected{% endif %}>Active</option>
+          <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactive</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Date From</label>
+        <input type="date" name="date_from" value="{{ date_from }}" class="portal-input w-full text-xs">
+      </div>
+      <div>
+        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Date To</label>
+        <input type="date" name="date_to" value="{{ date_to }}" class="portal-input w-full text-xs">
+      </div>
+      <div>
+        <label class="block text-[10px] font-semibold text-slate-400 uppercase mb-1">Sort By</label>
+        <select name="sort" class="portal-input w-full text-xs">
+          <option value="-created_at" {% if sort == '-created_at' %}selected{% endif %}>Newest Created</option>
+          <option value="created_at"  {% if sort == 'created_at'  %}selected{% endif %}>Oldest Created</option>
+          <option value="-expires_at" {% if sort == '-expires_at' %}selected{% endif %}>Expires Latest</option>
+          <option value="expires_at"  {% if sort == 'expires_at'  %}selected{% endif %}>Expires Soonest</option>
+          <option value="title"       {% if sort == 'title'       %}selected{% endif %}>Title A–Z</option>
+        </select>
+      </div>
+    </div>
+    <div class="flex justify-end gap-2 mt-3 pt-3 border-t border-[var(--border)]">
+      <a href="{% url 'portal:announcements_list' %}" class="px-3 py-1.5 bg-slate-800 text-slate-300 rounded text-xs font-semibold hover:bg-slate-700 transition-colors">Reset</a>
+      <button type="submit" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-bold transition-colors">Apply Filters</button>
+    </div>
+  </form>
+
+  <!-- Table -->
+  <div class="portal-card overflow-hidden">
+    <div class="px-4 py-3 border-b border-[var(--border)] flex items-center justify-between">
+      <h4 class="font-bold text-white text-xs uppercase tracking-wider">
+        {{ total_count }} announcement{% if total_count != 1 %}s{% endif %} found
+      </h4>
+      <a href="{% url 'portal:announcement_create' %}" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded transition-colors">
+        + New Announcement
+      </a>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+          <tr>
+            <th class="p-3">Title</th>
+            <th class="p-3">Audience</th>
+            <th class="p-3">Status</th>
+            <th class="p-3">
+              <a href="?q={{ q }}&audience={{ audience }}&status={{ status }}&date_from={{ date_from }}&date_to={{ date_to }}&sort={% if sort == '-created_at' %}created_at{% else %}-created_at{% endif %}"
+                class="flex items-center gap-1 hover:text-white whitespace-nowrap">
+                Created {% if sort == '-created_at' %}↓{% elif sort == 'created_at' %}↑{% endif %}
+              </a>
+            </th>
+            <th class="p-3">Starts</th>
+            <th class="p-3">
+              <a href="?q={{ q }}&audience={{ audience }}&status={{ status }}&date_from={{ date_from }}&date_to={{ date_to }}&sort={% if sort == '-expires_at' %}expires_at{% else %}-expires_at{% endif %}"
+                class="flex items-center gap-1 hover:text-white whitespace-nowrap">
+                Expires {% if sort == '-expires_at' %}↓{% elif sort == 'expires_at' %}↑{% endif %}
+              </a>
+            </th>
+            <th class="p-3">Created By</th>
+            <th class="p-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for ann in page_obj %}
+          <tr class="hover:bg-slate-800/40" id="ann-row-{{ ann.id }}">
+            <td class="p-3 max-w-xs">
+              <div class="font-semibold text-white truncate">{{ ann.title }}</div>
+              <div class="text-slate-500 text-[10px] mt-0.5 truncate">{{ ann.body }}</div>
+            </td>
+            <td class="p-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-purple-900/50 text-purple-300">
+                {{ ann.get_audience_display }}
+              </span>
+            </td>
+            <td class="p-3">
+              <span id="ann-badge-{{ ann.id }}" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {% if ann.is_active %}badge-success{% else %}badge-danger{% endif %}">
+                {% if ann.is_active %}Active{% else %}Inactive{% endif %}
+              </span>
+            </td>
+            <td class="p-3 font-mono text-[10px] text-slate-400 whitespace-nowrap">{{ ann.created_at|date:"d M Y H:i" }}</td>
+            <td class="p-3 font-mono text-[10px] text-slate-400 whitespace-nowrap">
+              {% if ann.starts_at %}{{ ann.starts_at|date:"d M Y H:i" }}{% else %}-{% endif %}
+            </td>
+            <td class="p-3 font-mono text-[10px] text-slate-400 whitespace-nowrap">
+              {% if ann.expires_at %}{{ ann.expires_at|date:"d M Y H:i" }}{% else %}<span class="text-slate-600">No expiry</span>{% endif %}
+            </td>
+            <td class="p-3 text-slate-400 whitespace-nowrap">
+              {% if ann.created_by %}{{ ann.created_by.full_name|default:ann.created_by.phone_number }}{% else %}-{% endif %}
+            </td>
+            <td class="p-3 text-right">
+              <div class="flex gap-1.5 justify-end">
+                <a href="{% url 'portal:announcement_edit' ann.id %}"
+                  class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-blue-400 font-semibold text-[10px] rounded transition-colors">
+                  Edit
+                </a>
+                <button onclick="toggleAnn({{ ann.id }})"
+                  class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-amber-400 font-semibold text-[10px] rounded transition-colors">
+                  Toggle
+                </button>
+                <button onclick="deleteAnn({{ ann.id }}, '{{ ann.title|escapejs }}')"
+                  class="px-2.5 py-1 bg-red-900/50 hover:bg-red-800 text-red-300 font-semibold text-[10px] rounded transition-colors">
+                  Delete
+                </button>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="8" class="p-12 text-center text-slate-500">
+              No announcements found{% if q or audience or status %} matching your filters{% endif %}.
+              <a href="{% url 'portal:announcement_create' %}" class="text-blue-400 hover:text-blue-300 ml-1">Create one →</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="px-4 py-3 border-t border-[var(--border)] flex items-center justify-between text-xs text-slate-400">
+      <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }} &mdash; {{ total_count }} total</span>
+      <div class="flex gap-1">
+        {% if page_obj.has_previous %}
+        <a href="?q={{ q }}&audience={{ audience }}&status={{ status }}&date_from={{ date_from }}&date_to={{ date_to }}&sort={{ sort }}&page={{ page_obj.previous_page_number }}"
+          class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded font-semibold transition-colors">← Prev</a>
+        {% endif %}
+        {% if page_obj.has_next %}
+        <a href="?q={{ q }}&audience={{ audience }}&status={{ status }}&date_from={{ date_from }}&date_to={{ date_to }}&sort={{ sort }}&page={{ page_obj.next_page_number }}"
+          class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded font-semibold transition-colors">Next →</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  async function toggleAnn(id) {
+    try {
+      const res = await fetch(`/portal/notifications/announcements/${id}/toggle/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': PortalForms.getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        PortalForms.toast(data.message, 'success');
+        const badge = document.getElementById('ann-badge-' + id);
+        if (badge) {
+          badge.textContent = data.is_active ? 'Active' : 'Inactive';
+          badge.className = `px-2 py-0.5 rounded text-[10px] font-bold uppercase ${data.is_active ? 'badge-success' : 'badge-danger'}`;
+        }
+      } else { PortalForms.toast(data.message || 'Toggle failed.', 'error'); }
+    } catch { PortalForms.toast('Request error.', 'error'); }
+  }
+
+  async function deleteAnn(id, title) {
+    if (!confirm(`Delete announcement "${title}"?`)) return;
+    try {
+      const res = await fetch(`/portal/notifications/announcements/${id}/delete/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': PortalForms.getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        PortalForms.toast(data.message, 'success');
+        document.getElementById('ann-row-' + id)?.remove();
+      } else { PortalForms.toast(data.message || 'Delete failed.', 'error'); }
+    } catch { PortalForms.toast('Request error.', 'error'); }
+  }
+</script>
+{% endblock %}

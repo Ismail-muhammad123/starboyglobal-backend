@@ -1,0 +1,146 @@
+{% extends 'custom_admin/base.html' %}
+{% block title %}{{ form_title }} - Admin Dashboard{% endblock %}
+{% block page_title %}{{ form_title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl">
+  <div class="portal-card p-6 space-y-5">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between border-b border-[var(--border)] pb-4">
+      <div>
+        <h3 class="font-bold text-white text-sm">{{ form_title }}</h3>
+        <p class="text-xs text-slate-400 mt-0.5">Announcements appear as banners in the mobile app within a defined time window.</p>
+      </div>
+      <a href="{% url 'portal:announcements_list' %}" class="text-xs text-slate-400 hover:text-white transition-colors">
+        ← Back to list
+      </a>
+    </div>
+
+    <form id="announcement-form" method="POST"
+      action="{% if announcement %}{% url 'portal:announcement_edit' announcement.id %}{% else %}{% url 'portal:announcement_create' %}{% endif %}"
+      enctype="multipart/form-data"
+      class="space-y-4 text-xs">
+      {% csrf_token %}
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        <!-- Title -->
+        <div class="md:col-span-2">
+          <label class="block font-semibold text-slate-300 uppercase mb-1">Title <span class="text-red-400">*</span></label>
+          <input type="text" name="title" required maxlength="255"
+            class="portal-input w-full"
+            placeholder="e.g. 🎉 Double Data Weekend!"
+            value="{{ announcement.title|default:'' }}">
+        </div>
+
+        <!-- Body -->
+        <div class="md:col-span-2">
+          <label class="block font-semibold text-slate-300 uppercase mb-1">Body <span class="text-red-400">*</span></label>
+          <textarea name="body" required rows="4" class="portal-input w-full resize-none"
+            placeholder="Message shown to users…">{{ announcement.body|default:'' }}</textarea>
+        </div>
+
+        <!-- Audience -->
+        <div>
+          <label class="block font-semibold text-slate-300 uppercase mb-1">Audience</label>
+          <select name="audience" class="portal-input w-full">
+            {% for val, label in audience_choices %}
+            <option value="{{ val }}" {% if announcement.audience == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Banner Image -->
+        <div>
+          <label class="block font-semibold text-slate-300 uppercase mb-1">
+            Banner Image <span class="text-slate-500 normal-case font-normal">(optional)</span>
+          </label>
+          {% if announcement.image %}
+          <div class="mb-2 flex items-center gap-2">
+            <img src="{{ announcement.image.url }}" alt="Current banner" class="h-10 w-auto rounded border border-slate-700">
+            <span class="text-slate-500 text-[10px]">Current image. Upload new to replace.</span>
+          </div>
+          {% endif %}
+          <input type="file" name="image" accept="image/*"
+            class="portal-input w-full file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:bg-slate-700 file:text-slate-300">
+        </div>
+
+        <!-- Starts At -->
+        <div>
+          <label class="block font-semibold text-slate-300 uppercase mb-1">
+            Start Date & Time <span class="text-slate-500 normal-case font-normal">(optional — leave blank for immediate)</span>
+          </label>
+          <input type="datetime-local" name="starts_at" class="portal-input w-full"
+            value="{{ announcement.starts_at|date:'Y-m-d\TH:i'|default:'' }}">
+        </div>
+
+        <!-- Expires At -->
+        <div>
+          <label class="block font-semibold text-slate-300 uppercase mb-1">
+            Expiry Date & Time <span class="text-slate-500 normal-case font-normal">(optional — leave blank for no expiry)</span>
+          </label>
+          <input type="datetime-local" name="expires_at" class="portal-input w-full"
+            value="{{ announcement.expires_at|date:'Y-m-d\TH:i'|default:'' }}">
+        </div>
+
+        <!-- Active toggle -->
+        <div class="md:col-span-2 flex items-center gap-3 p-3 rounded-lg bg-slate-800/60 border border-slate-700">
+          <input type="checkbox" name="is_active" id="is_active"
+            class="w-4 h-4 rounded accent-blue-500"
+            {% if not announcement or announcement.is_active %}checked{% endif %}>
+          <label for="is_active" class="font-semibold text-slate-200 cursor-pointer select-none">
+            Active — visible to users in the app
+          </label>
+        </div>
+
+      </div>
+
+      <!-- Actions -->
+      <div class="flex items-center justify-between pt-3 border-t border-[var(--border)]">
+        <a href="{% url 'portal:announcements_list' %}"
+          class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-semibold transition-colors">
+          Cancel
+        </a>
+        <button type="submit" id="btn-submit"
+          class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow transition-colors">
+          {{ submit_label }}
+        </button>
+      </div>
+    </form>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.getElementById('announcement-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-submit');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    try {
+      const res = await fetch(this.action, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': PortalForms.getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest' },
+        body: new FormData(this),
+      });
+      const data = await res.json();
+      if (res.ok && data.status !== 'error') {
+        PortalForms.toast(data.message, 'success');
+        setTimeout(() => { window.location.href = data.redirect || '{% url "portal:announcements_list" %}'; }, 800);
+      } else {
+        PortalForms.toast(data.message || 'Failed to save.', 'error');
+        btn.disabled = false;
+        btn.textContent = '{{ submit_label }}';
+      }
+    } catch {
+      PortalForms.toast('Unexpected error.', 'error');
+      btn.disabled = false;
+      btn.textContent = '{{ submit_label }}';
+    }
+  });
+</script>
+{% endblock %}

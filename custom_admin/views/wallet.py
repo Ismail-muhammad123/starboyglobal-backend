@@ -41,11 +41,26 @@ class WalletDetailView(PortalPermissionMixin, View):
     required_permission = ('wallet.Wallet', 'view')
 
     def get(self, request, pk):
+        from django.db.models import Sum
         wallet_obj = get_object_or_404(Wallet, pk=pk)
-        transactions = WalletTransaction.objects.filter(user=wallet_obj.user).order_by('-timestamp')[:30]
+        transactions_qs = WalletTransaction.objects.filter(
+            user=wallet_obj.user
+        ).select_related('initiated_by').order_by('-timestamp')
+
+        # Stats
+        stats = transactions_qs.aggregate(
+            total_credits=Sum('amount', filter=Q(transaction_type='credit')),
+            total_debits=Sum('amount', filter=Q(transaction_type='debit')),
+        )
+
+        transactions = transactions_qs[:50]
+
         return render(request, 'custom_admin/wallet/detail.html', {
             'wallet': wallet_obj,
-            'transactions': transactions
+            'transactions': transactions,
+            'total_credits': stats['total_credits'] or 0,
+            'total_debits': stats['total_debits'] or 0,
+            'tx_count': transactions_qs.count(),
         })
 
 

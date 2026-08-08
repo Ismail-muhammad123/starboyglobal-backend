@@ -1,6 +1,7 @@
 {% extends 'custom_admin/base.html' %}
 {% block title %}Withdrawals - Starboy Global Admin Dashboard{% endblock %}
 {% block page_title %}Withdrawal Requests & Approvals{% endblock %}
+
 {% block content %}
 <div class="space-y-6">
 
@@ -30,6 +31,7 @@
             <th class="p-3">Amount</th>
             <th class="p-3">Bank Details</th>
             <th class="p-3">Status</th>
+            <th class="p-3">Reason / Remarks</th>
             <th class="p-3">Date</th>
             <th class="p-3 text-right">Actions</th>
           </tr>
@@ -37,7 +39,9 @@
         <tbody class="divide-y divide-slate-800">
           {% for w in withdrawals %}
             <tr class="hover:bg-slate-800/40">
-              <td class="p-3 font-mono text-blue-400 font-medium">{{ w.reference }}</td>
+              <td class="p-3 font-mono text-blue-400 font-medium">
+                <a href="{% url 'portal:withdrawal_detail' w.pk %}" class="hover:underline">{{ w.reference }}</a>
+              </td>
               <td class="p-3 font-medium text-slate-200">
                 <a href="{% url 'portal:users_detail' w.user.pk %}" class="hover:text-blue-400">{{ w.user.phone_number }}</a>
               </td>
@@ -51,54 +55,164 @@
                   {{ w.status }}
                 </span>
               </td>
-              <td class="p-3 text-slate-400">{{ w.created_at|date:"M d, H:i" }}</td>
-              <td class="p-3 text-right space-x-1">
+              <td class="p-3 max-w-[200px] truncate text-slate-400">
+                {% if w.reason or w.remarks %}
+                  <span class="text-slate-300" title="{{ w.reason|default:w.remarks }}">{{ w.reason|default:w.remarks }}</span>
+                {% else %}
+                  <span class="text-slate-600">—</span>
+                {% endif %}
+              </td>
+              <td class="p-3 text-slate-400 whitespace-nowrap">{{ w.created_at|date:"M d, H:i" }}</td>
+              <td class="p-3 text-right space-x-1 whitespace-nowrap">
+                <a href="{% url 'portal:withdrawal_detail' w.pk %}" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-blue-300 rounded font-semibold text-[11px]">
+                  Details
+                </a>
                 {% if w.status == 'PENDING' %}
-                  <button onclick="processWithdrawal('{{ w.pk }}', 'APPROVED')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-semibold text-[11px]">
+                  <button onclick="approveWithdrawal('{{ w.pk }}')" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-semibold text-[11px]">
                     Approve
                   </button>
-                  <button onclick="processWithdrawal('{{ w.pk }}', 'REJECTED')" class="px-2.5 py-1 bg-red-600 hover:bg-red-500 text-white rounded font-semibold text-[11px]">
+                  <button onclick="openRejectModal('{{ w.pk }}', '₦{{ w.amount|floatformat:2 }}')" class="px-2 py-1 bg-red-600 hover:bg-red-500 text-white rounded font-semibold text-[11px]">
                     Reject
                   </button>
-                {% else %}
-                  <span class="text-slate-500 text-[11px]">Completed</span>
                 {% endif %}
               </td>
             </tr>
           {% empty %}
-            <tr><td colspan="7" class="p-8 text-center text-slate-500">No withdrawal records found.</td></tr>
+            <tr><td colspan="8" class="p-8 text-center text-slate-500">No withdrawal records found.</td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
+
+    {% if withdrawals.has_other_pages %}
+      <div class="p-4 border-t border-slate-800 flex items-center justify-between text-xs">
+        <span class="text-slate-400">Page {{ withdrawals.number }} of {{ withdrawals.paginator.num_pages }}</span>
+        <div class="flex gap-1">
+          {% if withdrawals.has_previous %}<a href="?page={{ withdrawals.previous_page_number }}" class="px-3 py-1 bg-slate-800 text-slate-300 rounded hover:bg-slate-700">Prev</a>{% endif %}
+          {% if withdrawals.has_next %}<a href="?page={{ withdrawals.next_page_number }}" class="px-3 py-1 bg-slate-800 text-slate-300 rounded hover:bg-slate-700">Next</a>{% endif %}
+        </div>
+      </div>
+    {% endif %}
   </div>
 
+</div>
+
+<!-- Rejection Modal -->
+<div id="reject-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div class="portal-card max-w-md w-full p-6 space-y-4 bg-slate-900 border-slate-700 shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+      <h3 class="font-bold text-white text-base">Reject Withdrawal Request</h3>
+      <button onclick="closeRejectModal()" class="text-slate-400 hover:text-white text-xl">&times;</button>
+    </div>
+
+    <form id="reject-form" onsubmit="submitRejection(event)" class="space-y-4 text-xs">
+      <input type="hidden" id="reject-withdrawal-id" value="">
+      <div>
+        <label class="block font-semibold text-slate-300 uppercase mb-1">Reason for Rejection <span class="text-red-400">*</span></label>
+        <textarea id="reject-remarks" required rows="3" class="portal-input w-full resize-none text-xs"
+          placeholder="e.g. Account name mismatch / Invalid bank details / Customer requested cancellation"></textarea>
+      </div>
+
+      <div class="flex items-center gap-2 p-3 rounded-lg bg-slate-800/80 border border-slate-700">
+        <input type="checkbox" id="reject-refund-wallet" checked class="w-4 h-4 rounded accent-blue-500">
+        <label for="reject-refund-wallet" class="font-semibold text-slate-200 cursor-pointer select-none">
+          Refund <span id="reject-amount-text">the amount</span> back to user's wallet (Default)
+        </label>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+        <button type="button" onclick="closeRejectModal()" class="px-4 py-2 bg-slate-800 text-slate-300 rounded font-semibold text-xs">Cancel</button>
+        <button type="submit" id="btn-submit-reject" class="px-5 py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded text-xs shadow">Confirm Rejection</button>
+      </div>
+    </form>
+  </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-  async function processWithdrawal(withdrawalId, actionType) {
-    const remarks = prompt(`Enter remarks for ${actionType} (optional):`) || '';
+  let activeRejectId = null;
+
+  function openRejectModal(id, amountText) {
+    activeRejectId = id;
+    document.getElementById('reject-withdrawal-id').value = id;
+    if (amountText) {
+      document.getElementById('reject-amount-text').textContent = amountText;
+    }
+    document.getElementById('reject-remarks').value = '';
+    document.getElementById('reject-refund-wallet').checked = true;
+    document.getElementById('reject-modal').classList.remove('hidden');
+    document.getElementById('reject-modal').classList.add('flex');
+    document.getElementById('reject-remarks').focus();
+  }
+
+  function closeRejectModal() {
+    document.getElementById('reject-modal').classList.add('hidden');
+    document.getElementById('reject-modal').classList.remove('flex');
+  }
+
+  async function approveWithdrawal(withdrawalId) {
+    if (!confirm('Are you sure you want to APPROVE this withdrawal?')) return;
     try {
       const formData = new FormData();
-      formData.append('action_type', actionType);
-      formData.append('remarks', remarks);
+      formData.append('action_type', 'APPROVED');
+      formData.append('remarks', 'Approved by admin');
 
-      const res = await fetch(`/portal/withdrawals/${withdrawalId}/approve/`, {
+      const res = await fetch(`/portal/payments/withdrawals/${withdrawalId}/approve/`, {
         method: 'POST',
         headers: { 'X-CSRFToken': PortalForms.getCookie('csrftoken') },
         body: formData
       });
       const data = await res.json();
-      if (res.ok) {
+      if (res.ok && data.status !== 'error') {
         PortalForms.toast(data.message, 'success');
         setTimeout(() => location.reload(), 600);
       } else {
-        PortalForms.toast(data.message || 'Error processing withdrawal.', 'error');
+        PortalForms.toast(data.message || 'Error approving withdrawal.', 'error');
       }
-    } catch (e) {
+    } catch {
       PortalForms.toast('Action failed.', 'error');
+    }
+  }
+
+  async function submitRejection(e) {
+    e.preventDefault();
+    const remarks = document.getElementById('reject-remarks').value.trim();
+    const shouldRefund = document.getElementById('reject-refund-wallet').checked;
+    if (!remarks) {
+      PortalForms.toast('Please enter a rejection reason.', 'error');
+      return;
+    }
+
+    const btn = document.getElementById('btn-submit-reject');
+    btn.disabled = true;
+    btn.textContent = 'Processing…';
+
+    try {
+      const formData = new FormData();
+      formData.append('action_type', 'REJECTED');
+      formData.append('remarks', remarks);
+      formData.append('refund_wallet', shouldRefund ? 'true' : 'false');
+
+      const res = await fetch(`/portal/payments/withdrawals/${activeRejectId}/approve/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': PortalForms.getCookie('csrftoken') },
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok && data.status !== 'error') {
+        PortalForms.toast(data.message, 'success');
+        closeRejectModal();
+        setTimeout(() => location.reload(), 600);
+      } else {
+        PortalForms.toast(data.message || 'Error rejecting withdrawal.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Confirm Rejection';
+      }
+    } catch {
+      PortalForms.toast('Action failed.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Confirm Rejection';
     }
   }
 </script>
