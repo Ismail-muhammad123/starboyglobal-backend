@@ -27,46 +27,33 @@ class SummaryDashboard(Wallet):
         verbose_name_plural = "Summary Dashboard"
 
     # ------------------------------------------------------------------
+    # ------------------------------------------------------------------
     # helpers
     # ------------------------------------------------------------------
     @staticmethod
     def _calculate_profit(qs):
         """
         Calculate profit across all purchase types.
-        Uses the stored profit field for new records, while maintaining 
-        a fallback for legacy records if needed (though we recommend mapping them).
+        Uses stored profit field with fast SQL aggregations for fallback.
         """
-        # Sum pre-calculated profit
         stored_profit = float(qs.aggregate(total=Sum('profit'))['total'] or 0)
         
-        # If there are old records with 0 profit, we could calculate them here,
-        # but for simplicity and performance we transition to the new field.
-        # Check if we have records with profit=0 that might have on-the-fly profit
         if stored_profit == 0 and qs.exists():
-             # Fallback logic for legacy data if specifically needed
-             # (Keeping the old logic as a safety net for now)
-             profit = 0.0
-             profit += float(qs.filter(purchase_type='data', data_variation__isnull=False).annotate(p=F('amount') - F('data_variation__cost_price')).aggregate(total=Sum('p'))['total'] or 0)
-             profit += float(qs.filter(purchase_type='tv', tv_variation__isnull=False).annotate(p=F('amount') - F('tv_variation__cost_price')).aggregate(total=Sum('p'))['total'] or 0)
-             profit += float(qs.filter(purchase_type='electricity', electricity_variation__isnull=False).annotate(p=F('amount') - F('electricity_variation__cost_price')).aggregate(total=Sum('p'))['total'] or 0)
-             profit += float(qs.filter(purchase_type='internet', internet_variation__isnull=False).annotate(p=F('amount') - F('internet_variation__cost_price')).aggregate(total=Sum('p'))['total'] or 0)
-             profit += float(qs.filter(purchase_type='education', education_variation__isnull=False).annotate(p=F('amount') - F('education_variation__cost_price')).aggregate(total=Sum('p'))['total'] or 0)
-             
-             airtime_qs = qs.filter(purchase_type='airtime', airtime_service__isnull=False)
-             for p in airtime_qs.select_related('airtime_service'):
-                 try:
-                     discount = float(p.airtime_service.discount or 0) / 100
-                     profit += float(p.amount) * discount
-                 except Exception: pass
-             return profit
+            profit = 0.0
+            profit += float(qs.filter(purchase_type='data', data_variation__isnull=False).annotate(p=F('amount') - F('data_variation__cost_price')).aggregate(total=Sum('p'))['total'] or 0)
+            profit += float(qs.filter(purchase_type='tv', tv_variation__isnull=False).annotate(p=F('amount') - F('tv_variation__cost_price')).aggregate(total=Sum('p'))['total'] or 0)
+            profit += float(qs.filter(purchase_type='electricity', electricity_variation__isnull=False).annotate(p=F('amount') - F('electricity_variation__cost_price')).aggregate(total=Sum('p'))['total'] or 0)
+            profit += float(qs.filter(purchase_type='internet', internet_variation__isnull=False).annotate(p=F('amount') - F('internet_variation__cost_price')).aggregate(total=Sum('p'))['total'] or 0)
+            profit += float(qs.filter(purchase_type='education', education_variation__isnull=False).annotate(p=F('amount') - F('education_variation__cost_price')).aggregate(total=Sum('p'))['total'] or 0)
+            profit += float(qs.filter(purchase_type='airtime', airtime_service__isnull=False).annotate(p=F('amount') * F('airtime_service__discount') / 100.0).aggregate(total=Sum('p'))['total'] or 0)
+            return profit
 
         return stored_profit
 
     @staticmethod
     def _calculate_commissions(qs):
         """
-        Calculate agent commissions from successful purchases.
-        Commission = selling_price − agent_price for agent purchases.
+        Calculate agent commissions from successful purchases using fast SQL aggregation.
         """
         agent_purchases = qs.filter(user__role='agent')
         commission = 0.0
@@ -91,13 +78,11 @@ class SummaryDashboard(Wallet):
             .annotate(c=F('amount') - F('education_variation__agent_price'))
             .aggregate(total=Sum('c'))['total'] or 0
         )
-        airtime_agent = agent_purchases.filter(purchase_type='airtime', airtime_service__isnull=False)
-        for p in airtime_agent.select_related('airtime_service'):
-            try:
-                agent_disc = float(p.airtime_service.agent_discount or 0) / 100
-                commission += float(p.amount) * agent_disc
-            except Exception:
-                pass
+        commission += float(
+            agent_purchases.filter(purchase_type='airtime', airtime_service__isnull=False)
+            .annotate(c=F('amount') * F('airtime_service__agent_discount') / 100.0)
+            .aggregate(total=Sum('c'))['total'] or 0
+        )
 
         return commission
 
@@ -106,6 +91,12 @@ class SummaryDashboard(Wallet):
     # ------------------------------------------------------------------
     @classmethod
     def summary(cls, start=None, end=None):
+        from django.core.cache import cache
+        cache_key = f"summary_dashboard_data_{start}_{end}"
+        cached_res = cache.get(cache_key)
+        if cached_res is not None:
+            return cached_res
+
         now = timezone.now()
         today = now.date()
         week_ago = today - timedelta(days=7)
@@ -455,7 +446,7 @@ class SummaryDashboard(Wallet):
         # ==============================================================
         # RESPONSE
         # ==============================================================
-        return {
+        summary_res = {
             # ── NEW SECTIONS ──
             "financial": financial,
             "wallets": wallets,
@@ -502,6 +493,8 @@ class SummaryDashboard(Wallet):
                 "withdrawals": withdrawals_summary,
             }
         }
+        cache.set(cache_key, summary_res, timeout=15)
+        return summary_res
 
 class SiteConfig(models.Model):
     withdrawal_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
