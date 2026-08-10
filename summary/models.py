@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from summary.utils import get_api_wallet_balance, get_paystack_balance
 from wallet.models import Wallet, WalletTransaction
 from payments.models import Deposit, Withdrawal
@@ -315,14 +316,20 @@ class SummaryDashboard(Wallet):
             # Balance
             balance = 0.0
             if provider.is_active:
-                try:
-                    impl = ProviderRouter.get_provider_implementation(provider.name)
-                    if impl:
-                        raw_bal = impl.get_wallet_balance()
-                        if raw_bal is not None:
-                            balance = float(str(raw_bal).replace(',', '').strip())
-                except Exception:
-                    balance = 0.0
+                cache_key = f"vtu_provider_balance_{provider.id}"
+                cached_bal = cache.get(cache_key)
+                if cached_bal is not None:
+                    balance = cached_bal
+                else:
+                    try:
+                        impl = ProviderRouter.get_provider_implementation(provider.name)
+                        if impl:
+                            raw_bal = impl.get_wallet_balance()
+                            if raw_bal is not None:
+                                balance = float(str(raw_bal).replace(',', '').strip())
+                                cache.set(cache_key, balance, 60)
+                    except Exception:
+                        balance = 0.0
 
             # Active services count (services linked to this provider)
             active_services = 0
