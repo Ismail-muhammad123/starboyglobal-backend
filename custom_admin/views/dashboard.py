@@ -22,6 +22,9 @@ def parse_date_range(request):
     end_dt = None
     active_label = "All Time"
 
+    if not range_param and not date_from_str and not date_to_str and not days_param:
+        range_param = 'this_month'
+
     if date_from_str or date_to_str:
         range_param = 'custom'
         d_from = None

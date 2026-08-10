@@ -66,10 +66,10 @@
       <div class="flex flex-wrap items-center gap-2 text-xs">
         <!-- Preset buttons -->
         <div class="flex flex-wrap items-center gap-1 bg-slate-900/90 p-1 rounded-lg border border-slate-800">
-          <button onclick="filterStatsSection('all')" id="stats-preset-all" class="stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors bg-blue-600 text-white">All Time</button>
+          <button onclick="filterStatsSection('all')" id="stats-preset-all" class="stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">All Time</button>
           <button onclick="filterStatsSection('today')" id="stats-preset-today" class="stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">Today</button>
           <button onclick="filterStatsSection('this_week')" id="stats-preset-this_week" class="stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Week</button>
-          <button onclick="filterStatsSection('this_month')" id="stats-preset-this_month" class="stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Month</button>
+          <button onclick="filterStatsSection('this_month')" id="stats-preset-this_month" class="stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors bg-blue-600 text-white">This Month</button>
           <button onclick="filterStatsSection('this_year')" id="stats-preset-this_year" class="stats-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Year</button>
         </div>
 
@@ -89,7 +89,7 @@
         <span class="inline-block w-2 h-2 rounded-full bg-blue-400 animate-pulse"></span>
         <span>Active Scope:</span>
         <span id="stats-scope-badge" class="px-2 py-0.5 rounded bg-blue-950/80 text-blue-300 border border-blue-800/60 font-bold font-mono text-[11px]">
-          📅 All Time
+          📅 This Month
         </span>
       </div>
       <span id="stats-loading-spinner" class="text-[11px] text-blue-400 hidden flex items-center gap-1.5">
@@ -160,10 +160,10 @@
       <div class="flex flex-wrap items-center gap-2 text-xs">
         <!-- Preset buttons -->
         <div class="flex flex-wrap items-center gap-1 bg-slate-900/90 p-1 rounded-lg border border-slate-800">
-          <button onclick="filterServiceSection('all')" id="service-preset-all" class="service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors bg-blue-600 text-white">All Time</button>
+          <button onclick="filterServiceSection('all')" id="service-preset-all" class="service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">All Time</button>
           <button onclick="filterServiceSection('today')" id="service-preset-today" class="service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">Today</button>
           <button onclick="filterServiceSection('this_week')" id="service-preset-this_week" class="service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Week</button>
-          <button onclick="filterServiceSection('this_month')" id="service-preset-this_month" class="service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Month</button>
+          <button onclick="filterServiceSection('this_month')" id="service-preset-this_month" class="service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors bg-blue-600 text-white">This Month</button>
           <button onclick="filterServiceSection('this_year')" id="service-preset-this_year" class="service-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Year</button>
         </div>
 
@@ -183,7 +183,7 @@
         <span class="inline-block w-2 h-2 rounded-full bg-purple-400 animate-pulse"></span>
         <span>Active Scope:</span>
         <span id="service-scope-badge" class="px-2 py-0.5 rounded bg-purple-950/80 text-purple-300 border border-purple-800/60 font-bold font-mono text-[11px]">
-          📅 All Time
+          📅 This Month
         </span>
       </div>
       <span id="service-loading-spinner" class="text-[11px] text-purple-400 hidden flex items-center gap-1.5">
@@ -349,7 +349,7 @@
 
 
   // ── 1. SECTION 1: STATS CARDS FILTERING ────────────────────────────
-  async function fetchStatsSection(queryParams = 'range=all') {
+  async function fetchStatsSection(queryParams = 'range=this_month') {
     showStatsSectionSkeletons();
     const spinner = document.getElementById('stats-loading-spinner');
     if (spinner) {
@@ -488,7 +488,7 @@
 
 
   // ── 3. SECTION 3: SERVICE VOLUME & TRANSACTIONS FILTERING ────────────
-  async function fetchServiceSection(queryParams = 'range=all') {
+  async function fetchServiceSection(queryParams = 'range=this_month') {
     showServiceSectionSkeletons();
     const spinner = document.getElementById('service-loading-spinner');
     if (spinner) {
@@ -723,9 +723,9 @@
 
 
   document.addEventListener('DOMContentLoaded', () => {
-    fetchStatsSection('range=all');
+    fetchStatsSection('range=this_month');
     loadRevenueChart(30);
-    fetchServiceSection('range=all');
+    fetchServiceSection('range=this_month');
     fetchProvidersSection();
     fetchOverviewExtraSection();
   });
