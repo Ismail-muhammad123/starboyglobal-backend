@@ -1,8 +1,10 @@
+from unittest.mock import patch
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from summary.models import SiteConfig
 from payments.models import Withdrawal
 from payments.utils import calculate_net_withdrawal_amount
+from users.models import StaffPermission
 
 User = get_user_model()
 
@@ -31,6 +33,9 @@ class WithdrawalApprovalPinTests(TestCase):
         self.staff_user.transaction_pin = "1234"
         self.staff_user.save()
 
+        # Grant payment management permission to staff user
+        StaffPermission.objects.create(user=self.staff_user, can_manage_payments=True)
+
         self.withdrawal = Withdrawal.objects.create(
             user=self.customer,
             amount=5000.00,
@@ -41,7 +46,9 @@ class WithdrawalApprovalPinTests(TestCase):
             reference="WTH-TEST-PIN-1"
         )
 
-    def test_superuser_approval_requires_login_password(self):
+    @patch("payments.utils.PaystackGateway.initiate_transfer")
+    def test_superuser_approval_requires_login_password(self, mock_transfer):
+        mock_transfer.return_value = {"status": "SUCCESS", "transfer_code": "TRF_123"}
         self.client.force_login(self.superuser)
 
         # Invalid password
@@ -56,10 +63,11 @@ class WithdrawalApprovalPinTests(TestCase):
             "action_type": "APPROVED",
             "admin_pin": "superpassword123"
         })
-        # Passes authentication/PIN step
-        self.assertNotEqual(res.status_code, 403)
+        self.assertEqual(res.status_code, 200)
 
-    def test_staff_user_approval_requires_admin_pin(self):
+    @patch("payments.utils.PaystackGateway.initiate_transfer")
+    def test_staff_user_approval_requires_admin_pin(self, mock_transfer):
+        mock_transfer.return_value = {"status": "SUCCESS", "transfer_code": "TRF_123"}
         self.client.force_login(self.staff_user)
 
         # Invalid PIN
@@ -68,3 +76,10 @@ class WithdrawalApprovalPinTests(TestCase):
             "admin_pin": "9999"
         })
         self.assertEqual(res.status_code, 403)
+
+        # Valid PIN
+        res = self.client.post(f"/portal/payments/withdrawals/{self.withdrawal.pk}/approve/", {
+            "action_type": "APPROVED",
+            "admin_pin": "1234"
+        })
+        self.assertEqual(res.status_code, 200)
