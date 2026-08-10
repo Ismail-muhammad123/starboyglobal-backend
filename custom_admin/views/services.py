@@ -249,7 +249,7 @@ class DataVariationListView(PortalPermissionMixin, View):
         paginator = Paginator(qs, per_page)
         page_obj = paginator.get_page(request.GET.get('page'))
 
-        services = DataService.objects.all()
+        services = DataService.objects.all().select_related('provider')
         providers = VTUProviderConfig.objects.all()
         return render(request, 'custom_admin/services/data/variations_list.html', {
             'variations': page_obj,
@@ -402,7 +402,7 @@ class TVVariationListView(PortalPermissionMixin, View):
         paginator = Paginator(qs, per_page)
         page_obj = paginator.get_page(request.GET.get('page'))
 
-        services = TVService.objects.all()
+        services = TVService.objects.all().select_related('provider')
         providers = VTUProviderConfig.objects.all()
         return render(request, 'custom_admin/services/tv/variations_list.html', {
             'variations': page_obj,
@@ -512,7 +512,7 @@ class ElectricityVariationListView(PortalPermissionMixin, View):
         paginator = Paginator(qs, per_page)
         page_obj = paginator.get_page(request.GET.get('page'))
 
-        services = ElectricityService.objects.all()
+        services = ElectricityService.objects.all().select_related('provider')
         providers = VTUProviderConfig.objects.all()
         return render(request, 'custom_admin/services/electricity/variations_list.html', {
             'variations': page_obj,
@@ -622,7 +622,7 @@ class InternetVariationListView(PortalPermissionMixin, View):
         paginator = Paginator(qs, per_page)
         page_obj = paginator.get_page(request.GET.get('page'))
 
-        services = InternetService.objects.all()
+        services = InternetService.objects.all().select_related('provider')
         providers = VTUProviderConfig.objects.all()
         return render(request, 'custom_admin/services/internet/variations_list.html', {
             'variations': page_obj,
@@ -732,7 +732,7 @@ class EducationVariationListView(PortalPermissionMixin, View):
         paginator = Paginator(qs, per_page)
         page_obj = paginator.get_page(request.GET.get('page'))
 
-        services = EducationService.objects.all()
+        services = EducationService.objects.all().select_related('provider')
         providers = VTUProviderConfig.objects.all()
         return render(request, 'custom_admin/services/education/variations_list.html', {
             'variations': page_obj,
@@ -753,4 +753,67 @@ class EducationVariationDetailView(PortalPermissionMixin, View):
     def get(self, request, pk):
         variation = get_object_or_404(EducationVariation, pk=pk)
         return render(request, 'custom_admin/services/education/variation_detail.html', {'variation': variation})
+
+
+class BulkVariationActionView(PortalPermissionMixin, View):
+    required_permission = ('orders.DataVariation', 'change')
+
+    def post(self, request):
+        try:
+            body = json.loads(request.body.decode('utf-8'))
+        except Exception:
+            body = request.POST
+
+        item_type = body.get('item_type')
+        action = body.get('action')
+        raw_ids = body.get('ids', [])
+
+        if isinstance(raw_ids, str):
+            ids = [int(i.strip()) for i in raw_ids.split(',') if i.strip().isdigit()]
+        elif isinstance(raw_ids, list):
+            ids = [int(i) for i in raw_ids if str(i).isdigit()]
+        else:
+            ids = []
+
+        if not item_type or not action or not ids:
+            return JsonResponse({'status': 'error', 'message': 'Invalid item type, action, or IDs provided.'}, status=400)
+
+        model_map = {
+            'data_variation': DataVariation,
+            'tv_variation': TVVariation,
+            'electricity_variation': ElectricityVariation,
+            'internet_variation': InternetVariation,
+            'education_variation': EducationVariation,
+            'airtime_network': AirtimeNetwork,
+            'data_service': DataService,
+            'tv_service': TVService,
+            'electricity_service': ElectricityService,
+            'internet_service': InternetService,
+            'education_service': EducationService,
+        }
+
+        model_cls = model_map.get(item_type)
+        if not model_cls:
+            return JsonResponse({'status': 'error', 'message': f'Unsupported item type "{item_type}".'}, status=400)
+
+        qs = model_cls.objects.filter(pk__in=ids)
+        count = qs.count()
+
+        if count == 0:
+            return JsonResponse({'status': 'error', 'message': 'No items found matching the selected IDs.'}, status=404)
+
+        if action == 'activate':
+            qs.update(is_active=True)
+            msg = f'Successfully activated {count} item(s).'
+        elif action == 'deactivate':
+            qs.update(is_active=False)
+            msg = f'Successfully deactivated {count} item(s).'
+        elif action == 'delete':
+            qs.delete()
+            msg = f'Successfully deleted {count} item(s).'
+        else:
+            return JsonResponse({'status': 'error', 'message': f'Invalid action "{action}".'}, status=400)
+
+        return JsonResponse({'status': 'success', 'message': msg, 'count': count})
+
 

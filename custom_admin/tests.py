@@ -1,3 +1,4 @@
+import json
 from django.test import TestCase, Client
 from django.urls import reverse
 from users.models import User
@@ -59,5 +60,66 @@ class CustomAdminTests(TestCase):
         self.assertEqual(data['datasets'][0]['label'], 'Revenue (₦)')
         self.assertEqual(data['datasets'][1]['label'], 'Cost (₦)')
         self.assertEqual(data['datasets'][2]['label'], 'Profit / Loss (₦)')
+
+    def test_bulk_variation_actions(self):
+        from orders.models import DataService, DataVariation
+        self.client.login(username='08000000000', password='superuserpass')
+
+        svc = DataService.objects.create(service_name='MTN Test', service_id='mtn-test')
+        v1 = DataVariation.objects.create(service=svc, name='1GB', variation_id='v1', is_active=True)
+        v2 = DataVariation.objects.create(service=svc, name='2GB', variation_id='v2', is_active=True)
+
+        # Deactivate bulk action
+        resp = self.client.post(
+            reverse('portal:bulk_variation_action'),
+            data=json.dumps({'item_type': 'data_variation', 'action': 'deactivate', 'ids': [v1.pk, v2.pk]}),
+            content_type='application/json'
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['status'], 'success')
+        v1.refresh_from_db()
+        v2.refresh_from_db()
+        self.assertFalse(v1.is_active)
+        self.assertFalse(v2.is_active)
+
+        # Activate bulk action
+        resp = self.client.post(
+            reverse('portal:bulk_variation_action'),
+            data=json.dumps({'item_type': 'data_variation', 'action': 'activate', 'ids': [v1.pk, v2.pk]}),
+            content_type='application/json'
+        )
+        self.assertEqual(resp.status_code, 200)
+        v1.refresh_from_db()
+        self.assertTrue(v1.is_active)
+
+        # Delete bulk action
+        resp = self.client.post(
+            reverse('portal:bulk_variation_action'),
+            data=json.dumps({'item_type': 'data_variation', 'action': 'delete', 'ids': [v1.pk, v2.pk]}),
+            content_type='application/json'
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(DataVariation.objects.filter(pk__in=[v1.pk, v2.pk]).exists())
+
+    def test_deactivate_unreturned_items_on_sync(self):
+        from orders.models import VTUProviderConfig, DataService, DataVariation
+        from orders.utils.sync_runner import deactivate_unreturned_items
+
+        prov = VTUProviderConfig.objects.create(name='flowpay', api_key='testkey', is_active=True)
+        svc = DataService.objects.create(service_name='FlowPay MTN', service_id='mtn', provider=prov)
+        
+        v1 = DataVariation.objects.create(service=svc, name='1GB', variation_id='fp1', is_active=True)
+        v2 = DataVariation.objects.create(service=svc, name='Old Obsolete 500MB', variation_id='fp_old', is_active=True)
+
+        # Assume provider sync response only returned v1 (fp1)
+        count = deactivate_unreturned_items(prov, 'data', synced_pks=[v1.pk])
+        self.assertEqual(count, 1)
+
+        v1.refresh_from_db()
+        v2.refresh_from_db()
+        self.assertTrue(v1.is_active)
+        self.assertFalse(v2.is_active)
+
+
 
 

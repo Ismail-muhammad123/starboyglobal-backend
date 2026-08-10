@@ -500,6 +500,9 @@ class FlowPayProvider(BaseVTUProvider):
                 }
             )
             created.append(net)
+        if created:
+            from orders.utils.sync_runner import deactivate_unreturned_items
+            deactivate_unreturned_items(getattr(self, "provider_config", None) or "flowpay", 'airtime', synced_pks=[n.pk for n in created])
         return len(created)
 
     def sync_data(self) -> int:
@@ -671,6 +674,9 @@ class FlowPayProvider(BaseVTUProvider):
         #         created_variations.append(variation)
 
         logger.info(f"FlowPay: synced {len(created_variations)} data variations from catalog")
+        if created_variations:
+            from orders.utils.sync_runner import deactivate_unreturned_items
+            deactivate_unreturned_items(getattr(self, "provider_config", None) or "flowpay", 'data', synced_pks=[v.pk for v in created_variations])
         return len(created_variations)
 
     def sync_cable(self) -> int:
@@ -736,6 +742,9 @@ class FlowPayProvider(BaseVTUProvider):
                 created_variations.append(variation)
 
         logger.info(f"FlowPay: synced {len(created_variations)} cable variations")
+        if created_variations:
+            from orders.utils.sync_runner import deactivate_unreturned_items
+            deactivate_unreturned_items(getattr(self, "provider_config", None) or "flowpay", 'tv', synced_pks=[v.pk for v in created_variations])
         return len(created_variations)
 
     def sync_electricity(self) -> int:
@@ -785,6 +794,9 @@ class FlowPayProvider(BaseVTUProvider):
                 created_variations.append(variation)
 
         logger.info(f"FlowPay: synced {len(created_variations)} electricity variations")
+        if created_variations:
+            from orders.utils.sync_runner import deactivate_unreturned_items
+            deactivate_unreturned_items(getattr(self, "provider_config", None) or "flowpay", 'electricity', synced_pks=[v.pk for v in created_variations])
         return len(created_variations)
 
     def sync_internet(self) -> int:
@@ -826,6 +838,9 @@ class FlowPayProvider(BaseVTUProvider):
             created_variations.append(variation)
 
         logger.info(f"FlowPay: synced {len(created_variations)} education variations")
+        if created_variations:
+            from orders.utils.sync_runner import deactivate_unreturned_items
+            deactivate_unreturned_items(getattr(self, "provider_config", None) or "flowpay", 'education', synced_pks=[v.pk for v in created_variations])
         return len(created_variations)
 
     def _resolve_cable_plan_id(self, package_id: str) -> int:

@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  function updateBulkActionBar(tableId) {
+  window.updateBulkActionBar = function(tableId) {
     const table = document.getElementById(tableId);
     if (!table) return;
     const checked = table.querySelectorAll('tbody input[type="checkbox"]:checked');
@@ -55,5 +55,74 @@ document.addEventListener('DOMContentLoaded', () => {
         bulkBar.classList.add('hidden');
       }
     }
-  }
+  };
 });
+
+window.executeBulkAction = async function(tableId, itemType, action) {
+  const table = document.getElementById(tableId);
+  if (!table) return;
+
+  const checked = table.querySelectorAll('tbody input[type="checkbox"]:checked');
+  const selectedIds = Array.from(checked).map((cb) => cb.value);
+
+  if (selectedIds.length === 0) {
+    if (window.PortalUtils && window.PortalUtils.showToast) {
+      window.PortalUtils.showToast('Please select at least one item.', 'warning');
+    } else {
+      alert('Please select at least one item.');
+    }
+    return;
+  }
+
+  const actionLabels = {
+    'delete': 'PERMANENTLY DELETE',
+    'deactivate': 'DEACTIVATE',
+    'activate': 'ACTIVATE'
+  };
+  const label = actionLabels[action] || action.toUpperCase();
+
+  if (!confirm(`Are you sure you want to ${label} ${selectedIds.length} selected item(s)?`)) {
+    return;
+  }
+
+  try {
+    const csrfToken = (window.PortalForms && window.PortalForms.getCookie)
+      ? window.PortalForms.getCookie('csrftoken')
+      : (document.cookie.split('; ').find((r) => r.startsWith('csrftoken='))?.split('=')[1] || '');
+
+    const response = await fetch('/portal/services/bulk-action/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken
+      },
+      body: JSON.stringify({
+        item_type: itemType,
+        action: action,
+        ids: selectedIds
+      })
+    });
+
+    const data = await response.json();
+    if (data.status === 'success') {
+      if (window.PortalUtils && window.PortalUtils.showToast) {
+        window.PortalUtils.showToast(data.message, 'success');
+      } else {
+        alert(data.message);
+      }
+      setTimeout(() => window.location.reload(), 600);
+    } else {
+      if (window.PortalUtils && window.PortalUtils.showToast) {
+        window.PortalUtils.showToast(data.message || 'Bulk action failed.', 'error');
+      } else {
+        alert(data.message || 'Bulk action failed.');
+      }
+    }
+  } catch (err) {
+    console.error('Bulk action error:', err);
+    if (window.PortalUtils && window.PortalUtils.showToast) {
+      window.PortalUtils.showToast('Server error executing bulk action.', 'error');
+    }
+  }
+};
+

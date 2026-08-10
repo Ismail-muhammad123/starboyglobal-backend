@@ -56,12 +56,32 @@
     </div>
   </div>
 
+  <!-- Bulk Actions Bar -->
+  <div id="airtime-networks-table-bulk-actions" class="hidden portal-card p-3 bg-slate-900/90 border border-blue-500/40 flex flex-wrap items-center justify-between gap-3 animate-fade-in">
+    <div class="flex items-center gap-2 text-xs text-slate-200 font-medium">
+      <span class="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-bold" id="airtime-networks-table-selected-count">0 selected</span>
+      <span class="text-slate-400">airtime network(s) selected</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="executeBulkAction('airtime-networks-table', 'airtime_network', 'activate')" class="px-3 py-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-500/30 font-bold rounded-lg text-xs transition-colors flex items-center gap-1">
+        <span>✓</span> Activate Selected
+      </button>
+      <button onclick="executeBulkAction('airtime-networks-table', 'airtime_network', 'deactivate')" class="px-3 py-1.5 bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 border border-amber-500/30 font-bold rounded-lg text-xs transition-colors flex items-center gap-1">
+        <span>⊘</span> Deactivate Selected
+      </button>
+      <button onclick="executeBulkAction('airtime-networks-table', 'airtime_network', 'delete')" class="px-3 py-1.5 bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 border border-rose-500/30 font-bold rounded-lg text-xs transition-colors flex items-center gap-1">
+        <span>🗑</span> Delete Selected
+      </button>
+    </div>
+  </div>
+
   <!-- Airtime Networks Table -->
   <div class="portal-card overflow-hidden">
     <div class="overflow-x-auto">
-      <table class="w-full text-left text-xs text-slate-300">
+      <table id="airtime-networks-table" class="w-full text-left text-xs text-slate-300">
         <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)] select-none">
           <tr>
+            <th class="p-3 w-10 text-center"><input type="checkbox" data-select-all="airtime-networks-table" class="rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500 cursor-pointer"></th>
             <th class="p-3 cursor-pointer hover:text-white" onclick="updateQueryParam('sort', '{% if sort_query == 'name' %}name_desc{% else %}name{% endif %}')">
               Network Name {% if sort_query == 'name' %}▲{% elif sort_query == 'name_desc' %}▼{% endif %}
             </th>
@@ -88,6 +108,7 @@
         <tbody class="divide-y divide-slate-800">
           {% for n in networks %}
             <tr onclick="window.location.href='{% url "portal:airtime_network_detail" n.pk %}'" class="hover:bg-slate-800/60 cursor-pointer transition-colors">
+              <td class="p-3 text-center" onclick="event.stopPropagation()"><input type="checkbox" class="rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500 cursor-pointer" value="{{ n.pk }}"></td>
               <td class="p-3 font-bold text-white uppercase">{{ n.service_name }}</td>
               <td class="p-3 font-mono text-blue-400">{{ n.service_id }}</td>
               <td class="p-3 text-slate-300">{{ n.provider.get_name_display|default:"Default" }}</td>
@@ -106,7 +127,7 @@
             </tr>
           {% empty %}
             <tr>
-              <td colspan="11" class="p-8 text-center text-slate-500">No airtime networks found matching your criteria.</td>
+              <td colspan="12" class="p-8 text-center text-slate-500">No airtime networks found matching your criteria.</td>
             </tr>
           {% endfor %}
         </tbody>

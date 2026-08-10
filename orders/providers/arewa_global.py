@@ -524,6 +524,9 @@ class ArewaGlobalProvider(BaseVTUProvider):
                 }
             )
             created.append(net)
+        if created:
+            from orders.utils.sync_runner import deactivate_unreturned_items
+            deactivate_unreturned_items(getattr(self, "provider_config", None) or "arewa_global", 'airtime', synced_pks=[n.pk for n in created])
         return len(created)
 
     # -------------------------------------------------------------------------
@@ -568,6 +571,9 @@ class ArewaGlobalProvider(BaseVTUProvider):
                 created_variations.append(variation)
 
         logger.info(f"ArewaGlobal: synced {len(created_variations)} data variations")
+        if created_variations:
+            from orders.utils.sync_runner import deactivate_unreturned_items
+            deactivate_unreturned_items(getattr(self, "provider_config", None) or "arewa_global", 'data', synced_pks=[v.pk for v in created_variations])
         return len(created_variations)
 
     # -------------------------------------------------------------------------
@@ -584,8 +590,7 @@ class ArewaGlobalProvider(BaseVTUProvider):
         config = SiteConfig.objects.first()
         margin = config.internet_margin if config else Decimal('0.00')
 
-        services = []
-        count = 0
+        created_variations = []
         for service_key, svc_data in INTERNET_SERVICES.items():
             service, _ = InternetService.objects.update_or_create(
                 service_id=service_key,
@@ -596,7 +601,7 @@ class ArewaGlobalProvider(BaseVTUProvider):
             )
             for plan in svc_data["plans"]:
                 p_amount = Decimal(str(plan["selling_price"]))
-                InternetVariation.objects.update_or_create(
+                variation, _ = InternetVariation.objects.update_or_create(
                     variation_id=f"{service_key}_{plan['plan_id']}",
                     defaults={
                         "name": plan["name"],
@@ -607,11 +612,13 @@ class ArewaGlobalProvider(BaseVTUProvider):
                         "is_active": True,
                     }
                 )
-                count += 1
-            services.append(service)
+                created_variations.append(variation)
 
-        logger.info(f"ArewaGlobal: synced {count} internet variations")
-        return count
+        logger.info(f"ArewaGlobal: synced {len(created_variations)} internet variations")
+        if created_variations:
+            from orders.utils.sync_runner import deactivate_unreturned_items
+            deactivate_unreturned_items(getattr(self, "provider_config", None) or "arewa_global", 'internet', synced_pks=[v.pk for v in created_variations])
+        return len(created_variations)
 
     # -------------------------------------------------------------------------
     # Unsupported service stubs

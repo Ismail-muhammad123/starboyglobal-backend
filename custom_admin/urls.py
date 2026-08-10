@@ -18,7 +18,8 @@ from custom_admin.views.services import (
     TVServiceListView, TVServiceDetailView, TVVariationListView, TVVariationDetailView,
     ElectricityServiceListView, ElectricityServiceDetailView, ElectricityVariationListView, ElectricityVariationDetailView,
     InternetServiceListView, InternetServiceDetailView, InternetVariationListView, InternetVariationDetailView,
-    EducationServiceListView, EducationServiceDetailView, EducationVariationListView, EducationVariationDetailView
+    EducationServiceListView, EducationServiceDetailView, EducationVariationListView, EducationVariationDetailView,
+    BulkVariationActionView
 )
 from custom_admin.views.providers import (
     ProviderListView, ProviderDetailView, ProviderCreateView, ProviderServiceConfigListView,
@@ -80,6 +81,9 @@ urlpatterns = [
     path('purchases/verify-recipient/', ManualRecipientVerifyView.as_view(), name='verify_recipient'),
     path('purchases/<int:pk>/', PurchaseDetailView.as_view(), name='purchases_detail'),
     path('purchases/<int:pk>/refund/', PurchaseRefundView.as_view(), name='purchase_refund'),
+
+    # Services - Bulk Action
+    path('services/bulk-action/', BulkVariationActionView.as_view(), name='bulk_variation_action'),
 
     # Services - Airtime
     path('services/airtime/networks/', AirtimeNetworkListView.as_view(), name='airtime_networks'),

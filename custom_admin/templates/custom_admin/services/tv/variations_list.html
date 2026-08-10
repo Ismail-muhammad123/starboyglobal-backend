@@ -23,7 +23,7 @@
       <select onchange="updateQueryParam('service', this.value)" class="portal-input text-xs">
         <option value="" {% if not service_filter %}selected{% endif %}>All Services</option>
         {% for s in services %}
-          <option value="{{ s.pk }}" {% if service_filter == s.pk|stringformat:'s' %}selected{% endif %}>{{ s.service_name }}</option>
+          <option value="{{ s.pk }}" {% if service_filter == s.pk|stringformat:'s' %}selected{% endif %}>{{ s.service_name }}{% if s.provider %} ({{ s.provider.get_name_display }}){% endif %}</option>
         {% endfor %}
       </select>
 
@@ -56,11 +56,31 @@
     </div>
   </div>
 
+  <!-- Bulk Actions Bar -->
+  <div id="tv-variations-table-bulk-actions" class="hidden portal-card p-3 bg-slate-900/90 border border-blue-500/40 flex flex-wrap items-center justify-between gap-3 animate-fade-in">
+    <div class="flex items-center gap-2 text-xs text-slate-200 font-medium">
+      <span class="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-bold" id="tv-variations-table-selected-count">0 selected</span>
+      <span class="text-slate-400">TV package(s) selected</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="executeBulkAction('tv-variations-table', 'tv_variation', 'activate')" class="px-3 py-1.5 bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-500/30 font-bold rounded-lg text-xs transition-colors flex items-center gap-1">
+        <span>✓</span> Activate Selected
+      </button>
+      <button onclick="executeBulkAction('tv-variations-table', 'tv_variation', 'deactivate')" class="px-3 py-1.5 bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 border border-amber-500/30 font-bold rounded-lg text-xs transition-colors flex items-center gap-1">
+        <span>⊘</span> Deactivate Selected
+      </button>
+      <button onclick="executeBulkAction('tv-variations-table', 'tv_variation', 'delete')" class="px-3 py-1.5 bg-rose-600/20 text-rose-400 hover:bg-rose-600/30 border border-rose-500/30 font-bold rounded-lg text-xs transition-colors flex items-center gap-1">
+        <span>🗑</span> Delete Selected
+      </button>
+    </div>
+  </div>
+
   <div class="portal-card overflow-hidden">
     <div class="overflow-x-auto">
-      <table class="w-full text-left text-xs text-slate-300">
+      <table id="tv-variations-table" class="w-full text-left text-xs text-slate-300">
         <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)] select-none">
           <tr>
+            <th class="p-3 w-10 text-center"><input type="checkbox" data-select-all="tv-variations-table" class="rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500 cursor-pointer"></th>
             <th class="p-3">Service</th>
             <th class="p-3">Provider</th>
             <th class="p-3 cursor-pointer hover:text-white" onclick="updateQueryParam('sort', '{% if sort_query == 'name' %}name_desc{% else %}name{% endif %}')">
@@ -86,6 +106,7 @@
         <tbody class="divide-y divide-slate-800">
           {% for v in variations %}
             <tr onclick="window.location.href='{% url "portal:tv_variation_detail" v.pk %}'" class="hover:bg-slate-800/60 cursor-pointer transition-colors">
+              <td class="p-3 text-center" onclick="event.stopPropagation()"><input type="checkbox" class="rounded border-slate-700 bg-slate-900 text-blue-600 focus:ring-blue-500 cursor-pointer" value="{{ v.pk }}"></td>
               <td class="p-3 font-semibold text-purple-400">{{ v.service.service_name }}</td>
               <td class="p-3 text-slate-400 text-[11px]">{{ v.service.provider.get_name_display|default:"—" }}</td>
               <td class="p-3 font-bold text-white">{{ v.name }}</td>
@@ -102,7 +123,7 @@
               </td>
             </tr>
           {% empty %}
-            <tr><td colspan="10" class="p-8 text-center text-slate-500">No TV packages found matching your criteria.</td></tr>
+            <tr><td colspan="11" class="p-8 text-center text-slate-500">No TV packages found matching your criteria.</td></tr>
           {% endfor %}
         </tbody>
       </table>

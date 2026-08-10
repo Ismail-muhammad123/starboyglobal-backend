@@ -28,6 +28,96 @@ def calculate_next_run(frequency: str, from_dt=None):
         return from_dt + timedelta(days=1)
 
 
+def deactivate_unreturned_items(provider_config, service_type, synced_pks=None, synced_variation_ids=None):
+    """
+    Deactivates any plans/variations/networks belonging to provider_config & service_type
+    that were NOT present in the latest successful provider sync response.
+    
+    Only runs if synced_pks or synced_variation_ids is non-empty.
+    """
+    if not provider_config:
+        return 0
+
+    if isinstance(provider_config, str):
+        from orders.models import VTUProviderConfig
+        from django.db.models import Q
+        provider_config = VTUProviderConfig.objects.filter(
+            Q(name__iexact=provider_config) | Q(slug__iexact=provider_config)
+        ).first()
+
+    if not provider_config:
+        return 0
+
+    has_pks = bool(synced_pks and len(synced_pks) > 0)
+    has_var_ids = bool(synced_variation_ids and len(synced_variation_ids) > 0)
+
+    if not has_pks and not has_var_ids:
+        return 0
+
+    pks_set = set(synced_pks or [])
+    var_ids_set = set(synced_variation_ids or [])
+
+    count = 0
+    from orders.models import (
+        AirtimeNetwork, DataVariation, TVVariation,
+        ElectricityVariation, InternetVariation, EducationVariation
+    )
+
+    if service_type == 'airtime':
+        qs = AirtimeNetwork.objects.filter(provider=provider_config, is_active=True)
+        if pks_set:
+            qs = qs.exclude(pk__in=pks_set)
+        if var_ids_set:
+            qs = qs.exclude(service_id__in=var_ids_set)
+        count = qs.update(is_active=False)
+
+    elif service_type == 'data':
+        qs = DataVariation.objects.filter(service__provider=provider_config, is_active=True)
+        if pks_set:
+            qs = qs.exclude(pk__in=pks_set)
+        if var_ids_set:
+            qs = qs.exclude(variation_id__in=var_ids_set)
+        count = qs.update(is_active=False)
+
+    elif service_type in ('tv', 'cable'):
+        qs = TVVariation.objects.filter(service__provider=provider_config, is_active=True)
+        if pks_set:
+            qs = qs.exclude(pk__in=pks_set)
+        if var_ids_set:
+            qs = qs.exclude(variation_id__in=var_ids_set)
+        count = qs.update(is_active=False)
+
+    elif service_type == 'electricity':
+        qs = ElectricityVariation.objects.filter(service__provider=provider_config, is_active=True)
+        if pks_set:
+            qs = qs.exclude(pk__in=pks_set)
+        if var_ids_set:
+            qs = qs.exclude(variation_id__in=var_ids_set)
+        count = qs.update(is_active=False)
+
+    elif service_type == 'internet':
+        qs = InternetVariation.objects.filter(service__provider=provider_config, is_active=True)
+        if pks_set:
+            qs = qs.exclude(pk__in=pks_set)
+        if var_ids_set:
+            qs = qs.exclude(variation_id__in=var_ids_set)
+        count = qs.update(is_active=False)
+
+    elif service_type == 'education':
+        qs = EducationVariation.objects.filter(service__provider=provider_config, is_active=True)
+        if pks_set:
+            qs = qs.exclude(pk__in=pks_set)
+        if var_ids_set:
+            qs = qs.exclude(variation_id__in=var_ids_set)
+        count = qs.update(is_active=False)
+
+    if count > 0:
+        logger.info(f"Deactivated {count} un-returned {service_type} item(s) for provider {provider_config.get_name_display()}")
+
+    return count
+
+
+
 def execute_sync_schedule(schedule_id: int):
     """
     Executes a scheduled sync job identified by AutoSyncSchedule PK.

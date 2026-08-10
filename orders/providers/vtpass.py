@@ -319,7 +319,11 @@ class VTPassProvider(BaseVTUProvider):
     def sync_airtime(self) -> int:
         res = self._get("/services?identifier=airtime")
         raw_list = res.get('content', [{}])[0].get('services', []) if isinstance(res.get('content'), list) else []
-        return len(self._deserialize_airtime(raw_list))
+        services = self._deserialize_airtime(raw_list)
+        if services:
+            from orders.utils.sync_runner import deactivate_unreturned_items
+            deactivate_unreturned_items(getattr(self, "provider_config", None) or "vtpass", 'airtime', synced_pks=[s.pk for s in services])
+        return len(services)
 
     def _deserialize_airtime(self, raw_list: List[Dict]) -> List[Any]:
         from orders.models import AirtimeNetwork
@@ -354,6 +358,9 @@ class VTPassProvider(BaseVTUProvider):
             res = self._get(f"/service-variations?serviceID={sid}")
             variations = res.get('content', {}).get('varations', [])
             created_variations.extend(self._deserialize_data(sid, variations))
+        if created_variations:
+            from orders.utils.sync_runner import deactivate_unreturned_items
+            deactivate_unreturned_items(getattr(self, "provider_config", None) or "vtpass", 'data', synced_pks=[v.pk for v in created_variations])
         return len(created_variations)
 
     def _deserialize_data(self, sid: str, variations: List[Dict]) -> List[Any]:
@@ -394,6 +401,9 @@ class VTPassProvider(BaseVTUProvider):
             res = self._get(f"/service-variations?serviceID={sid}")
             variations = res.get('content', {}).get('varations', [])
             created_variations.extend(self._deserialize_tv(sid, variations))
+        if created_variations:
+            from orders.utils.sync_runner import deactivate_unreturned_items
+            deactivate_unreturned_items(getattr(self, "provider_config", None) or "vtpass", 'tv', synced_pks=[v.pk for v in created_variations])
         return len(created_variations)
 
     def _deserialize_tv(self, sid: str, variations: List[Dict]) -> List[Any]:
@@ -427,7 +437,11 @@ class VTPassProvider(BaseVTUProvider):
     def sync_electricity(self) -> int:
         res = self._get("/services?identifier=electricity-bill")
         raw_list = res.get('content', [{}])[0].get('services', []) if isinstance(res.get('content'), list) else []
-        return len(self._deserialize_electricity(raw_list))
+        services = self._deserialize_electricity(raw_list)
+        if services:
+            from orders.utils.sync_runner import deactivate_unreturned_items
+            deactivate_unreturned_items(getattr(self, "provider_config", None) or "vtpass", 'electricity', synced_pks=[v.pk for v in services])
+        return len(services)
 
     def _deserialize_electricity(self, raw_list: List[Dict]) -> List[Any]:
         from orders.models import ElectricityService, ElectricityVariation
@@ -468,6 +482,9 @@ class VTPassProvider(BaseVTUProvider):
             res = self._get(f"/service-variations?serviceID={sid}")
             variations = res.get('content', {}).get('varations', [])
             created_variations.extend(self._deserialize_internet(sid, n.get("name"), variations))
+        if created_variations:
+            from orders.utils.sync_runner import deactivate_unreturned_items
+            deactivate_unreturned_items(getattr(self, "provider_config", None) or "vtpass", 'internet', synced_pks=[v.pk for v in created_variations])
         return len(created_variations)
 
     def _deserialize_internet(self, sid: str, service_name: str, variations: List[Dict]) -> List[Any]:
@@ -507,6 +524,9 @@ class VTPassProvider(BaseVTUProvider):
             res = self._get(f"/service-variations?serviceID={sid}")
             variations = res.get('content', {}).get('varations', [])
             created_variations.extend(self._deserialize_education(sid, n.get("name"), variations))
+        if created_variations:
+            from orders.utils.sync_runner import deactivate_unreturned_items
+            deactivate_unreturned_items(getattr(self, "provider_config", None) or "vtpass", 'education', synced_pks=[v.pk for v in created_variations])
         return len(created_variations)
 
     def _deserialize_education(self, sid: str, service_name: str, variations: List[Dict]) -> List[Any]:

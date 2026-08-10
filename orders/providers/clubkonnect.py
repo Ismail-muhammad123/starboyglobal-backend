@@ -359,6 +359,9 @@ class ClubKonnectProvider(BaseVTUProvider):
         for network_name, product_list in networks.items():
             if not product_list: continue
             created_networks.extend(self._deserialize_airtime(network_name, product_list))
+        if created_networks:
+            from orders.utils.sync_runner import deactivate_unreturned_items
+            deactivate_unreturned_items(getattr(self, "provider_config", None) or "clubkonnect", 'airtime', synced_pks=[n.pk for n in created_networks])
         return len(created_networks)
 
     def _deserialize_airtime(self, network_name: str, product_list: List[Dict]) -> List[Any]:
@@ -404,6 +407,9 @@ class ClubKonnectProvider(BaseVTUProvider):
         for network_name, network_list in networks.items():
             if not network_list: continue
             created_variations.extend(self._deserialize_data(network_name, network_list))
+        if created_variations:
+            from orders.utils.sync_runner import deactivate_unreturned_items
+            deactivate_unreturned_items(getattr(self, "provider_config", None) or "clubkonnect", 'data', synced_pks=[v.pk for v in created_variations])
         return len(created_variations)
 
     def _deserialize_data(self, network_name: str, network_list: List[Dict]) -> List[Any]:
@@ -449,6 +455,9 @@ class ClubKonnectProvider(BaseVTUProvider):
         for network_name, network_list in networks.items():
             if not network_list: continue
             created_variations.extend(self._deserialize_tv(network_name, network_list))
+        if created_variations:
+            from orders.utils.sync_runner import deactivate_unreturned_items
+            deactivate_unreturned_items(getattr(self, "provider_config", None) or "clubkonnect", 'tv', synced_pks=[v.pk for v in created_variations])
         return len(created_variations)
 
     def _deserialize_tv(self, network_name: str, network_list: List[Dict]) -> List[Any]:
