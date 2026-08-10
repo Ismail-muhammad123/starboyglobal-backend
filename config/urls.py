@@ -10,7 +10,7 @@ import developer_api.openapi
 
 
 urlpatterns = [
-    path('', RedirectView.as_view(url='admin/', permanent=True)),
+    path('', RedirectView.as_view(url='/portal/', permanent=False)),
     path('admin/', admin.site.urls),
     path('portal/', include('custom_admin.urls', namespace='portal')),
     path('api/account/', include("users.urls")),
