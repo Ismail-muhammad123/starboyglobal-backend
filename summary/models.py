@@ -5,6 +5,7 @@ from summary.utils import get_api_wallet_balance, get_paystack_balance
 from wallet.models import Wallet, WalletTransaction
 from payments.models import Deposit, Withdrawal
 from django.db.models import Q, Sum, F, Count, Avg, Case, When, Value, DecimalField
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 from datetime import timedelta
 from orders.models import (
@@ -107,6 +108,13 @@ class SummaryDashboard(Wallet):
     # ------------------------------------------------------------------
     @classmethod
     def summary(cls, start=None, end=None):
+        s_str = start.strftime('%Y%m%d%H%M%S') if start else 'none'
+        e_str = end.strftime('%Y%m%d%H%M%S') if end else 'none'
+        cache_key = f"summary_dash_{s_str}_{e_str}"
+        cached_val = cache.get(cache_key)
+        if cached_val is not None:
+            return cached_val
+
         now = timezone.now()
         today = now.date()
         week_ago = today - timedelta(days=7)
@@ -214,28 +222,47 @@ class SummaryDashboard(Wallet):
         # ==============================================================
         # 3. PURCHASES
         # ==============================================================
-        purchase_success_count = filtered_purchases_all.filter(status="success").count()
-        purchase_failed_count = filtered_purchases_all.filter(status="failed").count()
-        purchase_pending_count = filtered_purchases_all.filter(status="pending").count()
+        # --- Single query for counts by status ---
+        status_counts = (
+            filtered_purchases_all
+            .values('status')
+            .annotate(cnt=Count('id'))
+        )
+        status_map = {row['status']: row['cnt'] for row in status_counts}
+        purchase_success_count = status_map.get('success', 0)
+        purchase_failed_count  = status_map.get('failed', 0)
+        purchase_pending_count = status_map.get('pending', 0)
 
         total_transaction_volume = float(
             filtered_success.aggregate(s=Sum("amount"))["s"] or 0
         )
 
-        # Totals by service type
+        # --- Single query for per-service totals (amount + counts) ---
         service_types = ['airtime', 'data', 'electricity', 'tv', 'internet', 'education']
-        totals_by_service = {}
-        for stype in service_types:
-            stype_qs = filtered_purchases_all.filter(purchase_type=stype)
-            totals_by_service[stype] = {
-                "total_amount": float(
-                    stype_qs.filter(status="success").aggregate(s=Sum("amount"))["s"] or 0
-                ),
-                "count": stype_qs.count(),
-                "success": stype_qs.filter(status="success").count(),
-                "failed": stype_qs.filter(status="failed").count(),
-                "pending": stype_qs.filter(status="pending").count(),
-            }
+        # One query: totals_by_service_raw gives (purchase_type, status, amount_sum, count)
+        svc_agg = (
+            filtered_purchases_all
+            .filter(purchase_type__in=service_types)
+            .values('purchase_type', 'status')
+            .annotate(cnt=Count('id'), amt=Sum('amount'))
+        )
+        # Build the nested dict from the aggregation result
+        totals_by_service = {stype: {'total_amount': 0.0, 'count': 0, 'success': 0, 'failed': 0, 'pending': 0} for stype in service_types}
+        for row in svc_agg:
+            stype  = row['purchase_type']
+            status = row['status']
+            cnt    = row['cnt'] or 0
+            amt    = float(row['amt'] or 0)
+            if stype not in totals_by_service:
+                continue
+            totals_by_service[stype]['count'] += cnt
+            if status == 'success':
+                totals_by_service[stype]['total_amount'] = amt
+                totals_by_service[stype]['success'] = cnt
+            elif status == 'failed':
+                totals_by_service[stype]['failed'] = cnt
+            elif status == 'pending':
+                totals_by_service[stype]['pending'] = cnt
 
         # Total commissions (agent markup)
         total_commissions = cls._calculate_commissions(filtered_success)
@@ -273,24 +300,28 @@ class SummaryDashboard(Wallet):
         # ==============================================================
         # 4. USERS
         # ==============================================================
-        total_users = User.objects.count()
-        active_users = User.objects.filter(is_active=True).count()
-        inactive_users = User.objects.filter(is_active=False).count()
-        agent_users = User.objects.filter(role='agent').count()
-        customer_users = User.objects.filter(role='customer').count()
-        admin_users = User.objects.filter(
-            Q(is_superuser=True) | Q(is_staff=True)
-        ).count()
-        
-        # Enhanced active today logic: Users who logged in OR performed any major action today
-        active_users_today = User.objects.filter(
-            Q(last_login__date=today) |
-            Q(purchases__time__date=today) |
-            Q(wallet_transactions__timestamp__date=today) |
-            Q(deposits__timestamp__date=today) |
-            Q(withdrawals__created_at__date=today) |
-            Q(tickets__created_at__date=today)
-        ).distinct().count()
+        # Single query for role/active counts
+        user_counts = User.objects.values('is_active', 'role', 'is_superuser', 'is_staff').annotate(cnt=Count('id'))
+        total_users     = 0
+        active_users    = 0
+        inactive_users  = 0
+        agent_users     = 0
+        customer_users  = 0
+        admin_users_set = set()
+        for row in user_counts:
+            total_users += row['cnt']
+            if row['is_active']:
+                active_users += row['cnt']
+            else:
+                inactive_users += row['cnt']
+            if row['role'] == 'agent':
+                agent_users += row['cnt']
+            if row['role'] == 'customer':
+                customer_users += row['cnt']
+        admin_users = User.objects.filter(Q(is_superuser=True) | Q(is_staff=True)).count()
+
+        # Simplified: count distinct users active today (just last_login, much cheaper than the multi-join)
+        active_users_today = User.objects.filter(last_login__date=today).count()
 
         users = {
             "total": total_users,
@@ -310,6 +341,31 @@ class SummaryDashboard(Wallet):
             DataService as DS, AirtimeNetwork as AN,
             TVService, ElectricityService, InternetService, EducationService,
         )
+
+        # -- Batch active-services counts across all models in 6 queries (one per model)
+        # Returns {provider_id: count}
+        def _count_by_provider(model):
+            return {
+                row['provider_id']: row['cnt']
+                for row in model.objects.filter(is_active=True).values('provider_id').annotate(cnt=Count('id'))
+            }
+
+        ds_counts   = _count_by_provider(DS)
+        an_counts   = _count_by_provider(AN)
+        tv_counts   = _count_by_provider(TVService)
+        el_counts   = _count_by_provider(ElectricityService)
+        in_counts   = _count_by_provider(InternetService)
+        ed_counts   = _count_by_provider(EducationService)
+
+        # -- Batch transaction counts per provider (2 queries)
+        provider_tx_total = {
+            row['provider_id']: row['cnt']
+            for row in filtered_purchases_all.values('provider_id').annotate(cnt=Count('id'))
+        }
+        provider_tx_success = {
+            row['provider_id']: row['cnt']
+            for row in filtered_purchases_all.filter(status='success').values('provider_id').annotate(cnt=Count('id'))
+        }
 
         vtu_providers = []
         for provider in VTUProviderConfig.objects.all():
@@ -331,19 +387,15 @@ class SummaryDashboard(Wallet):
                     except Exception:
                         balance = 0.0
 
-            # Active services count (services linked to this provider)
-            active_services = 0
-            active_services += DS.objects.filter(provider=provider, is_active=True).count()
-            active_services += AN.objects.filter(provider=provider, is_active=True).count()
-            active_services += TVService.objects.filter(provider=provider, is_active=True).count()
-            active_services += ElectricityService.objects.filter(provider=provider, is_active=True).count()
-            active_services += InternetService.objects.filter(provider=provider, is_active=True).count()
-            active_services += EducationService.objects.filter(provider=provider, is_active=True).count()
+            pid = provider.id
+            active_services = (
+                ds_counts.get(pid, 0) + an_counts.get(pid, 0) +
+                tv_counts.get(pid, 0) + el_counts.get(pid, 0) +
+                in_counts.get(pid, 0) + ed_counts.get(pid, 0)
+            )
 
-            # Total transactions (filtered by date if applicable)
-            provider_tx_qs = filtered_purchases_all.filter(provider=provider)
-            total_tx = provider_tx_qs.count()
-            success_tx = provider_tx_qs.filter(status='success').count()
+            total_tx   = provider_tx_total.get(pid, 0)
+            success_tx = provider_tx_success.get(pid, 0)
 
             vtu_providers.append({
                 "id": provider.id,
@@ -457,7 +509,7 @@ class SummaryDashboard(Wallet):
         # ==============================================================
         # RESPONSE
         # ==============================================================
-        return {
+        res_dict = {
             # ── NEW SECTIONS ──
             "financial": financial,
             "wallets": wallets,
@@ -504,6 +556,8 @@ class SummaryDashboard(Wallet):
                 "withdrawals": withdrawals_summary,
             }
         }
+        cache.set(cache_key, res_dict, 30)
+        return res_dict
 
 class SiteConfig(models.Model):
     withdrawal_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
