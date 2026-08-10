@@ -1,11 +1,32 @@
-
+import logging
 import requests
 import hmac
 import hashlib
 import json
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from django.conf import settings
 from .models import PaystackConfig
+
+logger = logging.getLogger(__name__)
+
+
+def calculate_net_withdrawal_amount(amount: float) -> Tuple[float, float]:
+    """
+    Given the gross withdrawal amount, calculates and returns (net_transfer_amount, total_charge).
+    Deducts fixed charge + percentage charge defined in SiteConfig.
+    """
+    from summary.models import SiteConfig
+    config = SiteConfig.objects.first()
+    if not config:
+        return float(amount), 0.0
+
+    fixed_charge = float(config.withdrawal_charge_fixed or config.withdrawal_charge or 0.0)
+    percent_charge = float(config.withdrawal_charge_percentage or 0.0)
+
+    total_charge = fixed_charge + (float(amount) * (percent_charge / 100.0))
+    net_transfer_amount = max(0.0, float(amount) - total_charge)
+    return round(net_transfer_amount, 2), round(total_charge, 2)
+
 
 class PaystackGateway:
     """
@@ -30,17 +51,29 @@ class PaystackGateway:
     def _post(self, endpoint: str, payload: dict) -> Dict[str, Any]:
         url = f"{self.base_url}{endpoint}"
         response = requests.post(url, headers=self.headers, json=payload)
-        data = response.json()
+        try:
+            data = response.json()
+        except Exception:
+            data = {"message": response.text}
         if not response.ok:
-            raise Exception(data.get("message", "Paystack request failed"))
+            err_msg = data.get("message", "Paystack request failed")
+            print(f"[Paystack API POST Error] Endpoint: {endpoint}, Status: {response.status_code}, Response: {data}")
+            logger.error(f"[Paystack API POST Error] Endpoint: {endpoint}, Status: {response.status_code}, Response: {data}")
+            raise Exception(err_msg)
         return data
 
     def _get(self, endpoint: str) -> Dict[str, Any]:
         url = f"{self.base_url}{endpoint}"
         response = requests.get(url, headers=self.headers)
-        data = response.json()
+        try:
+            data = response.json()
+        except Exception:
+            data = {"message": response.text}
         if not response.ok:
-            raise Exception(data.get("message", "Paystack request failed"))
+            err_msg = data.get("message", "Paystack request failed")
+            print(f"[Paystack API GET Error] Endpoint: {endpoint}, Status: {response.status_code}, Response: {data}")
+            logger.error(f"[Paystack API GET Error] Endpoint: {endpoint}, Status: {response.status_code}, Response: {data}")
+            raise Exception(err_msg)
         return data
 
     def initialize_deposit(self, email: str, amount: float, reference: str, callback_url: Optional[str] = None, metadata: Optional[dict] = None) -> Dict[str, Any]:

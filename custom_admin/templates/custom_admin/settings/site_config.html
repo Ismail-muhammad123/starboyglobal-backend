@@ -20,8 +20,8 @@
       </div>
 
       <div>
-        <h4 class="font-bold text-white text-sm mb-3">Service Active Toggles</h4>
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <h4 class="font-bold text-white text-sm mb-3">Service & Withdrawal Toggles</h4>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <label class="p-3 rounded bg-slate-900 border border-slate-800 flex items-center justify-between cursor-pointer">
             <span class="font-medium text-slate-200">Airtime</span>
             <input type="checkbox" name="airtime_active" {% if config.airtime_active %}checked{% endif %}>
@@ -43,8 +43,18 @@
             <input type="checkbox" name="education_active" {% if config.education_active %}checked{% endif %}>
           </label>
           <label class="p-3 rounded bg-slate-900 border border-slate-800 flex items-center justify-between cursor-pointer">
-            <span class="font-medium text-slate-200">Withdrawals</span>
+            <div>
+              <span class="font-medium text-slate-200 block">Allow User Withdrawals</span>
+              <span class="text-[10px] text-slate-400">Global enable/disable toggle</span>
+            </div>
             <input type="checkbox" name="withdrawals_enabled" {% if config.withdrawals_enabled %}checked{% endif %}>
+          </label>
+          <label class="p-3 rounded bg-slate-900 border border-slate-800 flex items-center justify-between cursor-pointer sm:col-span-2 lg:col-span-3 border-blue-900/40">
+            <div>
+              <span class="font-semibold text-blue-300 block">Automatic Withdrawal (Auto Approve via Paystack)</span>
+              <span class="text-[10px] text-slate-400">If enabled, user withdrawals are automatically processed via Paystack (deducting configured charges). If disabled, withdrawals require manual admin approval.</span>
+            </div>
+            <input type="checkbox" name="automatic_withdrawal" {% if config.automatic_withdrawal %}checked{% endif %} class="w-4 h-4 rounded bg-slate-800 border-slate-700 text-blue-600">
           </label>
         </div>
       </div>

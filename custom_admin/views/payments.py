@@ -8,8 +8,8 @@ from django.db.models import Q
 import requests
 from custom_admin.mixins import PortalPermissionMixin
 from payments.models import Deposit, Withdrawal, PaystackConfig, AdminTransfer, AdminTransferBeneficiary
-from payments.utils import PaystackGateway
-from summary.models import SystemTransaction
+from payments.utils import PaystackGateway, calculate_net_withdrawal_amount
+from summary.models import SystemTransaction, SiteConfig
 from admin_api.models import AdminActionLog
 from django.utils import timezone
 
@@ -65,10 +65,13 @@ class WithdrawalListView(PortalPermissionMixin, View):
         page_number = request.GET.get('page')
         page_obj = paginator.get_page(page_number)
 
+        config = SiteConfig.objects.first()
+
         return render(request, 'custom_admin/payments/withdrawals.html', {
             'withdrawals': page_obj,
             'status_filter': status_filter or '',
-            'search_query': search or ''
+            'search_query': search or '',
+            'site_config': config,
         })
 
 
@@ -114,6 +117,59 @@ class WithdrawalApproveView(PortalPermissionMixin, View):
         from wallet.utils import fund_wallet
         from notifications.utils import NotificationService
 
+        if action_type == 'APPROVED':
+            # Initiate Paystack transfer if not already initiated
+            if not withdrawal.transfer_code:
+                net_amount, total_charge = calculate_net_withdrawal_amount(withdrawal.amount)
+                if net_amount <= 0:
+                    err_msg = f"Withdrawal amount (₦{withdrawal.amount}) is less than or equal to configured withdrawal charge (₦{total_charge})."
+                    print(f"[Withdrawal Approve Error]: {err_msg}")
+                    return JsonResponse({'status': 'error', 'message': err_msg}, status=400)
+
+                try:
+                    gateway = PaystackGateway()
+                    transfer = gateway.initiate_transfer(
+                        amount=float(net_amount),
+                        bank_code=withdrawal.bank_code,
+                        account_number=withdrawal.account_number,
+                        account_name=withdrawal.account_name,
+                        reference=withdrawal.reference,
+                        reason=remarks or f"Withdrawal {withdrawal.reference}",
+                    )
+                    transfer_status = transfer.get("status", "PENDING")
+                    withdrawal.transfer_code = transfer.get("transfer_code")
+                    withdrawal.transaction_status = transfer_status
+
+                    if transfer_status == "FAILED":
+                        withdrawal.status = "REJECTED"
+                        withdrawal.reason = "Paystack transfer initiation failed"
+                        withdrawal.processed_by = request.user
+                        withdrawal.remarks = remarks or "Transfer failed via Paystack"
+                        withdrawal.save(update_fields=['transfer_code', 'transaction_status', 'status', 'reason', 'processed_by', 'remarks', 'updated_at'])
+
+                        if refund_wallet_option:
+                            fund_wallet(
+                                user_id=withdrawal.user.id,
+                                amount=withdrawal.amount,
+                                description=f"Refund: Withdrawal transfer failed ({withdrawal.reference})",
+                                initiator='admin',
+                                initiated_by=request.user,
+                            )
+
+                        print(f"[Withdrawal Approval Failed]: Paystack transfer failed for {withdrawal.reference}")
+                        logger.error(f"[Withdrawal Approval Failed]: Paystack transfer failed for {withdrawal.reference}")
+                        return JsonResponse({'status': 'error', 'message': 'Paystack transfer failed during initiation.'}, status=400)
+
+                except Exception as e:
+                    err_msg = f"Paystack Transfer Error: {str(e)}"
+                    print(f"[Withdrawal Approval Error]: {err_msg}")
+                    logger.error(f"[Withdrawal Approval Error]: {err_msg}", exc_info=True)
+                    withdrawal.remarks = f"Transfer attempt failed: {str(e)}"
+                    withdrawal.save(update_fields=['remarks', 'updated_at'])
+                    return JsonResponse({'status': 'error', 'message': err_msg}, status=400)
+            else:
+                withdrawal.transaction_status = 'SUCCESS'
+
         with transaction.atomic():
             withdrawal.status = action_type
             withdrawal.processed_by = request.user
@@ -153,7 +209,8 @@ class WithdrawalApproveView(PortalPermissionMixin, View):
                 )
 
             elif action_type == 'APPROVED':
-                withdrawal.transaction_status = 'SUCCESS'
+                if not withdrawal.transaction_status or withdrawal.transaction_status == 'PENDING':
+                    withdrawal.transaction_status = 'SUCCESS'
                 withdrawal.save(update_fields=['transaction_status', 'updated_at'])
 
                 # Send notification to user

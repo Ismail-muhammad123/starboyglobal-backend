@@ -13,8 +13,11 @@ from wallet.serializers import (
 from wallet.utils import fund_wallet, debit_wallet
 from notifications.utils import NotificationService
 from payments.models import Withdrawal
-from payments.utils import PaystackGateway
+from payments.utils import PaystackGateway, calculate_net_withdrawal_amount
 from summary.models import SiteConfig
+import logging
+
+logger = logging.getLogger(__name__)
 
 class InitiateBankTransferView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -73,10 +76,25 @@ class InitiateBankTransferView(APIView):
             return Response({"error": str(exc)}, status=400)
 
         if config and config.automatic_withdrawal:
+            net_amount, total_charge = calculate_net_withdrawal_amount(amount)
+            if net_amount <= 0:
+                refund_err = f"Withdrawal amount (₦{amount}) is less than or equal to configured withdrawal charge (₦{total_charge})."
+                print(f"[Auto Withdrawal Error]: {refund_err}")
+                fund_wallet(
+                    user.id,
+                    amount,
+                    description=f"Refund: Withdrawal charge exceeds amount ({ref})",
+                    initiator='system'
+                )
+                withdrawal.status = "REJECTED"
+                withdrawal.reason = refund_err
+                withdrawal.save(update_fields=["status", "reason", "updated_at"])
+                return Response({"error": refund_err}, status=400)
+
             try:
                 gateway = PaystackGateway()
                 transfer = gateway.initiate_transfer(
-                    amount=float(amount),
+                    amount=float(net_amount),
                     bank_code=withdrawal.bank_code,
                     account_number=withdrawal.account_number,
                     account_name=withdrawal.account_name,
@@ -114,9 +132,10 @@ class InitiateBankTransferView(APIView):
                     {"amount": amount, "bank_name": serializer.validated_data['bank_name'], "reference": ref}
                 )
                 return Response({"message": "Withdrawal approved and transfer initiated", "reference": ref}, status=201)
-            except Exception:
-                # Keep request pending when automatic initiation fails so admin can retry/approve manually.
-                withdrawal.remarks = "Automatic transfer initiation failed; awaiting manual approval."
+            except Exception as exc:
+                print(f"[Auto Withdrawal Paystack Error]: {str(exc)}")
+                logger.error(f"[Auto Withdrawal Paystack Error]: {str(exc)}", exc_info=True)
+                withdrawal.remarks = f"Automatic transfer initiation failed: {str(exc)}"
                 withdrawal.save(update_fields=["remarks", "updated_at"])
 
         NotificationService.send_from_template(user, "withdrawal-initiated", {"amount": amount, "bank_name": serializer.validated_data['bank_name'], "reference": ref})

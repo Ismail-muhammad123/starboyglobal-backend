@@ -23,7 +23,7 @@ import requests
 from django.conf import settings
 from wallet.utils import fund_wallet, debit_wallet
 from users.models import User
-from payments.utils import PaystackGateway
+from payments.utils import PaystackGateway, calculate_net_withdrawal_amount
 
 from rest_framework.pagination import PageNumberPagination
 from admin_api.views.user_management import UserPagination
@@ -174,10 +174,14 @@ class AdminWithdrawalViewSet(viewsets.ModelViewSet):
         if not request.user.check_password(pin):
             return Response({"error": "Invalid authorization PIN"}, status=403)
 
+        net_amount, total_charge = calculate_net_withdrawal_amount(withdrawal.amount)
+        if net_amount <= 0:
+            return Response({"error": f"Withdrawal amount (₦{withdrawal.amount}) is less than or equal to configured withdrawal charge (₦{total_charge})"}, status=400)
+
         try:
             gateway = PaystackGateway()
             transfer = gateway.initiate_transfer(
-                amount=float(withdrawal.amount),
+                amount=float(net_amount),
                 bank_code=withdrawal.bank_code,
                 account_number=withdrawal.account_number,
                 account_name=withdrawal.account_name,
