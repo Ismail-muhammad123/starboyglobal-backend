@@ -23,12 +23,15 @@ from orders.utils.pricing import get_provider_service_config, resolve_margin_for
 def _active_services_with_routing_fallback(model, service_type):
     """
     Prefer active services for the routed provider.
+    Also includes services with no provider assigned (legacy/shared catalogue rows).
     If no rows exist for that provider, gracefully fall back to all active services.
     """
     active_qs = model.objects.filter(is_active=True).order_by('id')
     routing = ServiceRouting.objects.filter(service=service_type).first()
     if routing and routing.primary_provider:
-        routed_qs = active_qs.filter(provider=routing.primary_provider)
+        routed_qs = active_qs.filter(
+            Q(provider=routing.primary_provider) | Q(provider__isnull=True)
+        )
         if routed_qs.exists():
             return routed_qs
     return active_qs

@@ -97,20 +97,9 @@ def parse_date_range(request):
 
 class DashboardView(PortalLoginRequired, View):
     def get(self, request):
-        stats = SummaryDashboard.summary()
-        context = {
-            'stats': stats,
-            'financial': stats.get('financial', {}),
-            'wallets': stats.get('wallets', {}),
-            'purchases': stats.get('purchases', {}),
-            'users': stats.get('users', {}),
-            'vtu_providers': stats.get('vtu_providers', []),
-            'service_health': stats.get('service_health', {}),
-            'alerts': stats.get('alerts', {}),
-            'finances': stats.get('finances', {}),
-            'quick_actions': stats.get('quick_actions', {}),
-        }
-        return render(request, 'custom_admin/dashboard.html', context)
+        # Render HTML template instantly without blocking on heavy DB aggregations or external provider API calls.
+        # All heavy stats and charts load dynamically via JS.
+        return render(request, 'custom_admin/dashboard.html')
 
 
 class DashboardStatsApiView(PortalLoginRequired, View):
@@ -120,6 +109,11 @@ class DashboardStatsApiView(PortalLoginRequired, View):
         stats = SummaryDashboard.summary(start=range_info['start_dt'], end=range_info['end_dt'])
         purchases = stats.get('purchases', {})
         financial = stats.get('financial', {})
+        wallets = stats.get('wallets', {})
+        users = stats.get('users', {})
+        vtu_providers = stats.get('vtu_providers', [])
+
+        vtu_balance_sum = sum(float(p.get('balance', 0) or 0) for p in vtu_providers if p.get('is_active'))
 
         return JsonResponse({
             'status': 'success',
@@ -127,8 +121,12 @@ class DashboardStatsApiView(PortalLoginRequired, View):
             'data': {
                 'total_volume': purchases.get('total_volume', 0),
                 'profit': purchases.get('profit_periods', {}).get('monthly', 0),
+                'wallets_balance': wallets.get('total_balance', 0),
                 'total_deposits': financial.get('total_deposits', 0),
+                'paystack_balance': financial.get('paystack_balance', 0),
+                'vtu_balance': vtu_balance_sum,
                 'total_withdrawals': financial.get('total_withdrawals', 0),
+                'total_users': users.get('total', 0),
             }
         })
 
@@ -149,6 +147,28 @@ class DashboardServiceStatsApiView(PortalLoginRequired, View):
                 'failed_count': purchases.get('failed_count', 0),
                 'pending_count': purchases.get('pending_count', 0),
             }
+        })
+
+
+class DashboardProvidersApiView(PortalLoginRequired, View):
+    """API for loading VTU provider cards dynamically."""
+    def get(self, request):
+        stats = SummaryDashboard.summary()
+        return JsonResponse({
+            'status': 'success',
+            'vtu_providers': stats.get('vtu_providers', [])
+        })
+
+
+class DashboardOverviewExtraApiView(PortalLoginRequired, View):
+    """API for loading User Base Stats, Network Health, and Recent Failed Transactions Alerts dynamically."""
+    def get(self, request):
+        stats = SummaryDashboard.summary()
+        return JsonResponse({
+            'status': 'success',
+            'users': stats.get('users', {}),
+            'service_health': stats.get('service_health', {}),
+            'alerts': stats.get('alerts', {})
         })
 
 

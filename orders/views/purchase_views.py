@@ -53,7 +53,14 @@ class PurchaseDataVariationView(APIView):
         promo_code = serializer.validated_data.get("promo_code")
 
         try:
-            plan = DataVariation.objects.get(id=plan_id, is_active=True)
+            # plan_id may be a DB integer PK (db mode) or a provider variation_id string (live mode)
+            plan = None
+            if str(plan_id).isdigit():
+                plan = DataVariation.objects.filter(id=int(plan_id), is_active=True).first()
+            if plan is None:
+                plan = DataVariation.objects.filter(variation_id=plan_id, is_active=True).first()
+            if plan is None:
+                raise DataVariation.DoesNotExist
             amount = plan.agent_price if user.role == 'agent' else plan.selling_price
             reference = generate_request_id()
             result = purchase_data(
@@ -290,7 +297,14 @@ class PurchaseInternetSubscriptionView(APIView):
         promo_code = serializer.validated_data.get("promo_code")
 
         try:
-            plan = InternetVariation.objects.get(id=plan_id, is_active=True)
+            # plan_id may be a DB integer PK (db mode) or a provider variation_id string (live mode)
+            plan = None
+            if str(plan_id).isdigit():
+                plan = InternetVariation.objects.filter(id=int(plan_id), is_active=True).first()
+            if plan is None:
+                plan = InternetVariation.objects.filter(variation_id=plan_id, is_active=True).first()
+            if plan is None:
+                raise InternetVariation.DoesNotExist
             amount = plan.agent_price if user.role == 'agent' else plan.selling_price
 
             reference = generate_request_id()

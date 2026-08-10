@@ -318,9 +318,11 @@ class SummaryDashboard(Wallet):
                 try:
                     impl = ProviderRouter.get_provider_implementation(provider.name)
                     if impl:
-                        balance = impl.get_wallet_balance()
+                        raw_bal = impl.get_wallet_balance()
+                        if raw_bal is not None:
+                            balance = float(str(raw_bal).replace(',', '').strip())
                 except Exception:
-                    pass
+                    balance = 0.0
 
             # Active services count (services linked to this provider)
             active_services = 0

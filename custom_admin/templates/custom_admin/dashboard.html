@@ -4,6 +4,47 @@
 {% block title %}Dashboard - Starboy Global Admin Dashboard{% endblock %}
 {% block page_title %}Dashboard Overview{% endblock %}
 
+{% block extra_head %}
+<style>
+  @keyframes shimmerAnimation {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(15, 23, 42, 0.6) 0%,
+      rgba(30, 41, 59, 0.9) 50%,
+      rgba(15, 23, 42, 0.6) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmerAnimation 1.5s infinite linear;
+    border: 1px solid rgba(51, 65, 85, 0.5);
+  }
+
+  @keyframes spinAnimation {
+    to { transform: rotate(360deg); }
+  }
+
+  .circular-loader {
+    display: inline-block;
+    width: 0.85rem;
+    height: 0.85rem;
+    border: 2px solid rgba(59, 130, 246, 0.25);
+    border-left-color: #3b82f6;
+    border-radius: 50%;
+    animation: spinAnimation 0.75s linear infinite;
+    vertical-align: middle;
+  }
+
+  .circular-loader-purple {
+    border-color: rgba(168, 85, 247, 0.25);
+    border-left-color: #a855f7;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="space-y-6">
 
@@ -51,84 +92,21 @@
           📅 All Time
         </span>
       </div>
-      <span id="stats-loading-spinner" class="text-[11px] text-blue-400 hidden animate-pulse">Updating stats…</span>
+      <span id="stats-loading-spinner" class="text-[11px] text-blue-400 hidden flex items-center gap-1.5">
+        <span class="circular-loader"></span>
+        <span>Updating stats section…</span>
+      </span>
     </div>
 
-    <!-- STATS CARDS GRID (4 PER ROW ON LARGE SCREENS) -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
-
-      <!-- Card 1: Total Volume -->
-      <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-colors">
-        <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Total Volume</div>
-        <div id="card-total-volume" class="text-lg font-bold text-white mt-1">₦{{ purchases.total_volume|default:0|floatformat:2|intcomma }}</div>
-        <div class="text-[10px] text-emerald-400 mt-1 flex items-center gap-1">
-          <span>✓</span> Successful Transactions
-        </div>
+    <!-- STATS CARDS GRID (FULL CARD SHIMMER SKELETONS ON LOAD) -->
+    <div id="stats-cards-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
+      {% for i in "12345678" %}
+      <div class="p-4 rounded-xl portal-card h-28 flex flex-col justify-between shimmer">
+        <div class="h-3 w-20 rounded bg-slate-700/40"></div>
+        <div class="h-6 w-32 rounded bg-slate-700/40"></div>
+        <div class="h-3 w-24 rounded bg-slate-700/40"></div>
       </div>
-
-      <!-- Card 2: Net Profit -->
-      <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 border-l-4 border-l-emerald-500 hover:border-slate-700 transition-colors">
-        <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Net Profit</div>
-        <div id="card-net-profit" class="text-lg font-bold text-emerald-400 mt-1">
-          ₦{{ purchases.profit_periods.monthly|default:0|floatformat:2|intcomma }}
-        </div>
-        <div class="text-[10px] text-slate-400 mt-1">Filtered Margin Profit</div>
-      </div>
-
-      <!-- Card 3: User Wallets Balance -->
-      <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 border-l-4 border-l-purple-500 hover:border-slate-700 transition-colors">
-        <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">User Wallets</div>
-        <div class="text-lg font-bold text-purple-400 mt-1">
-          ₦{{ wallets.total_balance|default:0|floatformat:2|intcomma }}
-        </div>
-        <div class="text-[10px] text-slate-400 mt-1">System Liabilities</div>
-      </div>
-
-      <!-- Card 4: Total Deposits (Inflow) -->
-      <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 border-l-4 border-l-blue-500 hover:border-slate-700 transition-colors">
-        <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Total Deposits</div>
-        <div id="card-total-deposits" class="text-lg font-bold text-teal-400 mt-1">
-          ₦{{ financial.total_deposits|default:0|floatformat:2|intcomma }}
-        </div>
-        <div class="text-[10px] text-slate-400 mt-1">Successful Inflow</div>
-      </div>
-
-      <!-- Card 5: Paystack Balance -->
-      <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-colors">
-        <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Paystack Balance</div>
-        <div class="text-lg font-bold text-cyan-400 mt-1">
-          ₦{{ financial.paystack_balance|default:0|floatformat:2|intcomma }}
-        </div>
-        <div class="text-[10px] text-slate-400 mt-1">Gateway API Balance</div>
-      </div>
-
-      <!-- Card 6: VTU Provider Balance -->
-      <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-colors">
-        <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">VTU Balance</div>
-        <div class="text-lg font-bold text-amber-400 mt-1">
-          ₦{{ stats.provider_balances.vtu|default:0|floatformat:2|intcomma }}
-        </div>
-        <div class="text-[10px] text-slate-400 mt-1">Provider Wallet</div>
-      </div>
-
-      <!-- Card 7: Total Withdrawals -->
-      <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-colors">
-        <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Total Withdrawals</div>
-        <div id="card-total-withdrawals" class="text-lg font-bold text-red-400 mt-1">
-          ₦{{ financial.total_withdrawals|default:0|floatformat:2|intcomma }}
-        </div>
-        <div class="text-[10px] text-slate-400 mt-1">Approved Payouts</div>
-      </div>
-
-      <!-- Card 8: Total Users -->
-      <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-colors">
-        <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Total Users</div>
-        <div class="text-lg font-bold text-indigo-400 mt-1">
-          {{ users.total|default:0|intcomma }}
-        </div>
-        <div class="text-[10px] text-slate-400 mt-1">Registered Accounts</div>
-      </div>
-
+      {% endfor %}
     </div>
 
   </div>
@@ -154,8 +132,12 @@
           onclick="loadRevenueChart(90)">90 Days</button>
       </div>
     </div>
-    <div class="h-72 w-full">
-      <canvas id="revenueTrendChart"></canvas>
+    <!-- CHART CONTAINER WITH FULL SHIMMER SKELETON ON LOAD -->
+    <div id="revenue-chart-container" class="h-72 w-full relative rounded-xl overflow-hidden">
+      <div class="h-72 w-full rounded-xl shimmer flex flex-col items-center justify-center gap-2 text-xs text-slate-400">
+        <span class="circular-loader"></span>
+        <span>Loading revenue trend chart…</span>
+      </div>
     </div>
   </div>
 
@@ -204,48 +186,23 @@
           📅 All Time
         </span>
       </div>
-      <span id="service-loading-spinner" class="text-[11px] text-purple-400 hidden animate-pulse">Updating breakdown…</span>
+      <span id="service-loading-spinner" class="text-[11px] text-purple-400 hidden flex items-center gap-1.5">
+        <span class="circular-loader circular-loader-purple"></span>
+        <span>Updating service section…</span>
+      </span>
     </div>
 
-    <!-- Inner Charts Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 pt-1">
-
-      <!-- Service Type Volume Share -->
-      <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80">
-        <div class="mb-3">
-          <h4 class="text-sm font-bold text-white">Service Type Volume Share</h4>
-          <p class="text-xs text-[var(--text-muted)]">Volume distribution across service types</p>
-        </div>
-        <div class="h-64 flex items-center justify-center">
-          <canvas id="serviceShareChart"></canvas>
-        </div>
+    <!-- Inner Charts Grid (FULL SHIMMER CARDS ON LOAD) -->
+    <div id="service-charts-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-5 pt-1">
+      <div class="p-4 rounded-xl portal-card h-72 shimmer flex flex-col justify-between">
+        <div class="h-4 w-36 rounded bg-slate-700/40"></div>
+        <div class="h-48 w-full rounded bg-slate-700/40"></div>
       </div>
-
-      <!-- Transactions Count Status -->
-      <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80">
-        <div class="mb-3">
-          <h4 class="text-sm font-bold text-white">Transactions Count Status</h4>
-          <p class="text-xs text-[var(--text-muted)]">Success vs Failed vs Pending</p>
-        </div>
-        <div class="grid grid-cols-3 gap-4 mb-4 text-center">
-          <div class="p-3 rounded-lg bg-emerald-950/40 border border-emerald-800/40">
-            <div class="text-xs text-emerald-400 font-medium">Successful</div>
-            <div id="count-success" class="text-xl font-bold text-emerald-300 mt-1">{{ purchases.success_count|default:0|intcomma }}</div>
-          </div>
-          <div class="p-3 rounded-lg bg-red-950/40 border border-red-800/40">
-            <div class="text-xs text-red-400 font-medium">Failed</div>
-            <div id="count-failed" class="text-xl font-bold text-red-300 mt-1">{{ purchases.failed_count|default:0|intcomma }}</div>
-          </div>
-          <div class="p-3 rounded-lg bg-amber-950/40 border border-amber-800/40">
-            <div class="text-xs text-amber-400 font-medium">Pending</div>
-            <div id="count-pending" class="text-xl font-bold text-amber-300 mt-1">{{ purchases.pending_count|default:0|intcomma }}</div>
-          </div>
-        </div>
-        <div class="h-44">
-          <canvas id="statusDistributionChart"></canvas>
-        </div>
+      <div class="p-4 rounded-xl portal-card h-72 shimmer flex flex-col justify-between">
+        <div class="h-4 w-36 rounded bg-slate-700/40"></div>
+        <div class="h-16 w-full rounded bg-slate-700/40"></div>
+        <div class="h-36 w-full rounded bg-slate-700/40"></div>
       </div>
-
     </div>
 
   </div>
@@ -257,44 +214,25 @@
   <div>
     <div class="flex items-center justify-between mb-3">
       <h3 class="text-sm font-bold text-white uppercase tracking-wider">VTU Provider Health & Balances</h3>
-      <span class="text-xs text-slate-400">{{ vtu_providers|length }} Configured Providers</span>
+      <span id="configured-providers-count" class="text-xs text-slate-400 flex items-center gap-1.5">
+        <span class="circular-loader"></span>
+        <span>Loading providers…</span>
+      </span>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {% for provider in vtu_providers %}
-      <div class="portal-card p-4 relative overflow-hidden">
-        <div class="flex items-center justify-between mb-3">
-          <span class="font-bold text-white text-base">{{ provider.name }}</span>
-          <span
-            class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {% if provider.is_active %}badge-success{% else %}badge-danger{% endif %}">
-            {% if provider.is_active %}Active{% else %}Inactive{% endif %}
-          </span>
+    <!-- VTU PROVIDER FULL SHIMMER CARDS GRID -->
+    <div id="vtu-providers-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {% for i in "1234" %}
+      <div class="portal-card p-4 rounded-xl h-32 flex flex-col justify-between shimmer">
+        <div class="flex justify-between items-center">
+          <div class="h-4 w-24 rounded bg-slate-700/40"></div>
+          <div class="h-4 w-12 rounded-full bg-slate-700/40"></div>
         </div>
-
-        <div class="space-y-2 text-xs">
-          <div class="flex justify-between text-slate-400">
-            <span>Balance:</span>
-            <span class="font-semibold text-amber-400 text-sm">₦{{ provider.balance|floatformat:2|intcomma }}</span>
-          </div>
-          <div class="flex justify-between text-slate-400">
-            <span>Success Rate:</span>
-            <span
-              class="font-semibold {% if provider.success_rate >= 90 %}text-emerald-400{% else %}text-amber-400{% endif %}">
-              {{ provider.success_rate|floatformat:2 }}%</span>
-          </div>
-          <div class="flex justify-between text-slate-400">
-            <span>Total Transactions:</span>
-            <span class="text-slate-200 font-medium">{{ provider.total_transactions|intcomma }}</span>
-          </div>
-          <div class="flex justify-between text-slate-400">
-            <span>Active Services:</span>
-            <span class="text-slate-200 font-medium">{{ provider.active_services }}</span>
-          </div>
+        <div class="space-y-2">
+          <div class="h-3 w-full rounded bg-slate-700/40"></div>
+          <div class="h-3 w-3/4 rounded bg-slate-700/40"></div>
+          <div class="h-3 w-1/2 rounded bg-slate-700/40"></div>
         </div>
-      </div>
-      {% empty %}
-      <div class="portal-card p-6 col-span-full text-center text-slate-400 text-sm">
-        No VTU Providers configured yet.
       </div>
       {% endfor %}
     </div>
@@ -306,15 +244,12 @@
   <!-- ==================================================================== -->
   <div class="portal-card p-5">
     <h3 class="text-sm font-bold text-white mb-3">Network & Service Health Indicators</h3>
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-      {% for net, health in service_health.network_status.items %}
-      <div class="p-3 rounded-lg bg-slate-900/60 border border-slate-800 flex items-center justify-between">
-        <span class="uppercase font-bold text-xs text-slate-300">{{ net }}</span>
-        <span
-          class="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase
-            {% if health == 'EXCELLENT' %}badge-success{% elif health == 'DEGRADED' %}badge-warning{% else %}badge-danger{% endif %}">
-          {{ health }}
-        </span>
+    <!-- NETWORK HEALTH FULL SHIMMER ITEMS GRID -->
+    <div id="network-health-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      {% for i in "1234" %}
+      <div class="p-3 rounded-lg portal-card h-12 flex items-center justify-between shimmer">
+        <div class="h-3 w-12 rounded bg-slate-700/40"></div>
+        <div class="h-4 w-16 rounded-full bg-slate-700/40"></div>
       </div>
       {% endfor %}
     </div>
@@ -329,31 +264,17 @@
     <!-- User Stats Card -->
     <div class="portal-card p-5">
       <h3 class="text-sm font-bold text-white mb-4">User Base Statistics</h3>
-      <div class="space-y-3 text-xs">
-        <div class="flex justify-between py-2 border-b border-slate-800">
-          <span class="text-slate-400">Total Users</span>
-          <span class="font-bold text-white text-sm">{{ users.total|default:0|intcomma }}</span>
-        </div>
-        <div class="flex justify-between py-2 border-b border-slate-800">
-          <span class="text-slate-400">Active Today</span>
-          <span class="font-semibold text-emerald-400">{{ users.active_today|default:0|intcomma }}</span>
-        </div>
-        <div class="flex justify-between py-2 border-b border-slate-800">
-          <span class="text-slate-400">Customers</span>
-          <span class="font-medium text-slate-200">{{ users.customers|default:0|intcomma }}</span>
-        </div>
-        <div class="flex justify-between py-2 border-b border-slate-800">
-          <span class="text-slate-400">Agents / Resellers</span>
-          <span class="font-medium text-blue-400">{{ users.agents|default:0|intcomma }}</span>
-        </div>
-        <div class="flex justify-between py-2">
-          <span class="text-slate-400">Staff / Admins</span>
-          <span class="font-medium text-purple-400">{{ users.admins|default:0|intcomma }}</span>
+      <div id="user-stats-container" class="space-y-3 text-xs">
+        <div class="h-48 rounded-xl portal-card p-4 shimmer flex flex-col justify-between">
+          <div class="h-4 w-full rounded bg-slate-700/40"></div>
+          <div class="h-4 w-full rounded bg-slate-700/40"></div>
+          <div class="h-4 w-full rounded bg-slate-700/40"></div>
+          <div class="h-4 w-full rounded bg-slate-700/40"></div>
         </div>
       </div>
     </div>
 
-    <!-- Failed Transactions Alerts Table -->
+    <!-- Failed Transactions Alerts Table Card -->
     <div class="portal-card p-5 lg:col-span-2">
       <h3 class="text-sm font-bold text-white mb-3">Recent Failed Transactions Alerts</h3>
       <div class="overflow-x-auto">
@@ -367,20 +288,12 @@
               <th class="p-2">Reason</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-800">
-            {% for f in alerts.failed_transactions %}
-            <tr class="hover:bg-slate-800/40 cursor-pointer transition-colors" onclick="window.location.href='{% url "portal:purchases_detail" f.id %}'">
-              <td class="p-2 font-mono text-blue-400 hover:underline">
-                <a href="{% url 'portal:purchases_detail' f.id %}">{{ f.ref }}</a>
-              </td>
-              <td class="p-2 uppercase">{{ f.type }}</td>
-              <td class="p-2 font-semibold">₦{{ f.amount|floatformat:2|intcomma }}</td>
-              <td class="p-2">{{ f.beneficiary }}</td>
-              <td class="p-2 text-red-400 truncate max-w-xs">{{ f.error|default:"Provider Error" }}</td>
-            </tr>
-            {% empty %}
+          <tbody id="failed-alerts-tbody" class="divide-y divide-slate-800">
+            {% for i in "123" %}
             <tr>
-              <td colspan="5" class="p-4 text-center text-slate-500">No recent failed transactions.</td>
+              <td colspan="5" class="p-3">
+                <div class="h-4 w-full rounded shimmer"></div>
+              </td>
             </tr>
             {% endfor %}
           </tbody>
@@ -394,34 +307,130 @@
 {% endblock %}
 
 {% block extra_js %}
-{{ purchases.totals_by_service|json_script:"totals-by-service-data" }}
 <script>
   let revenueChart = null;
   let serviceShareChart = null;
+  let statusDistChart = null;
 
   function formatMoney(num) {
     return '₦' + (Number(num) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  // ── SKELETON BUILDERS FOR SECTIONS ──────────────────────────────────
+  function showStatsSectionSkeletons() {
+    const grid = document.getElementById('stats-cards-grid');
+    if (grid) {
+      grid.innerHTML = Array(8).fill(0).map(() => `
+        <div class="p-4 rounded-xl portal-card h-28 flex flex-col justify-between shimmer">
+          <div class="h-3 w-20 rounded bg-slate-700/40"></div>
+          <div class="h-6 w-32 rounded bg-slate-700/40"></div>
+          <div class="h-3 w-24 rounded bg-slate-700/40"></div>
+        </div>
+      `).join('');
+    }
+  }
+
+  function showServiceSectionSkeletons() {
+    const grid = document.getElementById('service-charts-grid');
+    if (grid) {
+      grid.innerHTML = `
+        <div class="p-4 rounded-xl portal-card h-72 shimmer flex flex-col justify-between">
+          <div class="h-4 w-36 rounded bg-slate-700/40"></div>
+          <div class="h-48 w-full rounded bg-slate-700/40"></div>
+        </div>
+        <div class="p-4 rounded-xl portal-card h-72 shimmer flex flex-col justify-between">
+          <div class="h-4 w-36 rounded bg-slate-700/40"></div>
+          <div class="h-16 w-full rounded bg-slate-700/40"></div>
+          <div class="h-36 w-full rounded bg-slate-700/40"></div>
+        </div>
+      `;
+    }
+  }
+
+
   // ── 1. SECTION 1: STATS CARDS FILTERING ────────────────────────────
-  async function fetchStatsSection(queryParams) {
+  async function fetchStatsSection(queryParams = 'range=all') {
+    showStatsSectionSkeletons();
     const spinner = document.getElementById('stats-loading-spinner');
-    if (spinner) spinner.classList.remove('hidden');
+    if (spinner) {
+      spinner.classList.remove('hidden');
+      spinner.classList.add('flex');
+    }
     try {
       const res = await fetch(`/portal/api/dashboard/stats/?${queryParams}`);
       const json = await res.json();
       if (json.status === 'success') {
         const d = json.data;
-        document.getElementById('card-total-volume').textContent = formatMoney(d.total_volume);
-        document.getElementById('card-net-profit').textContent = formatMoney(d.profit);
-        document.getElementById('card-total-deposits').textContent = formatMoney(d.total_deposits);
-        document.getElementById('card-total-withdrawals').textContent = formatMoney(d.total_withdrawals);
-        document.getElementById('stats-scope-badge').textContent = '📅 ' + json.active_label;
+        document.getElementById('stats-scope-badge').textContent = '📅 ' + json.active_filter_label;
+
+        const grid = document.getElementById('stats-cards-grid');
+        grid.innerHTML = `
+          <!-- Card 1: Total Volume -->
+          <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-all">
+            <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Total Volume</div>
+            <div class="text-lg font-bold text-white mt-1">${formatMoney(d.total_volume)}</div>
+            <div class="text-[10px] text-emerald-400 mt-1 flex items-center gap-1">
+              <span>✓</span> Successful Transactions
+            </div>
+          </div>
+
+          <!-- Card 2: Net Profit -->
+          <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 border-l-4 border-l-emerald-500 hover:border-slate-700 transition-all">
+            <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Net Profit</div>
+            <div class="text-lg font-bold text-emerald-400 mt-1">${formatMoney(d.profit)}</div>
+            <div class="text-[10px] text-slate-400 mt-1">Filtered Margin Profit</div>
+          </div>
+
+          <!-- Card 3: User Wallets Balance -->
+          <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 border-l-4 border-l-purple-500 hover:border-slate-700 transition-all">
+            <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">User Wallets</div>
+            <div class="text-lg font-bold text-purple-400 mt-1">${formatMoney(d.wallets_balance)}</div>
+            <div class="text-[10px] text-slate-400 mt-1">System Liabilities</div>
+          </div>
+
+          <!-- Card 4: Total Deposits (Inflow) -->
+          <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 border-l-4 border-l-blue-500 hover:border-slate-700 transition-all">
+            <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Total Deposits</div>
+            <div class="text-lg font-bold text-teal-400 mt-1">${formatMoney(d.total_deposits)}</div>
+            <div class="text-[10px] text-slate-400 mt-1">Successful Inflow</div>
+          </div>
+
+          <!-- Card 5: Paystack Balance -->
+          <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-all">
+            <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Paystack Balance</div>
+            <div class="text-lg font-bold text-cyan-400 mt-1">${formatMoney(d.paystack_balance)}</div>
+            <div class="text-[10px] text-slate-400 mt-1">Gateway API Balance</div>
+          </div>
+
+          <!-- Card 6: VTU Balance -->
+          <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-all">
+            <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">VTU Balance</div>
+            <div class="text-lg font-bold text-amber-400 mt-1">${formatMoney(d.vtu_balance)}</div>
+            <div class="text-[10px] text-slate-400 mt-1">Total Configured Providers Balance</div>
+          </div>
+
+          <!-- Card 7: Total Withdrawals -->
+          <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-all">
+            <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Total Withdrawals</div>
+            <div class="text-lg font-bold text-red-400 mt-1">${formatMoney(d.total_withdrawals)}</div>
+            <div class="text-[10px] text-slate-400 mt-1">Approved Payouts</div>
+          </div>
+
+          <!-- Card 8: Total Users -->
+          <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 transition-all">
+            <div class="text-[11px] font-medium text-[var(--text-muted)] uppercase">Total Users</div>
+            <div class="text-lg font-bold text-indigo-400 mt-1">${(d.total_users || 0).toLocaleString()}</div>
+            <div class="text-[10px] text-slate-400 mt-1">Registered Accounts</div>
+          </div>
+        `;
       }
     } catch (e) {
       console.error('Stats section filter failed', e);
     } finally {
-      if (spinner) spinner.classList.add('hidden');
+      if (spinner) {
+        spinner.classList.add('hidden');
+        spinner.classList.remove('flex');
+      }
     }
   }
 
@@ -448,6 +457,14 @@
 
   // ── 2. SECTION 2: REVENUE TREND CHART ────────────────────────────────
   async function loadRevenueChart(days = 30) {
+    const container = document.getElementById('revenue-chart-container');
+    container.innerHTML = `
+      <div class="h-72 w-full rounded-xl shimmer flex flex-col items-center justify-center gap-2 text-xs text-slate-400">
+        <span class="circular-loader"></span>
+        <span>Loading revenue trend chart…</span>
+      </div>
+    `;
+
     try {
       document.querySelectorAll('.btn-chart-range').forEach(btn => {
         btn.className = "btn-chart-range px-3 py-1 text-xs rounded bg-slate-800 text-slate-300 hover:text-white border border-slate-700 font-semibold transition-colors";
@@ -458,6 +475,8 @@
 
       const res = await fetch(`/portal/api/chart/revenue/?days=${days}`);
       const data = await res.json();
+      
+      container.innerHTML = `<canvas id="revenueTrendChart"></canvas>`;
       const ctx = document.getElementById('revenueTrendChart').getContext('2d');
 
       if (revenueChart) revenueChart.destroy();
@@ -469,20 +488,60 @@
 
 
   // ── 3. SECTION 3: SERVICE VOLUME & TRANSACTIONS FILTERING ────────────
-  async function fetchServiceSection(queryParams) {
+  async function fetchServiceSection(queryParams = 'range=all') {
+    showServiceSectionSkeletons();
     const spinner = document.getElementById('service-loading-spinner');
-    if (spinner) spinner.classList.remove('hidden');
+    if (spinner) {
+      spinner.classList.remove('hidden');
+      spinner.classList.add('flex');
+    }
     try {
       const res = await fetch(`/portal/api/dashboard/service-stats/?${queryParams}`);
       const json = await res.json();
       if (json.status === 'success') {
         const d = json.data;
-        document.getElementById('count-success').textContent = (d.success_count || 0).toLocaleString();
-        document.getElementById('count-failed').textContent = (d.failed_count || 0).toLocaleString();
-        document.getElementById('count-pending').textContent = (d.pending_count || 0).toLocaleString();
         document.getElementById('service-scope-badge').textContent = '📅 ' + json.active_label;
 
-        // Re-render service share chart
+        const grid = document.getElementById('service-charts-grid');
+        grid.innerHTML = `
+          <!-- Service Type Volume Share -->
+          <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80">
+            <div class="mb-3">
+              <h4 class="text-sm font-bold text-white">Service Type Volume Share</h4>
+              <p class="text-xs text-[var(--text-muted)]">Volume distribution across service types</p>
+            </div>
+            <div class="h-64 flex items-center justify-center relative">
+              <canvas id="serviceShareChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Transactions Count Status -->
+          <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800/80">
+            <div class="mb-3">
+              <h4 class="text-sm font-bold text-white">Transactions Count Status</h4>
+              <p class="text-xs text-[var(--text-muted)]">Success vs Failed vs Pending</p>
+            </div>
+            <div class="grid grid-cols-3 gap-4 mb-4 text-center">
+              <div class="p-3 rounded-lg bg-emerald-950/40 border border-emerald-800/40">
+                <div class="text-xs text-emerald-400 font-medium">Successful</div>
+                <div class="text-xl font-bold text-emerald-300 mt-1">${(d.success_count || 0).toLocaleString()}</div>
+              </div>
+              <div class="p-3 rounded-lg bg-red-950/40 border border-red-800/40">
+                <div class="text-xs text-red-400 font-medium">Failed</div>
+                <div class="text-xl font-bold text-red-300 mt-1">${(d.failed_count || 0).toLocaleString()}</div>
+              </div>
+              <div class="p-3 rounded-lg bg-amber-950/40 border border-amber-800/40">
+                <div class="text-xs text-amber-400 font-medium">Pending</div>
+                <div class="text-xl font-bold text-amber-300 mt-1">${(d.pending_count || 0).toLocaleString()}</div>
+              </div>
+            </div>
+            <div class="h-44 flex items-center justify-center relative">
+              <canvas id="statusDistributionChart"></canvas>
+            </div>
+          </div>
+        `;
+
+        // Render service share chart
         const totalsByService = d.totals_by_service || {};
         const labels = Object.keys(totalsByService).map(k => k.toUpperCase());
         const values = Object.values(totalsByService).map(v => v.total_amount || 0);
@@ -494,11 +553,24 @@
         } else {
           serviceShareChart = PortalCharts.createDoughnutChart(shareCtx, labels, values);
         }
+
+        // Render status distribution chart
+        const statusCtx = document.getElementById('statusDistributionChart').getContext('2d');
+        if (statusDistChart) statusDistChart.destroy();
+        statusDistChart = PortalCharts.createDoughnutChart(
+          statusCtx,
+          ['Successful', 'Failed', 'Pending'],
+          [d.success_count || 0, d.failed_count || 0, d.pending_count || 0],
+          ['#10B981', '#EF4444', '#F59E0B']
+        );
       }
     } catch (e) {
       console.error('Service section filter failed', e);
     } finally {
-      if (spinner) spinner.classList.add('hidden');
+      if (spinner) {
+        spinner.classList.add('hidden');
+        spinner.classList.remove('flex');
+      }
     }
   }
 
@@ -523,20 +595,139 @@
   }
 
 
-  document.addEventListener('DOMContentLoaded', () => {
-    loadRevenueChart(30);
+  // ── 4. SECTION 4: VTU PROVIDERS ─────────────────────────────────────
+  async function fetchProvidersSection() {
+    const grid = document.getElementById('vtu-providers-grid');
+    const countBadge = document.getElementById('configured-providers-count');
+    try {
+      const res = await fetch('/portal/api/dashboard/providers/');
+      const json = await res.json();
+      if (json.status === 'success' && json.vtu_providers) {
+        const providers = json.vtu_providers;
+        if (countBadge) countBadge.textContent = `${providers.length} Configured Providers`;
 
-    // Initial Service Share Chart render
-    const totalsByService = JSON.parse(document.getElementById('totals-by-service-data').textContent || '{}');
-    const labels = Object.keys(totalsByService).map(k => k.toUpperCase());
-    const values = Object.values(totalsByService).map(v => v.total_amount || 0);
+        if (providers.length === 0) {
+          grid.innerHTML = `<div class="portal-card p-6 col-span-full text-center text-slate-400 text-sm">No VTU Providers configured yet.</div>`;
+          return;
+        }
 
-    const shareCtx = document.getElementById('serviceShareChart').getContext('2d');
-    if (PortalCharts.createBarChart) {
-      serviceShareChart = PortalCharts.createBarChart(shareCtx, labels, values);
-    } else {
-      serviceShareChart = PortalCharts.createDoughnutChart(shareCtx, labels, values);
+        grid.innerHTML = providers.map(p => `
+          <div class="portal-card p-4 relative overflow-hidden">
+            <div class="flex items-center justify-between mb-3">
+              <span class="font-bold text-white text-base">${p.name}</span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${p.is_active ? 'badge-success' : 'badge-danger'}">
+                ${p.is_active ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+            <div class="space-y-2 text-xs">
+              <div class="flex justify-between text-slate-400">
+                <span>Balance:</span>
+                <span class="font-semibold text-amber-400 text-sm">${formatMoney(p.balance)}</span>
+              </div>
+              <div class="flex justify-between text-slate-400">
+                <span>Success Rate:</span>
+                <span class="font-semibold ${p.success_rate >= 90 ? 'text-emerald-400' : 'text-amber-400'}">${Number(p.success_rate).toFixed(2)}%</span>
+              </div>
+              <div class="flex justify-between text-slate-400">
+                <span>Total Transactions:</span>
+                <span class="text-slate-200 font-medium">${(p.total_transactions || 0).toLocaleString()}</span>
+              </div>
+              <div class="flex justify-between text-slate-400">
+                <span>Active Services:</span>
+                <span class="text-slate-200 font-medium">${p.active_services || 0}</span>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      }
+    } catch (e) {
+      console.error('Failed to load VTU providers', e);
     }
+  }
+
+
+  // ── 5. SECTION 5 & 6: OVERVIEW EXTRA (USERS, HEALTH & ALERTS) ───────
+  async function fetchOverviewExtraSection() {
+    try {
+      const res = await fetch('/portal/api/dashboard/overview-extra/');
+      const json = await res.json();
+      if (json.status === 'success') {
+        const u = json.users || {};
+        const userContainer = document.getElementById('user-stats-container');
+        if (userContainer) {
+          userContainer.innerHTML = `
+            <div class="flex justify-between py-2 border-b border-slate-800">
+              <span class="text-slate-400">Total Users</span>
+              <span class="font-bold text-white text-sm">${(u.total || 0).toLocaleString()}</span>
+            </div>
+            <div class="flex justify-between py-2 border-b border-slate-800">
+              <span class="text-slate-400">Active Today</span>
+              <span class="font-semibold text-emerald-400">${(u.active_today || 0).toLocaleString()}</span>
+            </div>
+            <div class="flex justify-between py-2 border-b border-slate-800">
+              <span class="text-slate-400">Customers</span>
+              <span class="font-medium text-slate-200">${(u.customers || 0).toLocaleString()}</span>
+            </div>
+            <div class="flex justify-between py-2 border-b border-slate-800">
+              <span class="text-slate-400">Agents / Resellers</span>
+              <span class="font-medium text-blue-400">${(u.agents || 0).toLocaleString()}</span>
+            </div>
+            <div class="flex justify-between py-2">
+              <span class="text-slate-400">Staff / Admins</span>
+              <span class="font-medium text-purple-400">${(u.admins || 0).toLocaleString()}</span>
+            </div>
+          `;
+        }
+
+        const health = (json.service_health && json.service_health.network_status) || {};
+        const healthGrid = document.getElementById('network-health-grid');
+        if (healthGrid) {
+          healthGrid.innerHTML = Object.entries(health).map(([net, status]) => {
+            let badgeClass = 'badge-success';
+            if (status === 'DEGRADED') badgeClass = 'badge-warning';
+            else if (status !== 'EXCELLENT') badgeClass = 'badge-danger';
+
+            return `
+              <div class="p-3 rounded-lg bg-slate-900/60 border border-slate-800 flex items-center justify-between">
+                <span class="uppercase font-bold text-xs text-slate-300">${net}</span>
+                <span class="px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${badgeClass}">${status}</span>
+              </div>
+            `;
+          }).join('');
+        }
+
+        const alerts = (json.alerts && json.alerts.failed_transactions) || [];
+        const tbody = document.getElementById('failed-alerts-tbody');
+        if (tbody) {
+          if (alerts.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500">No recent failed transactions.</td></tr>`;
+          } else {
+            tbody.innerHTML = alerts.map(f => `
+              <tr class="hover:bg-slate-800/40 cursor-pointer transition-colors" onclick="window.location.href='/portal/purchases/${f.id}/'">
+                <td class="p-2 font-mono text-blue-400 hover:underline">
+                  <a href="/portal/purchases/${f.id}/">${f.ref}</a>
+                </td>
+                <td class="p-2 uppercase">${f.type}</td>
+                <td class="p-2 font-semibold">${formatMoney(f.amount)}</td>
+                <td class="p-2">${f.beneficiary || ''}</td>
+                <td class="p-2 text-red-400 truncate max-w-xs">${f.error || 'Provider Error'}</td>
+              </tr>
+            `).join('');
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load overview extra section', e);
+    }
+  }
+
+
+  document.addEventListener('DOMContentLoaded', () => {
+    fetchStatsSection('range=all');
+    loadRevenueChart(30);
+    fetchServiceSection('range=all');
+    fetchProvidersSection();
+    fetchOverviewExtraSection();
   });
 </script>
 {% endblock %}

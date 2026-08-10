@@ -9,7 +9,19 @@ from custom_admin.mixins import PortalPermissionMixin
 from notifications.models import Announcement, Notification, UserNotification
 from notifications.utils import NotificationService
 
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
+
 User = get_user_model()
+
+
+def _parse_aware_dt(val):
+    if not val:
+        return None
+    dt = parse_datetime(val)
+    if dt is not None and timezone.is_naive(dt):
+        return timezone.make_aware(dt, timezone.get_current_timezone())
+    return dt
 
 
 # ── Send Notification ─────────────────────────────────────────────────────────
@@ -215,8 +227,8 @@ class AnnouncementCreateView(PortalPermissionMixin, View):
         body      = request.POST.get('body', '').strip()
         audience  = request.POST.get('audience', 'all')
         is_active = request.POST.get('is_active') in ('on', 'true', '1')
-        starts_at = request.POST.get('starts_at') or None
-        expires_at = request.POST.get('expires_at') or None
+        starts_at = _parse_aware_dt(request.POST.get('starts_at'))
+        expires_at = _parse_aware_dt(request.POST.get('expires_at'))
         image = request.FILES.get('image')
 
         if not title or not body:
@@ -254,8 +266,8 @@ class AnnouncementEditView(PortalPermissionMixin, View):
         ann.body      = request.POST.get('body', '').strip() or ann.body
         ann.audience  = request.POST.get('audience', ann.audience)
         ann.is_active = request.POST.get('is_active') in ('on', 'true', '1')
-        ann.starts_at  = request.POST.get('starts_at') or None
-        ann.expires_at = request.POST.get('expires_at') or None
+        ann.starts_at  = _parse_aware_dt(request.POST.get('starts_at')) if 'starts_at' in request.POST else ann.starts_at
+        ann.expires_at = _parse_aware_dt(request.POST.get('expires_at')) if 'expires_at' in request.POST else ann.expires_at
         image = request.FILES.get('image')
         if image:
             ann.image = image

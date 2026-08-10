@@ -395,9 +395,10 @@ class GenericLocalProvider(BaseVTUProvider):
             items = []
             for item in data:
                 network_name = item.get("network_name") or item.get("network") or ""
+                variation_id = str(item.get("id"))
                 items.append({
-                    "id": item.get("id"),
-                    "variation_id": str(item.get("id")),
+                    "id": variation_id,          # always a string — use as plan_id in purchases
+                    "variation_id": variation_id,
                     "name": item.get("plan_name") or item.get("name"),
                     "service_id": str(item.get("network_id") or network_name),
                     "network_name": network_name,
@@ -417,9 +418,10 @@ class GenericLocalProvider(BaseVTUProvider):
             items = []
             for item in data:
                 service_name = item.get("cablename") or item.get("name") or ""
+                variation_id = str(item.get("id"))
                 items.append({
-                    "id": item.get("id"),
-                    "variation_id": str(item.get("id")),
+                    "id": variation_id,          # always a string — use as variation_id in purchases
+                    "variation_id": variation_id,
                     "name": item.get("plan_name") or item.get("name"),
                     "service_id": str(item.get("cable_id") or service_name),
                     "service_name": service_name,
@@ -437,9 +439,10 @@ class GenericLocalProvider(BaseVTUProvider):
             data = response.json()
             items = []
             for item in data:
+                variation_id = f"{item.get('id')}-general"
                 items.append({
-                    "id": item.get("id"),
-                    "variation_id": f"{item.get('id')}-general",
+                    "id": variation_id,          # always a string — use as variation_id in purchases
+                    "variation_id": variation_id,
                     "name": item.get("name") or "General",
                     "service_id": str(item.get("id") or item.get("name")),
                     "service_name": item.get("name"),
@@ -461,9 +464,10 @@ class GenericLocalProvider(BaseVTUProvider):
             items = []
             for item in data:
                 name = item.get("name") or item.get("exam_name") or ""
+                variation_id = str(item.get("id"))
                 items.append({
-                    "id": item.get("id"),
-                    "variation_id": str(item.get("id")),
+                    "id": variation_id,          # always a string — use as variation_id in purchases
+                    "variation_id": variation_id,
                     "name": item.get("plan_name") or name,
                     "service_id": str(item.get("id") or name),
                     "service_name": name,

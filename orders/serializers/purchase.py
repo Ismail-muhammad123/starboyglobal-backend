@@ -80,7 +80,7 @@ class BasePurchaseRequestSerializer(serializers.Serializer):
     promo_code = serializers.CharField(max_length=50, required=False, allow_null=True)
 
 class DataPurchaseRequestSerializer(BasePurchaseRequestSerializer):
-    plan_id = serializers.IntegerField(); phone_number = serializers.CharField(max_length=20)
+    plan_id = serializers.CharField(max_length=100); phone_number = serializers.CharField(max_length=20)
 
 class AirtimePurchaseRequestSerializer(BasePurchaseRequestSerializer):
     service_id = serializers.IntegerField()  # DB PK of the AirtimeNetwork record
@@ -95,7 +95,7 @@ class TVPurchaseRequestSerializer(BasePurchaseRequestSerializer):
     amount = serializers.DecimalField(max_digits=10, decimal_places=2); service_id = serializers.CharField(); customer_id = serializers.CharField(max_length=50); subscription_type = serializers.CharField(max_length=50); variation_id = serializers.CharField(max_length=50)
 
 class InternetPurchaseRequestSerializer(BasePurchaseRequestSerializer):
-    plan_id = serializers.IntegerField(); phone_number = serializers.CharField()
+    plan_id = serializers.CharField(max_length=100); phone_number = serializers.CharField()
 
 class EducationPurchaseRequestSerializer(BasePurchaseRequestSerializer):
     service_id = serializers.CharField()
