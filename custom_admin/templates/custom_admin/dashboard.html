@@ -116,22 +116,37 @@
   <!-- SECTION 2: REVENUE, COST & PROFIT PERFORMANCE TREND CHART           -->
   <!-- ==================================================================== -->
   <div class="portal-card p-5 space-y-4">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
       <div>
         <h3 class="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
           <span>📈</span> Revenue, Cost & Profit Performance Trend
         </h3>
-        <p class="text-xs text-[var(--text-muted)] mt-0.5">Daily transaction volume vs operational cost & net profit</p>
+        <p class="text-xs text-[var(--text-muted)] mt-0.5">Transaction volume vs operational cost & net profit performance</p>
       </div>
-      <div class="flex items-center gap-2">
-        <button id="btn-chart-7d" class="btn-chart-range px-3 py-1 text-xs rounded bg-slate-800 text-slate-300 hover:text-white border border-slate-700 font-semibold transition-colors"
-          onclick="loadRevenueChart(7)">7 Days</button>
-        <button id="btn-chart-30d" class="btn-chart-range px-3 py-1 text-xs rounded bg-blue-600 text-white font-bold shadow transition-colors"
-          onclick="loadRevenueChart(30)">30 Days</button>
-        <button id="btn-chart-90d" class="btn-chart-range px-3 py-1 text-xs rounded bg-slate-800 text-slate-300 hover:text-white border border-slate-700 font-semibold transition-colors"
-          onclick="loadRevenueChart(90)">90 Days</button>
+
+      <!-- Filter Controls for Revenue Chart -->
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <!-- Preset buttons -->
+        <div class="flex flex-wrap items-center gap-1 bg-slate-900/90 p-1 rounded-lg border border-slate-800">
+          <button onclick="loadRevenueChart('today')" id="revenue-preset-today" class="revenue-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">Today</button>
+          <button onclick="loadRevenueChart('this_week')" id="revenue-preset-this_week" class="revenue-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Week</button>
+          <button onclick="loadRevenueChart('this_month')" id="revenue-preset-this_month" class="revenue-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors bg-blue-600 text-white">This Month</button>
+          <button onclick="loadRevenueChart('this_year')" id="revenue-preset-this_year" class="revenue-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors">This Year</button>
+        </div>
+
+        <!-- Date Inputs (Start to Finish with Max 30 Days Limit) -->
+        <form onsubmit="filterRevenueCustom(event)" class="flex items-center gap-1">
+          <input type="date" id="revenue-date-from" class="portal-input py-1 px-1.5 text-xs w-28 sm:w-32" placeholder="From">
+          <span class="text-slate-500 text-[10px]">to</span>
+          <input type="date" id="revenue-date-to" class="portal-input py-1 px-1.5 text-xs w-28 sm:w-32" placeholder="To">
+          <button type="submit" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors shadow">Apply</button>
+        </form>
       </div>
     </div>
+
+    <!-- Error message banner if date range exceeds 30 days -->
+    <div id="revenue-chart-error" class="hidden text-xs text-red-400 bg-red-950/40 border border-red-800/60 p-2 rounded-lg text-center"></div>
+
     <!-- CHART CONTAINER WITH FULL SHIMMER SKELETON ON LOAD -->
     <div id="revenue-chart-container" class="h-72 w-full relative rounded-xl overflow-hidden">
       <div class="h-72 w-full rounded-xl shimmer flex flex-col items-center justify-center gap-2 text-xs text-slate-400">
@@ -456,8 +471,11 @@
 
 
   // ── 2. SECTION 2: REVENUE TREND CHART ────────────────────────────────
-  async function loadRevenueChart(days = 30) {
+  async function loadRevenueChart(rangeOrParams = 'this_month') {
     const container = document.getElementById('revenue-chart-container');
+    const errBox = document.getElementById('revenue-chart-error');
+    if (errBox) errBox.classList.add('hidden');
+
     container.innerHTML = `
       <div class="h-72 w-full rounded-xl shimmer flex flex-col items-center justify-center gap-2 text-xs text-slate-400">
         <span class="circular-loader"></span>
@@ -465,17 +483,39 @@
       </div>
     `;
 
-    try {
-      document.querySelectorAll('.btn-chart-range').forEach(btn => {
-        btn.className = "btn-chart-range px-3 py-1 text-xs rounded bg-slate-800 text-slate-300 hover:text-white border border-slate-700 font-semibold transition-colors";
-      });
-      if (days === 7) document.getElementById('btn-chart-7d').className = "btn-chart-range px-3 py-1 text-xs rounded bg-blue-600 text-white font-bold shadow transition-colors";
-      if (days === 30) document.getElementById('btn-chart-30d').className = "btn-chart-range px-3 py-1 text-xs rounded bg-blue-600 text-white font-bold shadow transition-colors";
-      if (days === 90) document.getElementById('btn-chart-90d').className = "btn-chart-range px-3 py-1 text-xs rounded bg-blue-600 text-white font-bold shadow transition-colors";
+    document.querySelectorAll('.revenue-preset-btn').forEach(btn => {
+      btn.className = "revenue-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors";
+    });
 
-      const res = await fetch(`/portal/api/chart/revenue/?days=${days}`);
+    let query = '';
+    if (typeof rangeOrParams === 'string') {
+      if (rangeOrParams.startsWith('date_from=')) {
+        query = rangeOrParams;
+      } else {
+        query = `range=${rangeOrParams}`;
+        document.getElementById(`revenue-preset-${rangeOrParams}`)?.classList.add('bg-blue-600', 'text-white');
+        const fromInput = document.getElementById('revenue-date-from');
+        const toInput = document.getElementById('revenue-date-to');
+        if (fromInput) fromInput.value = '';
+        if (toInput) toInput.value = '';
+      }
+    } else if (typeof rangeOrParams === 'number') {
+      query = `days=${rangeOrParams}`;
+    }
+
+    try {
+      const res = await fetch(`/portal/api/chart/revenue/?${query}`);
       const data = await res.json();
-      
+
+      if (!res.ok || data.error) {
+        if (errBox) {
+          errBox.textContent = data.error || 'Failed to load chart data.';
+          errBox.classList.remove('hidden');
+        }
+        container.innerHTML = `<div class="h-72 flex items-center justify-center text-xs text-red-400 font-semibold">${data.error || 'Failed to load chart.'}</div>`;
+        return;
+      }
+
       container.innerHTML = `<canvas id="revenueTrendChart"></canvas>`;
       const ctx = document.getElementById('revenueTrendChart').getContext('2d');
 
@@ -484,6 +524,45 @@
     } catch (e) {
       console.error('Failed to load revenue chart', e);
     }
+  }
+
+  function filterRevenueCustom(e) {
+    e.preventDefault();
+    const fromVal = document.getElementById('revenue-date-from').value;
+    const toVal = document.getElementById('revenue-date-to').value;
+    const errBox = document.getElementById('revenue-chart-error');
+
+    if (!fromVal || !toVal) {
+      if (errBox) {
+        errBox.textContent = "Please select both From and To dates.";
+        errBox.classList.remove('hidden');
+      }
+      return;
+    }
+    const dFrom = new Date(fromVal);
+    const dTo = new Date(toVal);
+    const diffTime = dTo - dFrom;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    if (diffDays < 1) {
+      if (errBox) {
+        errBox.textContent = "End date cannot be earlier than Start date.";
+        errBox.classList.remove('hidden');
+      }
+      return;
+    }
+    if (diffDays > 30) {
+      if (errBox) {
+        errBox.textContent = "Custom date range for chart cannot exceed 30 days max.";
+        errBox.classList.remove('hidden');
+      }
+      return;
+    }
+
+    if (errBox) errBox.classList.add('hidden');
+    document.querySelectorAll('.revenue-preset-btn').forEach(btn => {
+      btn.className = "revenue-preset-btn px-2.5 py-1 rounded-md font-semibold text-slate-300 hover:text-white transition-colors";
+    });
+    loadRevenueChart(`date_from=${fromVal}&date_to=${toVal}`);
   }
 
 
@@ -724,7 +803,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     fetchStatsSection('range=this_month');
-    loadRevenueChart(30);
+    loadRevenueChart('this_month');
     fetchServiceSection('range=this_month');
     fetchProvidersSection();
     fetchOverviewExtraSection();

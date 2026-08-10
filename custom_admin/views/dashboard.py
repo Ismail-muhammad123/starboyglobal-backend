@@ -177,32 +177,153 @@ class DashboardOverviewExtraApiView(PortalLoginRequired, View):
 
 class RevenueChartDataView(PortalLoginRequired, View):
     def get(self, request):
-        days = int(request.GET.get('days', 30))
+        range_param = request.GET.get('range', '').strip().lower()
+        date_from_str = request.GET.get('date_from', '').strip()
+        date_to_str = request.GET.get('date_to', '').strip()
+        days_param = request.GET.get('days')
+
         today = timezone.now().date()
         labels = []
         revenue_data = []
         cost_data = []
         profit_data = []
 
-        for i in range(days - 1, -1, -1):
-            date_val = today - timedelta(days=i)
-            labels.append(date_val.strftime('%b %d'))
+        # ── 1. CUSTOM DATE RANGE (Max 30 days) ──────────────────────
+        if date_from_str or date_to_str:
+            try:
+                d_from = datetime.strptime(date_from_str, '%Y-%m-%d').date()
+                d_to = datetime.strptime(date_to_str, '%Y-%m-%d').date()
+                if d_to < d_from:
+                    return JsonResponse({'error': 'End date cannot be earlier than Start date.'}, status=400)
+                
+                num_days = (d_to - d_from).days + 1
+                if num_days > 30:
+                    return JsonResponse({'error': 'Custom date range cannot exceed 30 days max.'}, status=400)
 
-            day_qs = Purchase.objects.filter(status='success', time__date=date_val)
-            vol = float(day_qs.aggregate(s=Sum('amount'))['s'] or 0)
-            prof = float(day_qs.aggregate(s=Sum('profit'))['s'] or 0)
-            if prof == 0 and vol > 0:
-                prof = SummaryDashboard._calculate_profit(day_qs)
+                for i in range(num_days):
+                    date_val = d_from + timedelta(days=i)
+                    labels.append(date_val.strftime('%b %d'))
 
-            cost = float(day_qs.aggregate(s=Sum('cost_price'))['s'] or 0)
-            if cost == 0 and vol > 0:
-                cost = max(0.0, vol - prof)
+                    day_qs = Purchase.objects.filter(status='success', time__date=date_val)
+                    vol = float(day_qs.aggregate(s=Sum('amount'))['s'] or 0)
+                    prof = float(day_qs.aggregate(s=Sum('profit'))['s'] or 0)
+                    if prof == 0 and vol > 0:
+                        prof = SummaryDashboard._calculate_profit(day_qs)
+                    cost = float(day_qs.aggregate(s=Sum('cost_price'))['s'] or 0)
+                    if cost == 0 and vol > 0:
+                        cost = max(0.0, vol - prof)
 
-            revenue_data.append(vol)
-            cost_data.append(cost)
-            profit_data.append(prof)
+                    revenue_data.append(vol)
+                    cost_data.append(cost)
+                    profit_data.append(prof)
+
+            except ValueError:
+                return JsonResponse({'error': 'Invalid date format.'}, status=400)
+
+        # ── 2. TODAY (Group by Hours: 00:00 to 23:00) ───────────────
+        elif range_param == 'today':
+            for h in range(24):
+                labels.append(f"{h:02d}:00")
+                hour_qs = Purchase.objects.filter(status='success', time__date=today, time__hour=h)
+                vol = float(hour_qs.aggregate(s=Sum('amount'))['s'] or 0)
+                prof = float(hour_qs.aggregate(s=Sum('profit'))['s'] or 0)
+                if prof == 0 and vol > 0:
+                    prof = SummaryDashboard._calculate_profit(hour_qs)
+                cost = float(hour_qs.aggregate(s=Sum('cost_price'))['s'] or 0)
+                if cost == 0 and vol > 0:
+                    cost = max(0.0, vol - prof)
+
+                revenue_data.append(vol)
+                cost_data.append(cost)
+                profit_data.append(prof)
+
+        # ── 3. THIS WEEK (Group by Days: Monday to Sunday) ──────────
+        elif range_param == 'this_week':
+            monday = today - timedelta(days=today.weekday())
+            for i in range(7):
+                date_val = monday + timedelta(days=i)
+                labels.append(date_val.strftime('%a %b %d'))
+
+                day_qs = Purchase.objects.filter(status='success', time__date=date_val)
+                vol = float(day_qs.aggregate(s=Sum('amount'))['s'] or 0)
+                prof = float(day_qs.aggregate(s=Sum('profit'))['s'] or 0)
+                if prof == 0 and vol > 0:
+                    prof = SummaryDashboard._calculate_profit(day_qs)
+                cost = float(day_qs.aggregate(s=Sum('cost_price'))['s'] or 0)
+                if cost == 0 and vol > 0:
+                    cost = max(0.0, vol - prof)
+
+                revenue_data.append(vol)
+                cost_data.append(cost)
+                profit_data.append(prof)
+
+        # ── 4. THIS YEAR (Group by Months: Jan to Dec) ──────────────
+        elif range_param == 'this_year':
+            year = today.year
+            for m in range(1, 13):
+                labels.append(datetime(year, m, 1).strftime('%b'))
+                m_qs = Purchase.objects.filter(status='success', time__year=year, time__month=m)
+                vol = float(m_qs.aggregate(s=Sum('amount'))['s'] or 0)
+                prof = float(m_qs.aggregate(s=Sum('profit'))['s'] or 0)
+                if prof == 0 and vol > 0:
+                    prof = SummaryDashboard._calculate_profit(m_qs)
+                cost = float(m_qs.aggregate(s=Sum('cost_price'))['s'] or 0)
+                if cost == 0 and vol > 0:
+                    cost = max(0.0, vol - prof)
+
+                revenue_data.append(vol)
+                cost_data.append(cost)
+                profit_data.append(prof)
+
+        # ── 5. THIS MONTH (Default: Group by Days of current month) ──
+        else:
+            # Handle legacy days parameter if provided
+            if days_param and days_param.isdigit() and int(days_param) != 30:
+                num_days = min(int(days_param), 30)
+                for i in range(num_days - 1, -1, -1):
+                    date_val = today - timedelta(days=i)
+                    labels.append(date_val.strftime('%b %d'))
+
+                    day_qs = Purchase.objects.filter(status='success', time__date=date_val)
+                    vol = float(day_qs.aggregate(s=Sum('amount'))['s'] or 0)
+                    prof = float(day_qs.aggregate(s=Sum('profit'))['s'] or 0)
+                    if prof == 0 and vol > 0:
+                        prof = SummaryDashboard._calculate_profit(day_qs)
+                    cost = float(day_qs.aggregate(s=Sum('cost_price'))['s'] or 0)
+                    if cost == 0 and vol > 0:
+                        cost = max(0.0, vol - prof)
+
+                    revenue_data.append(vol)
+                    cost_data.append(cost)
+                    profit_data.append(prof)
+            else:
+                first_day = today.replace(day=1)
+                if today.month == 12:
+                    next_month_first = today.replace(year=today.year + 1, month=1, day=1)
+                else:
+                    next_month_first = today.replace(month=today.month + 1, day=1)
+                last_day = next_month_first - timedelta(days=1)
+                total_days = (last_day - first_day).days + 1
+
+                for i in range(total_days):
+                    date_val = first_day + timedelta(days=i)
+                    labels.append(date_val.strftime('%b %d'))
+
+                    day_qs = Purchase.objects.filter(status='success', time__date=date_val)
+                    vol = float(day_qs.aggregate(s=Sum('amount'))['s'] or 0)
+                    prof = float(day_qs.aggregate(s=Sum('profit'))['s'] or 0)
+                    if prof == 0 and vol > 0:
+                        prof = SummaryDashboard._calculate_profit(day_qs)
+                    cost = float(day_qs.aggregate(s=Sum('cost_price'))['s'] or 0)
+                    if cost == 0 and vol > 0:
+                        cost = max(0.0, vol - prof)
+
+                    revenue_data.append(vol)
+                    cost_data.append(cost)
+                    profit_data.append(prof)
 
         return JsonResponse({
+            'status': 'success',
             'labels': labels,
             'datasets': [
                 {'label': 'Revenue (₦)', 'data': revenue_data, 'borderColor': '#3B82F6', 'backgroundColor': 'rgba(59, 130, 246, 0.10)', 'fill': False},
