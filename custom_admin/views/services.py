@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
 from django.http import JsonResponse
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Q, Count
 import json
 from custom_admin.mixins import PortalPermissionMixin
 from orders.models import (
@@ -29,7 +29,7 @@ class AirtimeNetworkListView(PortalPermissionMixin, View):
     required_permission = ('orders.AirtimeNetwork', 'view')
 
     def get(self, request):
-        qs = AirtimeNetwork.objects.all().select_related('provider')
+        qs = AirtimeNetwork.objects.all().select_related('provider').annotate(sales_count=Count('sales'))
 
         search = request.GET.get('search', '').strip()
         if search:
@@ -45,15 +45,15 @@ class AirtimeNetworkListView(PortalPermissionMixin, View):
         if provider_filter:
             qs = qs.filter(provider_id=provider_filter)
 
-        sort = request.GET.get('sort', 'service_name')
-        if sort == 'service_name_desc':
-            qs = qs.order_by('-service_name')
-        elif sort == 'price_high':
-            qs = qs.order_by('-selling_price')
-        elif sort == 'price_low':
-            qs = qs.order_by('selling_price')
-        else:
-            qs = qs.order_by('service_name')
+        sort = request.GET.get('sort', 'name')
+        sort_map = {
+            'name': 'service_name', 'name_desc': '-service_name',
+            'cost': 'cost_price', 'cost_desc': '-cost_price',
+            'price': 'selling_price', 'price_desc': '-selling_price',
+            'agent': 'agent_price', 'agent_desc': '-agent_price',
+            'sales': 'sales_count', 'sales_desc': '-sales_count',
+        }
+        qs = qs.order_by(sort_map.get(sort, 'service_name'))
 
         per_page = get_per_page(request)
         paginator = Paginator(qs, per_page)
@@ -66,7 +66,7 @@ class AirtimeNetworkListView(PortalPermissionMixin, View):
             'search_query': search or '',
             'status_filter': status_filter or '',
             'provider_filter': provider_filter or '',
-            'sort_query': sort or 'service_name',
+            'sort_query': sort or 'name',
             'per_page': per_page,
         })
 
@@ -214,7 +214,7 @@ class DataVariationListView(PortalPermissionMixin, View):
     required_permission = ('orders.DataVariation', 'view')
 
     def get(self, request):
-        qs = DataVariation.objects.all().select_related('service', 'service__provider')
+        qs = DataVariation.objects.all().select_related('service', 'service__provider').annotate(sales_count=Count('sales'))
 
         search = request.GET.get('search', '').strip()
         if search:
@@ -230,25 +230,35 @@ class DataVariationListView(PortalPermissionMixin, View):
         if service_filter:
             qs = qs.filter(service_id=service_filter)
 
+        provider_filter = request.GET.get('provider')
+        if provider_filter:
+            qs = qs.filter(service__provider_id=provider_filter)
+
         sort = request.GET.get('sort', 'name')
-        if sort == 'price_high':
-            qs = qs.order_by('-selling_price')
-        elif sort == 'price_low':
-            qs = qs.order_by('selling_price')
-        else:
-            qs = qs.order_by('name')
+        sort_map = {
+            'name': 'name', 'name_desc': '-name',
+            'cost': 'cost_price', 'cost_desc': '-cost_price',
+            'price': 'selling_price', 'price_desc': '-selling_price',
+            'agent': 'agent_price', 'agent_desc': '-agent_price',
+            'developer': 'developer_price', 'developer_desc': '-developer_price',
+            'sales': 'sales_count', 'sales_desc': '-sales_count',
+        }
+        qs = qs.order_by(sort_map.get(sort, 'name'))
 
         per_page = get_per_page(request)
         paginator = Paginator(qs, per_page)
         page_obj = paginator.get_page(request.GET.get('page'))
 
         services = DataService.objects.all()
+        providers = VTUProviderConfig.objects.all()
         return render(request, 'custom_admin/services/data/variations_list.html', {
             'variations': page_obj,
             'services': services,
+            'providers': providers,
             'search_query': search or '',
             'status_filter': status_filter or '',
             'service_filter': service_filter or '',
+            'provider_filter': provider_filter or '',
             'sort_query': sort or 'name',
             'per_page': per_page,
         })
@@ -357,7 +367,7 @@ class TVVariationListView(PortalPermissionMixin, View):
     required_permission = ('orders.TVVariation', 'view')
 
     def get(self, request):
-        qs = TVVariation.objects.all().select_related('service', 'service__provider')
+        qs = TVVariation.objects.all().select_related('service', 'service__provider').annotate(sales_count=Count('sales'))
 
         search = request.GET.get('search', '').strip()
         if search:
@@ -369,16 +379,40 @@ class TVVariationListView(PortalPermissionMixin, View):
         elif status_filter == 'inactive':
             qs = qs.filter(is_active=False)
 
+        service_filter = request.GET.get('service')
+        if service_filter:
+            qs = qs.filter(service_id=service_filter)
+
+        provider_filter = request.GET.get('provider')
+        if provider_filter:
+            qs = qs.filter(service__provider_id=provider_filter)
+
+        sort = request.GET.get('sort', 'name')
+        sort_map = {
+            'name': 'name', 'name_desc': '-name',
+            'cost': 'cost_price', 'cost_desc': '-cost_price',
+            'price': 'selling_price', 'price_desc': '-selling_price',
+            'agent': 'agent_price', 'agent_desc': '-agent_price',
+            'developer': 'developer_price', 'developer_desc': '-developer_price',
+            'sales': 'sales_count', 'sales_desc': '-sales_count',
+        }
+        qs = qs.order_by(sort_map.get(sort, 'name'))
+
         per_page = get_per_page(request)
         paginator = Paginator(qs, per_page)
         page_obj = paginator.get_page(request.GET.get('page'))
 
         services = TVService.objects.all()
+        providers = VTUProviderConfig.objects.all()
         return render(request, 'custom_admin/services/tv/variations_list.html', {
             'variations': page_obj,
             'services': services,
+            'providers': providers,
             'search_query': search or '',
             'status_filter': status_filter or '',
+            'service_filter': service_filter or '',
+            'provider_filter': provider_filter or '',
+            'sort_query': sort or 'name',
             'per_page': per_page,
         })
 
@@ -443,7 +477,7 @@ class ElectricityVariationListView(PortalPermissionMixin, View):
     required_permission = ('orders.ElectricityVariation', 'view')
 
     def get(self, request):
-        qs = ElectricityVariation.objects.all().select_related('service', 'service__provider')
+        qs = ElectricityVariation.objects.all().select_related('service', 'service__provider').annotate(sales_count=Count('sales'))
 
         search = request.GET.get('search', '').strip()
         if search:
@@ -455,14 +489,40 @@ class ElectricityVariationListView(PortalPermissionMixin, View):
         elif status_filter == 'inactive':
             qs = qs.filter(is_active=False)
 
+        service_filter = request.GET.get('service')
+        if service_filter:
+            qs = qs.filter(service_id=service_filter)
+
+        provider_filter = request.GET.get('provider')
+        if provider_filter:
+            qs = qs.filter(service__provider_id=provider_filter)
+
+        sort = request.GET.get('sort', 'name')
+        sort_map = {
+            'name': 'name', 'name_desc': '-name',
+            'cost': 'cost_price', 'cost_desc': '-cost_price',
+            'price': 'selling_price', 'price_desc': '-selling_price',
+            'agent': 'agent_price', 'agent_desc': '-agent_price',
+            'developer': 'developer_price', 'developer_desc': '-developer_price',
+            'sales': 'sales_count', 'sales_desc': '-sales_count',
+        }
+        qs = qs.order_by(sort_map.get(sort, 'name'))
+
         per_page = get_per_page(request)
         paginator = Paginator(qs, per_page)
         page_obj = paginator.get_page(request.GET.get('page'))
 
+        services = ElectricityService.objects.all()
+        providers = VTUProviderConfig.objects.all()
         return render(request, 'custom_admin/services/electricity/variations_list.html', {
             'variations': page_obj,
+            'services': services,
+            'providers': providers,
             'search_query': search or '',
             'status_filter': status_filter or '',
+            'service_filter': service_filter or '',
+            'provider_filter': provider_filter or '',
+            'sort_query': sort or 'name',
             'per_page': per_page,
         })
 
@@ -527,7 +587,7 @@ class InternetVariationListView(PortalPermissionMixin, View):
     required_permission = ('orders.InternetVariation', 'view')
 
     def get(self, request):
-        qs = InternetVariation.objects.all().select_related('service', 'service__provider')
+        qs = InternetVariation.objects.all().select_related('service', 'service__provider').annotate(sales_count=Count('sales'))
 
         search = request.GET.get('search', '').strip()
         if search:
@@ -539,14 +599,40 @@ class InternetVariationListView(PortalPermissionMixin, View):
         elif status_filter == 'inactive':
             qs = qs.filter(is_active=False)
 
+        service_filter = request.GET.get('service')
+        if service_filter:
+            qs = qs.filter(service_id=service_filter)
+
+        provider_filter = request.GET.get('provider')
+        if provider_filter:
+            qs = qs.filter(service__provider_id=provider_filter)
+
+        sort = request.GET.get('sort', 'name')
+        sort_map = {
+            'name': 'name', 'name_desc': '-name',
+            'cost': 'cost_price', 'cost_desc': '-cost_price',
+            'price': 'selling_price', 'price_desc': '-selling_price',
+            'agent': 'agent_price', 'agent_desc': '-agent_price',
+            'developer': 'developer_price', 'developer_desc': '-developer_price',
+            'sales': 'sales_count', 'sales_desc': '-sales_count',
+        }
+        qs = qs.order_by(sort_map.get(sort, 'name'))
+
         per_page = get_per_page(request)
         paginator = Paginator(qs, per_page)
         page_obj = paginator.get_page(request.GET.get('page'))
 
+        services = InternetService.objects.all()
+        providers = VTUProviderConfig.objects.all()
         return render(request, 'custom_admin/services/internet/variations_list.html', {
             'variations': page_obj,
+            'services': services,
+            'providers': providers,
             'search_query': search or '',
             'status_filter': status_filter or '',
+            'service_filter': service_filter or '',
+            'provider_filter': provider_filter or '',
+            'sort_query': sort or 'name',
             'per_page': per_page,
         })
 
@@ -611,7 +697,7 @@ class EducationVariationListView(PortalPermissionMixin, View):
     required_permission = ('orders.EducationVariation', 'view')
 
     def get(self, request):
-        qs = EducationVariation.objects.all().select_related('service', 'service__provider')
+        qs = EducationVariation.objects.all().select_related('service', 'service__provider').annotate(sales_count=Count('sales'))
 
         search = request.GET.get('search', '').strip()
         if search:
@@ -623,14 +709,40 @@ class EducationVariationListView(PortalPermissionMixin, View):
         elif status_filter == 'inactive':
             qs = qs.filter(is_active=False)
 
+        service_filter = request.GET.get('service')
+        if service_filter:
+            qs = qs.filter(service_id=service_filter)
+
+        provider_filter = request.GET.get('provider')
+        if provider_filter:
+            qs = qs.filter(service__provider_id=provider_filter)
+
+        sort = request.GET.get('sort', 'name')
+        sort_map = {
+            'name': 'name', 'name_desc': '-name',
+            'cost': 'cost_price', 'cost_desc': '-cost_price',
+            'price': 'selling_price', 'price_desc': '-selling_price',
+            'agent': 'agent_price', 'agent_desc': '-agent_price',
+            'developer': 'developer_price', 'developer_desc': '-developer_price',
+            'sales': 'sales_count', 'sales_desc': '-sales_count',
+        }
+        qs = qs.order_by(sort_map.get(sort, 'name'))
+
         per_page = get_per_page(request)
         paginator = Paginator(qs, per_page)
         page_obj = paginator.get_page(request.GET.get('page'))
 
+        services = EducationService.objects.all()
+        providers = VTUProviderConfig.objects.all()
         return render(request, 'custom_admin/services/education/variations_list.html', {
             'variations': page_obj,
+            'services': services,
+            'providers': providers,
             'search_query': search or '',
             'status_filter': status_filter or '',
+            'service_filter': service_filter or '',
+            'provider_filter': provider_filter or '',
+            'sort_query': sort or 'name',
             'per_page': per_page,
         })
 

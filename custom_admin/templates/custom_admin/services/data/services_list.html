@@ -27,6 +27,14 @@
         <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive Only</option>
       </select>
 
+      <!-- Provider Filter -->
+      <select onchange="updateQueryParam('provider', this.value)" class="portal-input text-xs">
+        <option value="" {% if not provider_filter %}selected{% endif %}>All Providers</option>
+        {% for p in providers %}
+          <option value="{{ p.pk }}" {% if provider_filter == p.pk|stringformat:'s' %}selected{% endif %}>{{ p.get_name_display }}</option>
+        {% endfor %}
+      </select>
+
       <!-- Sort Dropdown -->
       <select onchange="updateQueryParam('sort', this.value)" class="portal-input text-xs">
         <option value="service_name" {% if sort_query == 'service_name' %}selected{% endif %}>Name (A-Z)</option>

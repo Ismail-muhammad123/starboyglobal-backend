@@ -344,14 +344,23 @@ class ProviderSyncTriggerView(PortalPermissionMixin, View):
 
     def post(self, request, pk):
         provider = get_object_or_404(VTUProviderConfig, pk=pk)
-        service_type = request.POST.get('service_type', 'all')
+        service_type_raw = request.POST.get('service_type', 'all').strip()
 
         from orders.utils.sync_runner import SERVICE_SYNC_METHODS
         impl = ProviderRouter.get_provider_implementation(provider.name)
         if not impl:
             return JsonResponse({'status': 'error', 'message': f"Provider implementation '{provider.name}' is not registered."}, status=400)
 
-        service_types = [service_type] if service_type and service_type != 'all' else list(SERVICE_SYNC_METHODS.keys())
+        # Support: 'all', a single slug, or comma-separated slugs e.g. "airtime,data,tv"
+        all_known = list(SERVICE_SYNC_METHODS.keys())
+        if not service_type_raw or service_type_raw == 'all':
+            service_types = all_known
+        else:
+            service_types = [s.strip() for s in service_type_raw.split(',') if s.strip() in SERVICE_SYNC_METHODS]
+
+        if not service_types:
+            return JsonResponse({'status': 'error', 'message': 'No valid service types selected.'}, status=400)
+
         total_synced = 0
         results = []
 

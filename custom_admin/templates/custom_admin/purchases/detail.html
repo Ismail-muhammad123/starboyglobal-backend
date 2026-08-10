@@ -83,13 +83,40 @@
 
   </div>
 
-  <!-- Raw Provider Response JSON Block -->
-  <div class="portal-card p-5 space-y-2">
-    <h3 class="font-bold text-white text-sm">Raw Provider Response (JSON)</h3>
-    <pre class="bg-slate-950 p-4 rounded-lg border border-slate-800 font-mono text-xs text-emerald-400 overflow-x-auto max-h-96">
-{{ purchase.provider_response|default:"{}" }}
-    </pre>
+  <!-- Raw Provider Response Block -->
+  <div class="portal-card p-5 space-y-4">
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+      <div>
+        <h3 class="font-bold text-white text-sm flex items-center gap-2">
+          <span>📡</span> Provider Response Data
+        </h3>
+        <p class="text-xs text-slate-400 mt-0.5">Parsed details and raw response payload from API provider.</p>
+      </div>
+      
+      <div class="flex items-center gap-2">
+        <button id="toggle-json-btn" onclick="toggleJsonView()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs rounded-lg border border-slate-700 flex items-center gap-1.5 transition-colors">
+          <span id="toggle-json-icon">💻</span>
+          <span id="toggle-json-text">Show Raw JSON</span>
+        </button>
+        <button onclick="copyRawJson()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs rounded-lg shadow flex items-center gap-1.5 transition-colors">
+          <span id="copy-json-icon">📋</span>
+          <span id="copy-json-text">Copy JSON</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Rendered Formatted Response -->
+    <div id="formatted-response-container" class="space-y-2">
+      <!-- Injected via JS -->
+    </div>
+
+    <!-- Raw JSON View (Hidden by default) -->
+    <div id="raw-json-container" class="hidden">
+      <pre id="raw-json-code" class="bg-slate-950 p-4 rounded-lg border border-slate-800 font-mono text-xs text-emerald-400 overflow-x-auto max-h-96 select-all"></pre>
+    </div>
   </div>
+
+  {{ purchase.provider_response|json_script:"provider-response-data" }}
 
 </div>
 {% endblock %}
@@ -114,5 +141,136 @@
       PortalForms.toast('Action failed.', 'error');
     }
   }
+
+  function escapeHtml(str) {
+    if (typeof str !== 'string') return str;
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  let rawResponseData = null;
+  try {
+    const rawText = document.getElementById('provider-response-data')?.textContent;
+    rawResponseData = rawText ? JSON.parse(rawText) : {};
+  } catch (e) {
+    rawResponseData = {};
+  }
+
+  function renderFormattedResponse(data, depth = 0) {
+    if (data === null || data === undefined) {
+      return `<span class="text-slate-500 italic">null</span>`;
+    }
+    if (typeof data !== 'object') {
+      if (typeof data === 'boolean') {
+        return `<span class="font-mono font-bold ${data ? 'text-emerald-400' : 'text-rose-400'}">${data}</span>`;
+      }
+      if (typeof data === 'number') {
+        return `<span class="font-mono font-bold text-amber-400">${data}</span>`;
+      }
+      return `<span class="text-slate-200">${escapeHtml(String(data))}</span>`;
+    }
+
+    if (Array.isArray(data)) {
+      if (data.length === 0) return `<span class="text-slate-500 italic">[ Empty Array ]</span>`;
+      return `
+        <div class="space-y-2 mt-1">
+          ${data.map((item, idx) => `
+            <div class="p-2.5 rounded bg-slate-900/80 border border-slate-800 text-xs">
+              <span class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Item #${idx + 1}</span>
+              ${renderFormattedResponse(item, depth + 1)}
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    const keys = Object.keys(data);
+    if (keys.length === 0) return `<span class="text-slate-500 italic">{ Empty Object }</span>`;
+
+    return `
+      <div class="space-y-1.5 text-xs ${depth > 0 ? 'mt-1.5 border-l-2 border-slate-700/60 pl-3.5 py-1' : ''}">
+        ${keys.map(key => {
+          const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+          const val = data[key];
+          const isComplex = val !== null && typeof val === 'object';
+
+          if (isComplex) {
+            return `
+              <div class="py-1">
+                <div class="font-bold text-purple-300 text-xs flex items-center gap-1.5 mb-1">
+                  <span>📂</span> ${escapeHtml(label)}
+                </div>
+                ${renderFormattedResponse(val, depth + 1)}
+              </div>
+            `;
+          } else {
+            return `
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between py-1.5 px-3 rounded bg-slate-900/60 hover:bg-slate-800/50 border border-slate-800/80 gap-2">
+                <span class="text-slate-400 font-medium">${escapeHtml(label)}</span>
+                <span class="font-mono text-right text-xs break-all">${renderFormattedResponse(val, depth)}</span>
+              </div>
+            `;
+          }
+        }).join('')}
+      </div>
+    `;
+  }
+
+  function initProviderResponse() {
+    const formattedContainer = document.getElementById('formatted-response-container');
+    const rawCode = document.getElementById('raw-json-code');
+    
+    const formattedJsonStr = JSON.stringify(rawResponseData, null, 2);
+    if (rawCode) rawCode.textContent = formattedJsonStr;
+
+    if (formattedContainer) {
+      if (!rawResponseData || (typeof rawResponseData === 'object' && Object.keys(rawResponseData).length === 0)) {
+        formattedContainer.innerHTML = `<div class="text-slate-500 italic text-xs p-3 rounded bg-slate-900 border border-slate-800">No raw response data available.</div>`;
+      } else {
+        formattedContainer.innerHTML = renderFormattedResponse(rawResponseData);
+      }
+    }
+  }
+
+  let isJsonViewVisible = false;
+  function toggleJsonView() {
+    isJsonViewVisible = !isJsonViewVisible;
+    const formattedContainer = document.getElementById('formatted-response-container');
+    const rawContainer = document.getElementById('raw-json-container');
+    const btnText = document.getElementById('toggle-json-text');
+    const btnIcon = document.getElementById('toggle-json-icon');
+
+    if (isJsonViewVisible) {
+      formattedContainer.classList.add('hidden');
+      rawContainer.classList.remove('hidden');
+      if (btnText) btnText.textContent = 'Show Formatted View';
+      if (btnIcon) btnIcon.textContent = '📄';
+    } else {
+      formattedContainer.classList.remove('hidden');
+      rawContainer.classList.add('hidden');
+      if (btnText) btnText.textContent = 'Show Raw JSON';
+      if (btnIcon) btnIcon.textContent = '💻';
+    }
+  }
+
+  async function copyRawJson() {
+    const formattedJsonStr = JSON.stringify(rawResponseData, null, 2);
+    try {
+      await navigator.clipboard.writeText(formattedJsonStr);
+      const icon = document.getElementById('copy-json-icon');
+      const text = document.getElementById('copy-json-text');
+      if (icon) icon.textContent = '✓';
+      if (text) text.textContent = 'Copied!';
+      if (window.PortalForms) PortalForms.toast('JSON copied to clipboard!', 'success');
+      setTimeout(() => {
+        if (icon) icon.textContent = '📋';
+        if (text) text.textContent = 'Copy JSON';
+      }, 2000);
+    } catch (err) {
+      if (window.PortalForms) PortalForms.toast('Failed to copy JSON.', 'error');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', initProviderResponse);
 </script>
 {% endblock %}
+

@@ -4,17 +4,23 @@ from django.conf import settings
 
 class PortalPermission(models.Model):
     """
-    Granular CRUD permission for a specific portal resource/model.
-    e.g. resource='users.User', action='change'
+    Granular CRUD and sensitive operation permission for a specific portal resource/model.
+    e.g. resource='users.User', action='change', or resource='wallet.Wallet', action='adjust_wallet'
     """
     ACTIONS = [
         ('view', 'View (Read)'),
         ('add', 'Add (Create)'),
         ('change', 'Change (Update)'),
         ('delete', 'Delete'),
+        ('adjust_wallet', 'Manual Wallet Adjustment'),
+        ('initiate_admin_transfer', 'Initiate Admin Transfer'),
+        ('manual_purchase', 'Manual Purchase Execution'),
+        ('approve_withdrawal', 'Approve/Reject Withdrawal'),
+        ('send_notification', 'Send Notifications'),
+        ('send_announcement', 'Send Announcements'),
     ]
     resource = models.CharField(max_length=100)
-    action = models.CharField(max_length=10, choices=ACTIONS)
+    action = models.CharField(max_length=50, choices=ACTIONS)
     label = models.CharField(max_length=200)
 
     class Meta:
@@ -89,6 +95,8 @@ RESOURCES_LIST = [
     ('users.RoleUpgradeConfig', 'Role Upgrade Configuration'),
     ('orders.PromoCode', 'Promo Codes'),
     ('support.SupportTicket', 'Support Tickets'),
+    ('notifications.Notification', 'Notifications / Push Messages'),
+    ('notifications.Announcement', 'Announcements'),
 ]
 
 
@@ -98,7 +106,7 @@ DEFAULT_GROUPS = {
         ('users.KYC', ['view', 'change']),
     ],
     'VTU Manager': [
-        ('orders.Purchase', ['view', 'change', 'delete']),
+        ('orders.Purchase', ['view', 'change', 'delete', 'manual_purchase']),
         ('orders.AirtimeNetwork', ['view', 'add', 'change', 'delete']),
         ('orders.DataService', ['view', 'add', 'change', 'delete']),
         ('orders.DataVariation', ['view', 'add', 'change', 'delete']),
@@ -118,11 +126,11 @@ DEFAULT_GROUPS = {
         ('orders.PromoCode', ['view', 'add', 'change', 'delete']),
     ],
     'Finance Team': [
-        ('wallet.Wallet', ['view', 'change']),
-        ('wallet.WalletTransaction', ['view', 'add']),
+        ('wallet.Wallet', ['view', 'change', 'adjust_wallet']),
+        ('wallet.WalletTransaction', ['view', 'add', 'adjust_wallet']),
         ('payments.Deposit', ['view', 'change', 'delete']),
-        ('payments.Withdrawal', ['view', 'change', 'delete']),
-        ('payments.AdminTransfer', ['view', 'add']),
+        ('payments.Withdrawal', ['view', 'change', 'delete', 'approve_withdrawal']),
+        ('payments.AdminTransfer', ['view', 'add', 'initiate_admin_transfer']),
         ('payments.AdminTransferBeneficiary', ['view', 'add', 'delete']),
         ('payments.PaystackConfig', ['view', 'change']),
     ],
@@ -130,6 +138,8 @@ DEFAULT_GROUPS = {
         ('users.User', ['view']),
         ('orders.Purchase', ['view']),
         ('support.SupportTicket', ['view', 'change', 'delete']),
+        ('notifications.Notification', ['view', 'add', 'send_notification']),
+        ('notifications.Announcement', ['view', 'add', 'change', 'send_announcement']),
     ],
     'Admin': [
         ('summary.SiteConfig', ['view', 'change']),
@@ -137,6 +147,8 @@ DEFAULT_GROUPS = {
         ('wallet.BonusConfig', ['view', 'add', 'change', 'delete']),
         ('users.ReferralConfig', ['view', 'change']),
         ('users.RoleUpgradeConfig', ['view', 'change']),
+        ('notifications.Notification', ['view', 'add', 'send_notification']),
+        ('notifications.Announcement', ['view', 'add', 'change', 'delete', 'send_announcement']),
     ],
 }
 
@@ -148,6 +160,12 @@ def seed_permissions_if_empty():
         'add': 'Can add',
         'change': 'Can edit',
         'delete': 'Can delete',
+        'adjust_wallet': 'Can adjust wallet manually',
+        'initiate_admin_transfer': 'Can initiate admin bank transfer',
+        'manual_purchase': 'Can execute manual VTU purchase',
+        'approve_withdrawal': 'Can approve/reject withdrawal',
+        'send_notification': 'Can send notifications',
+        'send_announcement': 'Can publish announcements',
     }
 
     # 1. Create permissions

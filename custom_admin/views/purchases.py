@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal, InvalidOperation
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views import View
@@ -12,17 +13,25 @@ from orders.models import (
     ElectricityService, ElectricityVariation, InternetService, InternetVariation,
     EducationService, EducationVariation
 )
-from orders.utils.purchase_logic import process_vtu_purchase
+from orders.utils.purchase_logic import (
+    purchase_airtime, purchase_data, purchase_tv, purchase_electricity,
+    purchase_internet, purchase_education
+)
+from orders.views.utility_views import generate_request_id
 from orders.router import ProviderRouter
 from wallet.models import Wallet, WalletTransaction
 from admin_api.models import AdminActionLog
+
+logger = logging.getLogger(__name__)
 
 
 class PurchaseListView(PortalPermissionMixin, View):
     required_permission = ('orders.Purchase', 'view')
 
     def get(self, request):
-        qs = Purchase.objects.all().select_related('user', 'provider').order_by('-time')
+        from orders.models import VTUProviderConfig
+
+        qs = Purchase.objects.all().select_related('user', 'provider')
 
         purchase_type = request.GET.get('type')
         if purchase_type:
@@ -32,6 +41,18 @@ class PurchaseListView(PortalPermissionMixin, View):
         if status_filter:
             qs = qs.filter(status=status_filter.lower())
 
+        provider_filter = request.GET.get('provider')
+        if provider_filter:
+            qs = qs.filter(provider_id=provider_filter)
+
+        start_date = request.GET.get('start_date', '').strip()
+        if start_date:
+            qs = qs.filter(time__date__gte=start_date)
+
+        end_date = request.GET.get('end_date', '').strip()
+        if end_date:
+            qs = qs.filter(time__date__lte=end_date)
+
         search = request.GET.get('search', '').strip()
         if search:
             qs = qs.filter(
@@ -40,15 +61,39 @@ class PurchaseListView(PortalPermissionMixin, View):
                 Q(user__phone_number__icontains=search)
             )
 
-        paginator = Paginator(qs, 25)
+        sort = request.GET.get('sort', 'date_desc')
+        sort_map = {
+            'date': 'time', 'date_desc': '-time',
+            'amount': 'amount', 'amount_desc': '-amount',
+            'profit': 'profit', 'profit_desc': '-profit',
+        }
+        qs = qs.order_by(sort_map.get(sort, '-time'))
+
+        per_page = request.GET.get('per_page', 25)
+        try:
+            per_page = int(per_page)
+            if per_page not in [25, 50, 100, 200]:
+                per_page = 25
+        except (ValueError, TypeError):
+            per_page = 25
+
+        paginator = Paginator(qs, per_page)
         page_number = request.GET.get('page')
         page_obj = paginator.get_page(page_number)
 
+        providers = VTUProviderConfig.objects.all()
+
         return render(request, 'custom_admin/purchases/list.html', {
             'purchases': page_obj,
+            'providers': providers,
             'search_query': search or '',
             'type_filter': purchase_type or '',
-            'status_filter': status_filter or ''
+            'status_filter': status_filter or '',
+            'provider_filter': provider_filter or '',
+            'start_date': start_date or '',
+            'end_date': end_date or '',
+            'sort_query': sort or 'date_desc',
+            'per_page': per_page,
         })
 
 
@@ -105,7 +150,7 @@ class PurchaseRefundView(PortalPermissionMixin, View):
 
 
 class ManualPurchaseView(PortalPermissionMixin, View):
-    required_permission = ('orders.Purchase', 'add')
+    required_permission = ('orders.Purchase', 'manual_purchase')
 
     def get(self, request):
         target_phone = request.GET.get('user', '')
@@ -123,133 +168,178 @@ class ManualPurchaseView(PortalPermissionMixin, View):
         })
 
     def post(self, request):
-        admin_pin = request.POST.get('admin_pin', '').strip()
-        if not admin_pin:
-            return JsonResponse({'status': 'error', 'message': 'Admin Security PIN is required.'}, status=400)
-
-        is_pin_valid = request.user.check_transaction_pin(admin_pin) or request.user.check_password(admin_pin)
-        if not is_pin_valid:
-            return JsonResponse({'status': 'error', 'message': 'Invalid Admin Security PIN.'}, status=403)
-
-        source_phone = request.POST.get('phone_number', '').strip()
-        purchase_type = request.POST.get('purchase_type', '').strip().lower()
-        service_id = request.POST.get('service_id')
-        variation_id = request.POST.get('variation_id')
-        beneficiary = request.POST.get('beneficiary', '').strip()
-        amount_str = request.POST.get('amount', '0').strip()
-
-        user_obj = User.objects.filter(phone_number=source_phone).first()
-        if not user_obj:
-            return JsonResponse({'status': 'error', 'message': f'Source user with phone {source_phone} not found.'}, status=404)
-
-        if not purchase_type:
-            return JsonResponse({'status': 'error', 'message': 'Please select a service type.'}, status=400)
-
-        if not beneficiary:
-            return JsonResponse({'status': 'error', 'message': 'Recipient identifier (phone/meter/smartcard number) is required.'}, status=400)
-
         try:
-            amount = Decimal(amount_str)
-            if amount <= 0:
-                raise ValueError
-        except (ValueError, InvalidOperation):
-            return JsonResponse({'status': 'error', 'message': 'Amount must be greater than 0.'}, status=400)
+            admin_pin = request.POST.get('admin_pin', '').strip()
+            if not admin_pin:
+                return JsonResponse({'status': 'error', 'message': 'Admin Security PIN is required.'}, status=400)
 
-        kwargs = {}
-        action = ''
+            is_pin_valid = request.user.check_transaction_pin(admin_pin) or request.user.check_password(admin_pin)
+            if not is_pin_valid:
+                return JsonResponse({'status': 'error', 'message': 'Invalid Admin Security PIN.'}, status=403)
 
-        if purchase_type == 'airtime':
-            if not service_id:
-                return JsonResponse({'status': 'error', 'message': 'Please select a network provider.'}, status=400)
-            network_obj = get_object_or_404(AirtimeNetwork, pk=service_id)
-            kwargs['airtime_service'] = network_obj
-            kwargs['service_name'] = network_obj.name
-            action = 'buy_airtime'
+            source_phone = request.POST.get('phone_number', '').strip()
+            purchase_type = request.POST.get('purchase_type', '').strip().lower()
+            service_id = request.POST.get('service_id')
+            variation_id = request.POST.get('variation_id')
+            beneficiary = request.POST.get('beneficiary', '').strip()
+            amount_str = request.POST.get('amount', '0').strip()
 
-        elif purchase_type == 'data':
-            if not variation_id:
-                return JsonResponse({'status': 'error', 'message': 'Please select a data plan.'}, status=400)
-            data_var = get_object_or_404(DataVariation, pk=variation_id)
-            kwargs['data_variation'] = data_var
-            kwargs['service_name'] = data_var.service.name if data_var.service else 'Data'
-            action = 'buy_data'
+            user_obj = User.objects.filter(phone_number=source_phone).first()
+            if not user_obj:
+                return JsonResponse({'status': 'error', 'message': f'Source user with phone {source_phone} not found.'}, status=404)
 
-        elif purchase_type == 'tv':
-            if not variation_id:
-                return JsonResponse({'status': 'error', 'message': 'Please select a TV package.'}, status=400)
-            tv_var = get_object_or_404(TVVariation, pk=variation_id)
-            kwargs['tv_variation'] = tv_var
-            kwargs['service_name'] = tv_var.service.name if tv_var.service else 'TV'
-            action = 'buy_tv'
+            if not purchase_type:
+                return JsonResponse({'status': 'error', 'message': 'Please select a service type.'}, status=400)
 
-        elif purchase_type == 'electricity':
-            if not service_id:
-                return JsonResponse({'status': 'error', 'message': 'Please select an electricity disco provider.'}, status=400)
-            elec_service = get_object_or_404(ElectricityService, pk=service_id)
-            kwargs['electricity_service'] = elec_service
-            kwargs['service_name'] = elec_service.name
-            if variation_id:
-                elec_var = ElectricityVariation.objects.filter(pk=variation_id).first()
-                if elec_var:
-                    kwargs['electricity_variation'] = elec_var
+            if not beneficiary:
+                return JsonResponse({'status': 'error', 'message': 'Recipient identifier (phone/meter/smartcard number) is required.'}, status=400)
+
+            try:
+                amount = Decimal(amount_str)
+                if amount <= 0:
+                    raise ValueError
+            except (ValueError, InvalidOperation):
+                return JsonResponse({'status': 'error', 'message': 'Amount must be greater than 0.'}, status=400)
+
+            reference = generate_request_id()
+            result = None
+
+            if purchase_type == 'airtime':
+                if not service_id:
+                    return JsonResponse({'status': 'error', 'message': 'Please select a network provider.'}, status=400)
+                try:
+                    network_obj = AirtimeNetwork.objects.get(pk=service_id, is_active=True)
+                except AirtimeNetwork.DoesNotExist:
+                    return JsonResponse({'status': 'error', 'message': 'Selected airtime network not found or is inactive.'}, status=400)
+                result = purchase_airtime(
+                    user=user_obj,
+                    network=network_obj,
+                    phone=beneficiary,
+                    amount=amount,
+                    reference=reference,
+                    initiator='admin',
+                    initiated_by=request.user,
+                )
+
+            elif purchase_type == 'data':
+                if not variation_id:
+                    return JsonResponse({'status': 'error', 'message': 'Please select a data plan.'}, status=400)
+                try:
+                    data_var = DataVariation.objects.get(pk=variation_id, is_active=True)
+                except DataVariation.DoesNotExist:
+                    return JsonResponse({'status': 'error', 'message': 'Selected data plan not found or is inactive.'}, status=400)
+                result = purchase_data(
+                    user=user_obj,
+                    plan=data_var,
+                    phone=beneficiary,
+                    reference=reference,
+                    initiator='admin',
+                    initiated_by=request.user,
+                )
+
+            elif purchase_type == 'tv':
+                if not variation_id:
+                    return JsonResponse({'status': 'error', 'message': 'Please select a TV package.'}, status=400)
+                try:
+                    tv_var = TVVariation.objects.get(pk=variation_id, is_active=True)
+                except TVVariation.DoesNotExist:
+                    return JsonResponse({'status': 'error', 'message': 'Selected TV package not found or is inactive.'}, status=400)
+                result = purchase_tv(
+                    user=user_obj,
+                    tv_variation=tv_var,
+                    customer_id=beneficiary,
+                    reference=reference,
+                    initiator='admin',
+                    initiated_by=request.user,
+                )
+
+            elif purchase_type == 'electricity':
+                if not service_id:
+                    return JsonResponse({'status': 'error', 'message': 'Please select an electricity disco provider.'}, status=400)
+                # Resolve variation: prefer selected, else first for disco
+                elec_var = None
+                if variation_id:
+                    elec_var = ElectricityVariation.objects.filter(pk=variation_id, is_active=True).first()
+                if not elec_var:
+                    elec_var = ElectricityVariation.objects.filter(service_id=service_id, is_active=True).first()
+                if not elec_var:
+                    return JsonResponse({'status': 'error', 'message': 'No active electricity variation found for this provider.'}, status=400)
+                result = purchase_electricity(
+                    user=user_obj,
+                    electricity_variation=elec_var,
+                    meter_number=beneficiary,
+                    amount=amount,
+                    reference=reference,
+                    initiator='admin',
+                    initiated_by=request.user,
+                )
+
+            elif purchase_type == 'internet':
+                if not variation_id:
+                    return JsonResponse({'status': 'error', 'message': 'Please select an internet plan.'}, status=400)
+                try:
+                    net_var = InternetVariation.objects.get(pk=variation_id, is_active=True)
+                except InternetVariation.DoesNotExist:
+                    return JsonResponse({'status': 'error', 'message': 'Selected internet plan not found or is inactive.'}, status=400)
+                result = purchase_internet(
+                    user=user_obj,
+                    internet_variation=net_var,
+                    phone=beneficiary,
+                    reference=reference,
+                    initiator='admin',
+                    initiated_by=request.user,
+                )
+
+            elif purchase_type == 'education':
+                if not variation_id:
+                    return JsonResponse({'status': 'error', 'message': 'Please select an education package.'}, status=400)
+                try:
+                    edu_var = EducationVariation.objects.get(pk=variation_id, is_active=True)
+                except EducationVariation.DoesNotExist:
+                    return JsonResponse({'status': 'error', 'message': 'Selected education package not found or is inactive.'}, status=400)
+                result = purchase_education(
+                    user=user_obj,
+                    education_variation=edu_var,
+                    phone=beneficiary,
+                    quantity=int(request.POST.get('quantity', 1)),
+                    reference=reference,
+                    initiator='admin',
+                    initiated_by=request.user,
+                )
+
             else:
-                elec_var = ElectricityVariation.objects.filter(service=elec_service).first()
-                if elec_var:
-                    kwargs['electricity_variation'] = elec_var
-            action = 'pay_electricity'
+                return JsonResponse({'status': 'error', 'message': 'Invalid purchase type.'}, status=400)
 
-        elif purchase_type == 'internet':
-            if not variation_id:
-                return JsonResponse({'status': 'error', 'message': 'Please select an internet plan.'}, status=400)
-            net_var = get_object_or_404(InternetVariation, pk=variation_id)
-            kwargs['internet_variation'] = net_var
-            kwargs['service_name'] = net_var.service.name if net_var.service else 'Internet'
-            action = 'buy_internet'
+            res_status = result.get('status')
+            if res_status in ['success', 'SUCCESS', 'ORDER_RECEIVED']:
+                AdminActionLog.objects.create(
+                    admin_user=request.user,
+                    action_type=f"MANUAL_{purchase_type.upper()}_PURCHASE",
+                    target_model="Purchase",
+                    target_id=str(result.get('purchase_id', '')),
+                    description=f"Manual {purchase_type} purchase of \u20a6{amount} for user {user_obj.phone_number} (Beneficiary: {beneficiary})."
+                )
+                return JsonResponse({
+                    'status': 'success',
+                    'message': f"Manual {purchase_type.capitalize()} purchase of \u20a6{amount:,.2f} completed successfully for {beneficiary}."
+                })
+            else:
+                err_msg = result.get('error') or result.get('message') or 'Manual purchase failed.'
+                return JsonResponse({'status': 'error', 'message': err_msg}, status=400)
 
-        elif purchase_type == 'education':
-            if not variation_id:
-                return JsonResponse({'status': 'error', 'message': 'Please select an education package.'}, status=400)
-            edu_var = get_object_or_404(EducationVariation, pk=variation_id)
-            kwargs['education_variation'] = edu_var
-            kwargs['service_name'] = edu_var.service.name if edu_var.service else 'Education'
-            kwargs['quantity'] = int(request.POST.get('quantity', 1))
-            action = 'buy_education'
-        else:
-            return JsonResponse({'status': 'error', 'message': 'Invalid purchase type.'}, status=400)
-
-        result = process_vtu_purchase(
-            user=user_obj,
-            purchase_type=purchase_type,
-            amount=amount,
-            beneficiary=beneficiary,
-            action=action,
-            initiator='admin',
-            initiated_by=request.user,
-            **kwargs
-        )
-
-        res_status = result.get('status')
-        if res_status in ['success', 'SUCCESS', 'ORDER_RECEIVED']:
-            AdminActionLog.objects.create(
-                admin_user=request.user,
-                action_type=f"MANUAL_{purchase_type.upper()}_PURCHASE",
-                target_model="Purchase",
-                target_id=str(result.get('purchase', {}).pk if hasattr(result.get('purchase'), 'pk') else ''),
-                description=f"Manual {purchase_type} purchase of ₦{amount} for user {user_obj.phone_number} (Beneficiary: {beneficiary})."
+        except Exception as e:
+            logger.exception("ManualPurchaseView: unexpected server error — %s", e)
+            return JsonResponse(
+                {'status': 'error', 'message': f'Server error: {str(e)}'},
+                status=500
             )
-            return JsonResponse({
-                'status': 'success',
-                'message': f"Manual {purchase_type.capitalize()} purchase of ₦{amount:,.2f} completed successfully for {beneficiary}."
-            })
-        else:
-            err_msg = result.get('error') or result.get('message') or 'Manual purchase failed.'
-            return JsonResponse({'status': 'error', 'message': err_msg}, status=400)
 
 
 class ManualPurchaseOptionsView(PortalPermissionMixin, View):
     required_permission = ('orders.Purchase', 'view')
 
     def get(self, request):
+        from orders.models import ServiceRouting, ServiceFallback
         purchase_type = request.GET.get('purchase_type', '').strip().lower()
         service_id = request.GET.get('service_id')
 
@@ -259,24 +349,54 @@ class ManualPurchaseOptionsView(PortalPermissionMixin, View):
         def _get_name(obj):
             return getattr(obj, 'service_name', getattr(obj, 'name', str(obj)))
 
+        def _routed_provider_ids(service_key):
+            """
+            Return set of VTUProviderConfig PKs in the active routing chain
+            (primary + enabled fallbacks) for the given service.
+            Returns None when no routing exists so callers can skip filtering.
+            """
+            routing = ServiceRouting.objects.filter(service=service_key).first()
+            if not routing:
+                return None
+            ids = set()
+            if routing.primary_provider_id and routing.primary_provider.is_active:
+                ids.add(routing.primary_provider_id)
+            if routing.fallback_enabled:
+                fb_ids = (
+                    ServiceFallback.objects
+                    .filter(service_routing=routing, provider__is_active=True)
+                    .values_list('provider_id', flat=True)
+                )
+                ids.update(fb_ids)
+            return ids
+
         if purchase_type == 'airtime':
+            routed_ids = _routed_provider_ids('airtime')
             qs = AirtimeNetwork.objects.filter(is_active=True)
+            if routed_ids is not None:
+                qs = qs.filter(provider_id__in=routed_ids)
             providers = [{'id': obj.id, 'name': _get_name(obj)} for obj in qs]
 
         elif purchase_type == 'data':
             if service_id:
                 vars_qs = DataVariation.objects.filter(service_id=service_id, is_active=True)
-                variations = [{'id': v.id, 'name': f"{v.name} - ₦{v.selling_price:,.2f}", 'price': float(v.selling_price)} for v in vars_qs]
+                variations = [{'id': v.id, 'name': f"{v.name} - \u20a6{v.selling_price:,.2f}", 'price': float(v.selling_price)} for v in vars_qs]
             else:
+                routed_ids = _routed_provider_ids('data')
                 qs = DataService.objects.filter(is_active=True)
+                if routed_ids is not None:
+                    qs = qs.filter(provider_id__in=routed_ids)
                 providers = [{'id': obj.id, 'name': _get_name(obj)} for obj in qs]
 
         elif purchase_type == 'tv':
             if service_id:
                 vars_qs = TVVariation.objects.filter(service_id=service_id, is_active=True)
-                variations = [{'id': v.id, 'name': f"{v.name} - ₦{v.selling_price:,.2f}", 'price': float(v.selling_price)} for v in vars_qs]
+                variations = [{'id': v.id, 'name': f"{v.name} - \u20a6{v.selling_price:,.2f}", 'price': float(v.selling_price)} for v in vars_qs]
             else:
+                routed_ids = _routed_provider_ids('tv')
                 qs = TVService.objects.filter(is_active=True)
+                if routed_ids is not None:
+                    qs = qs.filter(provider_id__in=routed_ids)
                 providers = [{'id': obj.id, 'name': _get_name(obj)} for obj in qs]
 
         elif purchase_type == 'electricity':
@@ -284,23 +404,32 @@ class ManualPurchaseOptionsView(PortalPermissionMixin, View):
                 vars_qs = ElectricityVariation.objects.filter(service_id=service_id, is_active=True)
                 variations = [{'id': v.id, 'name': v.name, 'price': float(v.selling_price) if v.selling_price > 0 else 0} for v in vars_qs]
             else:
+                routed_ids = _routed_provider_ids('electricity')
                 qs = ElectricityService.objects.filter(is_active=True)
+                if routed_ids is not None:
+                    qs = qs.filter(provider_id__in=routed_ids)
                 providers = [{'id': obj.id, 'name': _get_name(obj)} for obj in qs]
 
         elif purchase_type == 'internet':
             if service_id:
                 vars_qs = InternetVariation.objects.filter(service_id=service_id, is_active=True)
-                variations = [{'id': v.id, 'name': f"{v.name} - ₦{v.selling_price:,.2f}", 'price': float(v.selling_price)} for v in vars_qs]
+                variations = [{'id': v.id, 'name': f"{v.name} - \u20a6{v.selling_price:,.2f}", 'price': float(v.selling_price)} for v in vars_qs]
             else:
+                routed_ids = _routed_provider_ids('internet')
                 qs = InternetService.objects.filter(is_active=True)
+                if routed_ids is not None:
+                    qs = qs.filter(provider_id__in=routed_ids)
                 providers = [{'id': obj.id, 'name': _get_name(obj)} for obj in qs]
 
         elif purchase_type == 'education':
             if service_id:
                 vars_qs = EducationVariation.objects.filter(service_id=service_id, is_active=True)
-                variations = [{'id': v.id, 'name': f"{v.name} - ₦{v.selling_price:,.2f}", 'price': float(v.selling_price)} for v in vars_qs]
+                variations = [{'id': v.id, 'name': f"{v.name} - \u20a6{v.selling_price:,.2f}", 'price': float(v.selling_price)} for v in vars_qs]
             else:
+                routed_ids = _routed_provider_ids('education')
                 qs = EducationService.objects.filter(is_active=True)
+                if routed_ids is not None:
+                    qs = qs.filter(provider_id__in=routed_ids)
                 providers = [{'id': obj.id, 'name': _get_name(obj)} for obj in qs]
 
         return JsonResponse({
@@ -308,6 +437,7 @@ class ManualPurchaseOptionsView(PortalPermissionMixin, View):
             'providers': providers,
             'variations': variations
         })
+
 
 
 class ManualRecipientVerifyView(PortalPermissionMixin, View):

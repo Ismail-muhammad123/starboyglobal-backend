@@ -27,12 +27,24 @@
         <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive Only</option>
       </select>
 
+      <!-- Provider Filter -->
+      <select onchange="updateQueryParam('provider', this.value)" class="portal-input text-xs">
+        <option value="" {% if not provider_filter %}selected{% endif %}>All Providers</option>
+        {% for p in providers %}
+          <option value="{{ p.pk }}" {% if provider_filter == p.pk|stringformat:'s' %}selected{% endif %}>{{ p.get_name_display }}</option>
+        {% endfor %}
+      </select>
+
       <!-- Sort Dropdown -->
       <select onchange="updateQueryParam('sort', this.value)" class="portal-input text-xs">
-        <option value="service_name" {% if sort_query == 'service_name' %}selected{% endif %}>Name (A-Z)</option>
-        <option value="service_name_desc" {% if sort_query == 'service_name_desc' %}selected{% endif %}>Name (Z-A)</option>
-        <option value="price_high" {% if sort_query == 'price_high' %}selected{% endif %}>Price (High-Low)</option>
-        <option value="price_low" {% if sort_query == 'price_low' %}selected{% endif %}>Price (Low-High)</option>
+        <option value="name" {% if sort_query == 'name' %}selected{% endif %}>Name (A-Z)</option>
+        <option value="name_desc" {% if sort_query == 'name_desc' %}selected{% endif %}>Name (Z-A)</option>
+        <option value="cost" {% if sort_query == 'cost' %}selected{% endif %}>Cost (Low-High)</option>
+        <option value="cost_desc" {% if sort_query == 'cost_desc' %}selected{% endif %}>Cost (High-Low)</option>
+        <option value="price" {% if sort_query == 'price' %}selected{% endif %}>Price (Low-High)</option>
+        <option value="price_desc" {% if sort_query == 'price_desc' %}selected{% endif %}>Price (High-Low)</option>
+        <option value="sales_desc" {% if sort_query == 'sales_desc' %}selected{% endif %}>Sales (Most First)</option>
+        <option value="sales" {% if sort_query == 'sales' %}selected{% endif %}>Sales (Least First)</option>
       </select>
 
       <!-- Add Airtime Network Button -->
@@ -48,19 +60,29 @@
   <div class="portal-card overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full text-left text-xs text-slate-300">
-        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)] select-none">
           <tr>
-            <th class="p-3">Network Name</th>
+            <th class="p-3 cursor-pointer hover:text-white" onclick="updateQueryParam('sort', '{% if sort_query == 'name' %}name_desc{% else %}name{% endif %}')">
+              Network Name {% if sort_query == 'name' %}▲{% elif sort_query == 'name_desc' %}▼{% endif %}
+            </th>
             <th class="p-3">Service ID</th>
             <th class="p-3">Provider</th>
-            <th class="p-3">Cost Price</th>
-            <th class="p-3">Selling Price</th>
-            <th class="p-3">Agent Price</th>
+            <th class="p-3 cursor-pointer hover:text-white" onclick="updateQueryParam('sort', '{% if sort_query == 'cost' %}cost_desc{% else %}cost{% endif %}')">
+              Cost Price {% if sort_query == 'cost' %}▲{% elif sort_query == 'cost_desc' %}▼{% endif %}
+            </th>
+            <th class="p-3 cursor-pointer hover:text-white" onclick="updateQueryParam('sort', '{% if sort_query == 'price' %}price_desc{% else %}price{% endif %}')">
+              Selling Price {% if sort_query == 'price' %}▲{% elif sort_query == 'price_desc' %}▼{% endif %}
+            </th>
+            <th class="p-3 cursor-pointer hover:text-white" onclick="updateQueryParam('sort', '{% if sort_query == 'agent' %}agent_desc{% else %}agent{% endif %}')">
+              Agent Price {% if sort_query == 'agent' %}▲{% elif sort_query == 'agent_desc' %}▼{% endif %}
+            </th>
             <th class="p-3">Developer Price</th>
+            <th class="p-3 cursor-pointer hover:text-white" onclick="updateQueryParam('sort', '{% if sort_query == 'sales_desc' %}sales{% else %}sales_desc{% endif %}')">
+              Sales {% if sort_query == 'sales_desc' %}▼{% elif sort_query == 'sales' %}▲{% endif %}
+            </th>
             <th class="p-3">Discount %</th>
             <th class="p-3">Agent Disc %</th>
             <th class="p-3">Status</th>
-            <th class="p-3 text-right">Actions</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-800">
@@ -73,17 +95,13 @@
               <td class="p-3 font-mono font-semibold text-emerald-400">₦{{ n.selling_price|floatformat:2 }}</td>
               <td class="p-3 font-mono font-semibold text-blue-400">₦{{ n.agent_price|floatformat:2 }}</td>
               <td class="p-3 font-mono font-semibold text-purple-400">₦{{ n.developer_price|floatformat:2 }}</td>
+              <td class="p-3 font-mono font-bold text-amber-400">{{ n.sales_count|default:0 }}</td>
               <td class="p-3 font-semibold text-slate-200">{{ n.discount }}%</td>
               <td class="p-3 font-semibold text-slate-200">{{ n.agent_discount }}%</td>
               <td class="p-3">
                 <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {% if n.is_active %}badge-success{% else %}badge-danger{% endif %}">
                   {% if n.is_active %}Active{% else %}Inactive{% endif %}
                 </span>
-              </td>
-              <td class="p-3 text-right" onclick="event.stopPropagation()">
-                <a href="{% url 'portal:airtime_network_detail' n.pk %}" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white font-semibold text-[11px] rounded">
-                  View Details →
-                </a>
               </td>
             </tr>
           {% empty %}

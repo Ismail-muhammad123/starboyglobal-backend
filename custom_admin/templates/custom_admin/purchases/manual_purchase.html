@@ -15,7 +15,7 @@
       <p class="text-xs text-slate-400">Process an administrative VTU purchase for a user wallet with real-time account and recipient validation.</p>
     </div>
 
-    <form method="POST" id="form-manual-purchase" action="{% url 'portal:manual_purchase' %}" data-ajax="true" data-reload="true" class="space-y-4 text-xs">
+    <form method="POST" id="form-manual-purchase" action="{% url 'portal:manual_purchase' %}" class="space-y-4 text-xs">
       {% csrf_token %}
 
       <!-- Step 1: Source User Verification -->
@@ -87,6 +87,14 @@
         <p class="text-[10px] text-slate-400">Required to authorize administrative wallet debits and service purchases.</p>
       </div>
 
+      <!-- Inline Error Banner (shown on purchase failure) -->
+      <div id="purchase-error-banner" class="hidden p-3 rounded-lg border border-rose-500/50 bg-rose-950/40 text-rose-200 text-xs space-y-1">
+        <div class="flex items-center gap-1.5 font-semibold text-rose-400">
+          <span>❌</span> <span>Purchase Failed</span>
+        </div>
+        <div id="purchase-error-message" class="text-rose-200 leading-relaxed"></div>
+      </div>
+
       <div class="pt-3 flex justify-end gap-2">
         <a href="{% url 'portal:purchases_list' %}" class="px-4 py-2 bg-slate-800 text-slate-300 rounded text-xs">Cancel</a>
         <button type="submit" id="btn-submit-purchase" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs shadow transition-all">
@@ -102,6 +110,74 @@
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+  // --- Inline error banner for manual purchase form ---
+  const purchaseForm = document.getElementById('form-manual-purchase');
+  const errorBanner = document.getElementById('purchase-error-banner');
+  const errorMessage = document.getElementById('purchase-error-message');
+  const submitBtn2 = document.getElementById('btn-submit-purchase');
+
+  function showPurchaseError(msg) {
+    errorMessage.textContent = msg;
+    errorBanner.classList.remove('hidden');
+    errorBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function hidePurchaseError() {
+    errorBanner.classList.add('hidden');
+    errorMessage.textContent = '';
+  }
+
+  if (purchaseForm) {
+    // Override the generic data-ajax handler for this specific form
+    purchaseForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      hidePurchaseError();
+      const originalText = submitBtn2 ? submitBtn2.innerHTML : '';
+      if (submitBtn2) {
+        submitBtn2.disabled = true;
+        submitBtn2.innerHTML = '<span class="inline-block animate-spin mr-2">🌀</span> Processing...';
+      }
+
+      try {
+        const formData = new FormData(purchaseForm);
+        const response = await fetch(purchaseForm.action, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': window.PortalForms.getCookie('csrftoken'),
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.status !== 'error') {
+          // Success
+          window.PortalForms.toast(data.message || 'Purchase completed successfully.', 'success');
+          setTimeout(() => window.location.reload(), 1200);
+        } else {
+          // Error — distinguish server errors from provider/validation errors
+          let errMsg = data.message || data.error || 'Purchase failed.';
+          if (response.status >= 500) {
+            errMsg = errMsg.startsWith('Server error:') ? errMsg : `Server error: ${errMsg}`;
+          }
+          showPurchaseError(errMsg);
+          window.PortalForms.toast(errMsg, 'error', 'Purchase Failed');
+        }
+      } catch (err) {
+        const errMsg = `Network error: Could not reach the server. Please check your connection and try again. (${err.message || err})`;
+        showPurchaseError(errMsg);
+        window.PortalForms.toast(errMsg, 'error');
+      } finally {
+        if (submitBtn2) {
+          submitBtn2.disabled = false;
+          submitBtn2.innerHTML = originalText;
+        }
+      }
+    }); // end submit handler
+  }
+
   const phoneInput = document.getElementById('id_phone_number');
   const verifyUserBtn = document.getElementById('btn-verify-user');
   const userCard = document.getElementById('user-verification-card');

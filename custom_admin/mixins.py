@@ -10,6 +10,7 @@ def user_has_portal_permission(user, resource, action='view'):
     Check if a user has a specific permission on a portal resource.
     - Superusers always pass.
     - Must be authenticated and staff/admin.
+    - Checks standard Django model permissions (app_label.action).
     - Checks assigned PortalGroup permissions.
     - Falls back to StaffPermission model flags for backwards compatibility.
     """
@@ -21,6 +22,12 @@ def user_has_portal_permission(user, resource, action='view'):
 
     if not (getattr(user, 'is_staff', False) or getattr(user, 'is_admin', False)):
         return False
+
+    # Check standard Django Model permissions (e.g. 'wallet.adjust_wallet', 'payments.approve_withdrawal')
+    if '.' in resource:
+        app_label = resource.split('.')[0].lower()
+        if user.has_perm(f"{app_label}.{action}"):
+            return True
 
     # Check PortalGroup permissions
     has_group_perm = PortalPermission.objects.filter(
@@ -57,7 +64,7 @@ def user_has_portal_permission(user, resource, action='view'):
     if resource_app == 'summary' or resource in ['wallet.BonusConfig', 'users.ReferralConfig', 'users.RoleUpgradeConfig']:
         return getattr(staff_perm, 'can_manage_site_config', False)
 
-    if resource == 'support.SupportTicket':
+    if resource_app == 'notifications' or resource == 'support.SupportTicket':
         return getattr(staff_perm, 'can_manage_notifications', False)
 
     return False

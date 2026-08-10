@@ -96,7 +96,7 @@ class WithdrawalDetailView(PortalPermissionMixin, View):
 
 
 class WithdrawalApproveView(PortalPermissionMixin, View):
-    required_permission = ('payments.Withdrawal', 'change')
+    required_permission = ('payments.Withdrawal', 'approve_withdrawal')
 
     def post(self, request, pk):
         withdrawal = get_object_or_404(Withdrawal.objects.select_related('user'), pk=pk)
@@ -191,6 +191,10 @@ class AdminTransferListView(PortalPermissionMixin, View):
         })
 
     def post(self, request):
+        from custom_admin.mixins import user_has_portal_permission
+        if not user_has_portal_permission(request.user, 'payments.AdminTransfer', 'initiate_admin_transfer'):
+            return JsonResponse({'status': 'error', 'message': 'You do not have permission to initiate admin bank transfers.'}, status=403)
+
         admin_pin = request.POST.get('admin_pin', '').strip()
         if not admin_pin:
             return JsonResponse({'status': 'error', 'message': 'Admin Security PIN is required.'}, status=400)

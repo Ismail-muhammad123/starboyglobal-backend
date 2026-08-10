@@ -3,46 +3,114 @@
 {% block page_title %}All Education Variations & Pricing{% endblock %}
 {% block content %}
 <div class="space-y-6">
+
+  <!-- Header Controls Bar -->
   <div class="portal-card p-4 flex flex-col md:flex-row items-center justify-between gap-4">
     <div>
       <h3 class="font-bold text-white text-sm">All Education PIN Variations</h3>
-      <p class="text-xs text-slate-400">Click any price cell to edit inline.</p>
+      <p class="text-xs text-slate-400">Filter by service or provider to view and edit variation pricing.</p>
     </div>
-    <input type="text" data-table-search="table-education-variations" placeholder="Filter variations..." class="portal-input text-xs w-64">
+
+    <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+      <!-- Search Form -->
+      <form method="GET" class="flex items-center gap-2 flex-1 md:flex-initial">
+        <input type="text" name="search" value="{{ search_query }}" placeholder="Filter variations..." class="portal-input text-xs w-44">
+        <button type="submit" class="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-xs">Search</button>
+      </form>
+
+      <!-- Service Filter -->
+      <select onchange="updateQueryParam('service', this.value)" class="portal-input text-xs">
+        <option value="" {% if not service_filter %}selected{% endif %}>All Services</option>
+        {% for s in services %}
+          <option value="{{ s.pk }}" {% if service_filter == s.pk|stringformat:'s' %}selected{% endif %}>{{ s.service_name }}</option>
+        {% endfor %}
+      </select>
+
+      <!-- Provider Filter -->
+      <select onchange="updateQueryParam('provider', this.value)" class="portal-input text-xs">
+        <option value="" {% if not provider_filter %}selected{% endif %}>All Providers</option>
+        {% for p in providers %}
+          <option value="{{ p.pk }}" {% if provider_filter == p.pk|stringformat:'s' %}selected{% endif %}>{{ p.get_name_display }}</option>
+        {% endfor %}
+      </select>
+
+      <!-- Status Filter -->
+      <select onchange="updateQueryParam('status', this.value)" class="portal-input text-xs">
+        <option value="" {% if not status_filter %}selected{% endif %}>All Status</option>
+        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Active Only</option>
+        <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>Inactive Only</option>
+      </select>
+
+      <!-- Sort Dropdown -->
+      <select onchange="updateQueryParam('sort', this.value)" class="portal-input text-xs">
+        <option value="name" {% if sort_query == 'name' %}selected{% endif %}>Name (A-Z)</option>
+        <option value="name_desc" {% if sort_query == 'name_desc' %}selected{% endif %}>Name (Z-A)</option>
+        <option value="cost" {% if sort_query == 'cost' %}selected{% endif %}>Cost (Low-High)</option>
+        <option value="cost_desc" {% if sort_query == 'cost_desc' %}selected{% endif %}>Cost (High-Low)</option>
+        <option value="price" {% if sort_query == 'price' %}selected{% endif %}>Price (Low-High)</option>
+        <option value="price_desc" {% if sort_query == 'price_desc' %}selected{% endif %}>Price (High-Low)</option>
+        <option value="sales_desc" {% if sort_query == 'sales_desc' %}selected{% endif %}>Sales (Most First)</option>
+        <option value="sales" {% if sort_query == 'sales' %}selected{% endif %}>Sales (Least First)</option>
+      </select>
+    </div>
   </div>
+
   <div class="portal-card overflow-hidden">
     <div class="overflow-x-auto">
       <table id="table-education-variations" class="w-full text-left text-xs text-slate-300">
-        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)] select-none">
           <tr>
             <th class="p-3">Service</th>
-            <th class="p-3">Variation Name</th>
+            <th class="p-3">Provider</th>
+            <th class="p-3 cursor-pointer hover:text-white" onclick="updateQueryParam('sort', '{% if sort_query == 'name' %}name_desc{% else %}name{% endif %}')">
+              Variation Name {% if sort_query == 'name' %}▲{% elif sort_query == 'name_desc' %}▼{% endif %}
+            </th>
             <th class="p-3">Variation ID</th>
-            <th class="p-3">Cost Price</th>
-            <th class="p-3">Customer Price</th>
-            <th class="p-3">Agent Price</th>
+            <th class="p-3 cursor-pointer hover:text-white" onclick="updateQueryParam('sort', '{% if sort_query == 'cost' %}cost_desc{% else %}cost{% endif %}')">
+              Cost Price {% if sort_query == 'cost' %}▲{% elif sort_query == 'cost_desc' %}▼{% endif %}
+            </th>
+            <th class="p-3 cursor-pointer hover:text-white" onclick="updateQueryParam('sort', '{% if sort_query == 'price' %}price_desc{% else %}price{% endif %}')">
+              Customer Price {% if sort_query == 'price' %}▲{% elif sort_query == 'price_desc' %}▼{% endif %}
+            </th>
+            <th class="p-3 cursor-pointer hover:text-white" onclick="updateQueryParam('sort', '{% if sort_query == 'agent' %}agent_desc{% else %}agent{% endif %}')">
+              Agent Price {% if sort_query == 'agent' %}▲{% elif sort_query == 'agent_desc' %}▼{% endif %}
+            </th>
             <th class="p-3">Developer Price</th>
+            <th class="p-3 cursor-pointer hover:text-white" onclick="updateQueryParam('sort', '{% if sort_query == 'sales_desc' %}sales{% else %}sales_desc{% endif %}')">
+              Sales {% if sort_query == 'sales_desc' %}▼{% elif sort_query == 'sales' %}▲{% endif %}
+            </th>
             <th class="p-3">Status</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-800">
           {% for v in variations %}
-            <tr class="hover:bg-slate-800/40">
+            <tr onclick="window.location.href='{% url "portal:education_variation_detail" v.pk %}'" class="hover:bg-slate-800/40 cursor-pointer transition-colors">
               <td class="p-3 font-semibold text-emerald-400">{{ v.service.service_name }}</td>
+              <td class="p-3 text-slate-400 text-[11px]">{{ v.service.provider.get_name_display|default:"—" }}</td>
               <td class="p-3 font-bold text-white">{{ v.name }}</td>
               <td class="p-3 font-mono text-slate-400">{{ v.variation_id }}</td>
-              <td class="p-3 font-mono text-slate-300 inline-edit-cell cursor-pointer hover:bg-slate-800" data-field="cost_price" data-value="{{ v.cost_price }}" data-endpoint="{% url 'portal:education_variation_detail' v.pk %}">₦{{ v.cost_price|floatformat:2 }}</td>
-              <td class="p-3 font-mono font-bold text-emerald-400 inline-edit-cell cursor-pointer hover:bg-slate-800" data-field="selling_price" data-value="{{ v.selling_price }}" data-endpoint="{% url 'portal:education_variation_detail' v.pk %}">₦{{ v.selling_price|floatformat:2 }}</td>
-              <td class="p-3 font-mono font-bold text-blue-400 inline-edit-cell cursor-pointer hover:bg-slate-800" data-field="agent_price" data-value="{{ v.agent_price }}" data-endpoint="{% url 'portal:education_variation_detail' v.pk %}">₦{{ v.agent_price|floatformat:2 }}</td>
-              <td class="p-3 font-mono font-bold text-purple-400 inline-edit-cell cursor-pointer hover:bg-slate-800" data-field="developer_price" data-value="{{ v.developer_price }}" data-endpoint="{% url 'portal:education_variation_detail' v.pk %}">₦{{ v.developer_price|floatformat:2 }}</td>
+              <td class="p-3 font-mono text-slate-300 inline-edit-cell cursor-pointer hover:bg-slate-800" onclick="event.stopPropagation()" data-field="cost_price" data-value="{{ v.cost_price }}" data-endpoint="{% url 'portal:education_variation_detail' v.pk %}">₦{{ v.cost_price|floatformat:2 }}</td>
+              <td class="p-3 font-mono font-bold text-emerald-400 inline-edit-cell cursor-pointer hover:bg-slate-800" onclick="event.stopPropagation()" data-field="selling_price" data-value="{{ v.selling_price }}" data-endpoint="{% url 'portal:education_variation_detail' v.pk %}">₦{{ v.selling_price|floatformat:2 }}</td>
+              <td class="p-3 font-mono font-bold text-blue-400 inline-edit-cell cursor-pointer hover:bg-slate-800" onclick="event.stopPropagation()" data-field="agent_price" data-value="{{ v.agent_price }}" data-endpoint="{% url 'portal:education_variation_detail' v.pk %}">₦{{ v.agent_price|floatformat:2 }}</td>
+              <td class="p-3 font-mono font-bold text-purple-400 inline-edit-cell cursor-pointer hover:bg-slate-800" onclick="event.stopPropagation()" data-field="developer_price" data-value="{{ v.developer_price }}" data-endpoint="{% url 'portal:education_variation_detail' v.pk %}">₦{{ v.developer_price|floatformat:2 }}</td>
+              <td class="p-3 font-mono font-bold text-amber-400">{{ v.sales_count|default:0 }}</td>
               <td class="p-3"><span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase {% if v.is_active %}badge-success{% else %}badge-danger{% endif %}">{% if v.is_active %}Active{% else %}Inactive{% endif %}</span></td>
             </tr>
           {% empty %}
-            <tr><td colspan="8" class="p-8 text-center text-slate-500">No education variations found.</td></tr>
+            <tr><td colspan="10" class="p-8 text-center text-slate-500">No education variations found matching your criteria.</td></tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
+    {% include 'custom_admin/includes/pagination.html' with page_obj=variations per_page=per_page %}
   </div>
 </div>
+
+<script>
+  function updateQueryParam(key, val) {
+    const url = new URL(window.location.href);
+    if (val) { url.searchParams.set(key, val); } else { url.searchParams.delete(key); }
+    window.location.href = url.toString();
+  }
+</script>
 {% endblock %}

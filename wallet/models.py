@@ -26,6 +26,11 @@ class Wallet(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        permissions = [
+            ("adjust_wallet", "Can adjust user wallet balance manually"),
+        ]
+
     def __str__(self):
         return f"{self.user.full_name}'s wallet"
 
@@ -70,6 +75,12 @@ class WalletTransaction(models.Model):
     receiver_bank_name = models.CharField(max_length=100, blank=True, null=True)
 
     timestamp = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['-timestamp']
+        permissions = [
+            ("adjust_wallet", "Can adjust user wallet balance manually"),
+        ]
 
     def __str__(self):
         return f"{self.transaction_type} of {self.amount} on {self.timestamp.date()} for {self.user.email}"

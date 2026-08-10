@@ -53,6 +53,12 @@ class Withdrawal(models.Model):
     processed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='processed_withdrawals')
     remarks = models.TextField(blank=True, null=True)
 
+    class Meta:
+        ordering = ['-created_at']
+        permissions = [
+            ("approve_withdrawal", "Can accept or reject user withdrawal requests"),
+        ]
+
     def __str__(self):
         return f"Withdrawal {self.amount} by {self.user.full_name}"
 
@@ -123,6 +129,12 @@ class AdminTransfer(models.Model):
     remarks = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        permissions = [
+            ("initiate_admin_transfer", "Can initiate administrative bank transfers"),
+        ]
 
     def __str__(self):
         return f"Admin Transfer {self.amount} to {self.beneficiary.name}"

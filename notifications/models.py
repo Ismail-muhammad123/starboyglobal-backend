@@ -21,6 +21,9 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        permissions = [
+            ("send_notification", "Can send notifications and announcements to users"),
+        ]
 
     def __str__(self):
         return f"{self.get_channel_display()}: {self.title}"
@@ -77,6 +80,12 @@ class Announcement(models.Model):
     expires_at = models.DateTimeField(null=True, blank=True)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="created_announcements")
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        permissions = [
+            ("send_announcement", "Can create and broadcast announcements"),
+        ]
 
     def __str__(self):
         return self.title

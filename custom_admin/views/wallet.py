@@ -94,7 +94,7 @@ class TransactionListView(PortalPermissionMixin, View):
 
 
 class ManualTransactionView(PortalPermissionMixin, View):
-    required_permission = ('wallet.WalletTransaction', 'add')
+    required_permission = ('wallet.WalletTransaction', 'adjust_wallet')
 
     def get(self, request):
         user_phone = request.GET.get('user', '')

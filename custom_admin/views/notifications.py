@@ -15,7 +15,7 @@ User = get_user_model()
 # ── Send Notification ─────────────────────────────────────────────────────────
 
 class SendNotificationView(PortalPermissionMixin, View):
-    required_permission = ('notifications.Announcement', 'add')
+    required_permission = ('notifications.Notification', 'send_notification')
 
     TARGET_OPTIONS = [
         ('all',      'All Users',      '👥'),
@@ -87,7 +87,7 @@ class SendNotificationView(PortalPermissionMixin, View):
 # ── Notification Log ──────────────────────────────────────────────────────────
 
 class NotificationLogView(PortalPermissionMixin, View):
-    required_permission = ('notifications.Announcement', 'view')
+    required_permission = ('notifications.Notification', 'view')
 
     def get(self, request):
         qs = (
@@ -200,7 +200,7 @@ class AnnouncementListView(PortalPermissionMixin, View):
 # ── Announcement Create ───────────────────────────────────────────────────────
 
 class AnnouncementCreateView(PortalPermissionMixin, View):
-    required_permission = ('notifications.Announcement', 'add')
+    required_permission = ('notifications.Announcement', 'send_announcement')
 
     def get(self, request):
         return render(request, 'custom_admin/notifications/announcement_form.html', {

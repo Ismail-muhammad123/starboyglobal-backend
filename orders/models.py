@@ -337,6 +337,11 @@ class Purchase(models.Model):
     
     time = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        ordering = ['-time']
+        permissions = [
+            ("manual_purchase", "Can execute manual VTU purchases"),
+        ]
 
     def __str__(self):
         return f"{self.purchase_type} purchase to {self.beneficiary}"
