@@ -55,7 +55,7 @@ def user_has_portal_permission(user, resource, action='view'):
     if resource_app in ['wallet']:
         return getattr(staff_perm, 'can_manage_wallets', False)
 
-    if resource in ['payments.Deposit', 'payments.Withdrawal', 'payments.PaystackConfig']:
+    if resource_app == 'payments' or resource in ['payments.Deposit', 'payments.Withdrawal', 'payments.PaystackConfig']:
         return getattr(staff_perm, 'can_manage_payments', False)
 
     if resource in ['payments.AdminTransfer', 'payments.AdminTransferBeneficiary']:
