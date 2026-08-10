@@ -158,6 +158,7 @@ class RevenueChartDataView(PortalLoginRequired, View):
         today = timezone.now().date()
         labels = []
         revenue_data = []
+        cost_data = []
         profit_data = []
 
         for i in range(days - 1, -1, -1):
@@ -166,15 +167,25 @@ class RevenueChartDataView(PortalLoginRequired, View):
 
             day_qs = Purchase.objects.filter(status='success', time__date=date_val)
             vol = float(day_qs.aggregate(s=Sum('amount'))['s'] or 0)
-            prof = SummaryDashboard._calculate_profit(day_qs)
+            prof = float(day_qs.aggregate(s=Sum('profit'))['s'] or 0)
+            if prof == 0 and vol > 0:
+                prof = SummaryDashboard._calculate_profit(day_qs)
+
+            cost = float(day_qs.aggregate(s=Sum('cost_price'))['s'] or 0)
+            if cost == 0 and vol > 0:
+                cost = max(0.0, vol - prof)
 
             revenue_data.append(vol)
+            cost_data.append(cost)
             profit_data.append(prof)
 
         return JsonResponse({
             'labels': labels,
             'datasets': [
-                {'label': 'Revenue (₦)', 'data': revenue_data, 'borderColor': '#3B82F6', 'backgroundColor': 'rgba(59, 130, 246, 0.15)'},
-                {'label': 'Profit (₦)', 'data': profit_data, 'borderColor': '#10B981', 'backgroundColor': 'rgba(16, 185, 129, 0.15)'}
+                {'label': 'Revenue (₦)', 'data': revenue_data, 'borderColor': '#3B82F6', 'backgroundColor': 'rgba(59, 130, 246, 0.10)', 'fill': False},
+                {'label': 'Cost (₦)', 'data': cost_data, 'borderColor': '#EF4444', 'backgroundColor': 'rgba(239, 68, 68, 0.10)', 'fill': False},
+                {'label': 'Profit / Loss (₦)', 'data': profit_data, 'borderColor': '#10B981', 'backgroundColor': 'rgba(16, 185, 129, 0.10)', 'fill': False}
             ]
         })
+
+

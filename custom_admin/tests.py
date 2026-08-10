@@ -47,3 +47,17 @@ class CustomAdminTests(TestCase):
         response = self.client.get(reverse('portal:dashboard'))
         self.assertEqual(response.status_code, 302)
         self.assertTrue(response.url.startswith(reverse('portal:login')))
+
+    def test_revenue_chart_data_endpoint(self):
+        self.client.login(username='08000000000', password='superuserpass')
+        response = self.client.get(reverse('portal:chart_revenue'))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn('labels', data)
+        self.assertIn('datasets', data)
+        self.assertEqual(len(data['datasets']), 3)
+        self.assertEqual(data['datasets'][0]['label'], 'Revenue (₦)')
+        self.assertEqual(data['datasets'][1]['label'], 'Cost (₦)')
+        self.assertEqual(data['datasets'][2]['label'], 'Profit / Loss (₦)')
+
+

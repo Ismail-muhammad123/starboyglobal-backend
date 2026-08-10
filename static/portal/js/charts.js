@@ -19,17 +19,30 @@ window.PortalCharts = (function () {
     if (typeof Chart === 'undefined') return null;
     const colors = getThemeColors();
 
-    const formattedDataSets = dataSets.map((ds) => ({
-      label: ds.label,
-      data: ds.data,
-      borderColor: ds.borderColor || colors.accent,
-      backgroundColor: ds.backgroundColor || colors.accentBg,
-      fill: ds.fill !== undefined ? ds.fill : true,
-      tension: 0.35,
-      borderWidth: 2.5,
-      pointRadius: 3,
-      pointHoverRadius: 6
-    }));
+    const formattedDataSets = dataSets.map((ds) => {
+      const isProfitLoss = ds.label && ds.label.includes('Profit');
+      const baseConfig = {
+        label: ds.label,
+        data: ds.data,
+        borderColor: ds.borderColor || colors.accent,
+        backgroundColor: ds.backgroundColor || colors.accentBg,
+        fill: ds.fill !== undefined ? ds.fill : true,
+        tension: 0.35,
+        borderWidth: 2.5,
+        pointRadius: 3,
+        pointHoverRadius: 6
+      };
+
+      if (isProfitLoss) {
+        baseConfig.segment = {
+          borderColor: (c) => ((c.p0.parsed.y < 0 || c.p1.parsed.y < 0) ? '#EF4444' : '#10B981')
+        };
+        baseConfig.pointBackgroundColor = (c) => (c.raw < 0 ? '#EF4444' : '#10B981');
+        baseConfig.pointBorderColor = (c) => (c.raw < 0 ? '#EF4444' : '#10B981');
+      }
+
+      return { ...baseConfig, ...ds };
+    });
 
     const chart = new Chart(ctx, {
       type: 'line',
@@ -44,6 +57,17 @@ window.PortalCharts = (function () {
           tooltip: {
             mode: 'index',
             intersect: false,
+            callbacks: {
+              label: function(context) {
+                let label = context.dataset.label || '';
+                if (label) label += ': ';
+                if (context.parsed.y !== null) {
+                  const val = context.parsed.y;
+                  label += (val < 0 ? '-₦' + Math.abs(val).toLocaleString() : '₦' + val.toLocaleString());
+                }
+                return label;
+              }
+            }
           }
         },
         scales: {
@@ -55,7 +79,7 @@ window.PortalCharts = (function () {
             grid: { color: colors.border, drawBorder: false },
             ticks: {
               color: colors.text,
-              callback: (val) => '₦' + val.toLocaleString()
+              callback: (val) => (val < 0 ? '-₦' + Math.abs(val).toLocaleString() : '₦' + val.toLocaleString())
             }
           }
         }
