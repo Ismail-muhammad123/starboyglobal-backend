@@ -170,9 +170,16 @@ class AdminWithdrawalViewSet(viewsets.ModelViewSet):
         if withdrawal.status != 'PENDING':
             return Response({"error": f"Cannot approve withdrawal in {withdrawal.status} state"}, status=400)
             
-        pin = request.data.get('otp') or request.data.get('pin')
-        if not request.user.check_password(pin):
-            return Response({"error": "Invalid authorization PIN"}, status=403)
+        pin = request.data.get('otp') or request.data.get('pin') or request.data.get('admin_pin')
+        if not pin:
+            return Response({"error": "Security PIN is required to approve withdrawal"}, status=400)
+
+        if request.user.is_superuser:
+            if not request.user.check_password(pin):
+                return Response({"error": "Invalid Login Password/PIN"}, status=403)
+        else:
+            if not request.user.check_transaction_pin(pin):
+                return Response({"error": "Invalid Admin Security PIN"}, status=403)
 
         net_amount, total_charge = calculate_net_withdrawal_amount(withdrawal.amount)
         if net_amount <= 0:

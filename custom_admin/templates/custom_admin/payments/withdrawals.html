@@ -87,7 +87,7 @@
                   Details
                 </a>
                 {% if w.status == 'PENDING' %}
-                  <button onclick="approveWithdrawal('{{ w.pk }}')" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-semibold text-[11px]">
+                  <button onclick="openApproveModal('{{ w.pk }}')" class="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-semibold text-[11px]">
                     Approve
                   </button>
                   <button onclick="openRejectModal('{{ w.pk }}', '₦{{ w.amount|floatformat:2 }}')" class="px-2 py-1 bg-red-600 hover:bg-red-500 text-white rounded font-semibold text-[11px]">
@@ -114,6 +114,42 @@
     {% endif %}
   </div>
 
+</div>
+
+<!-- Approval Modal -->
+<div id="approve-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div class="portal-card max-w-md w-full p-6 space-y-4 bg-slate-900 border-slate-700 shadow-2xl">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+      <h3 class="font-bold text-white text-base">Approve Withdrawal Request</h3>
+      <button onclick="closeApproveModal()" class="text-slate-400 hover:text-white text-xl">&times;</button>
+    </div>
+
+    <form id="approve-form" onsubmit="submitApproval(event)" class="space-y-4 text-xs">
+      <input type="hidden" id="approve-withdrawal-id" value="">
+      
+      <div>
+        <label class="block font-semibold text-slate-300 uppercase mb-1">
+          {% if request.user.is_superuser %}
+            Login Password / PIN <span class="text-red-400">*</span>
+          {% else %}
+            Admin Security PIN <span class="text-red-400">*</span>
+          {% endif %}
+        </label>
+        <input type="password" id="approve-admin-pin" required class="portal-input w-full text-xs font-mono"
+          placeholder="{% if request.user.is_superuser %}Enter your login password{% else %}Enter your security PIN{% endif %}">
+      </div>
+
+      <div>
+        <label class="block font-semibold text-slate-300 uppercase mb-1">Remarks (Optional)</label>
+        <input type="text" id="approve-remarks" class="portal-input w-full text-xs" placeholder="Approved by admin">
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+        <button type="button" onclick="closeApproveModal()" class="px-4 py-2 bg-slate-800 text-slate-300 rounded font-semibold text-xs">Cancel</button>
+        <button type="submit" id="btn-submit-approve" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded text-xs shadow">Confirm & Initiate Transfer</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <!-- Rejection Modal -->
@@ -150,7 +186,65 @@
 
 {% block extra_js %}
 <script>
+  let activeApproveId = null;
   let activeRejectId = null;
+
+  function openApproveModal(id) {
+    activeApproveId = id;
+    document.getElementById('approve-withdrawal-id').value = id;
+    document.getElementById('approve-admin-pin').value = '';
+    document.getElementById('approve-remarks').value = 'Approved by admin';
+    document.getElementById('approve-modal').classList.remove('hidden');
+    document.getElementById('approve-modal').classList.add('flex');
+    document.getElementById('approve-admin-pin').focus();
+  }
+
+  function closeApproveModal() {
+    document.getElementById('approve-modal').classList.add('hidden');
+    document.getElementById('approve-modal').classList.remove('flex');
+  }
+
+  async function submitApproval(e) {
+    e.preventDefault();
+    const pin = document.getElementById('approve-admin-pin').value.trim();
+    const remarks = document.getElementById('approve-remarks').value.trim() || 'Approved by admin';
+
+    if (!pin) {
+      PortalForms.toast('Please enter your security PIN / password.', 'error');
+      return;
+    }
+
+    const btn = document.getElementById('btn-submit-approve');
+    btn.disabled = true;
+    btn.textContent = 'Processing…';
+
+    try {
+      const formData = new FormData();
+      formData.append('action_type', 'APPROVED');
+      formData.append('admin_pin', pin);
+      formData.append('remarks', remarks);
+
+      const res = await fetch(`/portal/payments/withdrawals/${activeApproveId}/approve/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': PortalForms.getCookie('csrftoken') },
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok && data.status !== 'error') {
+        PortalForms.toast(data.message, 'success');
+        closeApproveModal();
+        setTimeout(() => location.reload(), 600);
+      } else {
+        PortalForms.toast(data.message || 'Error approving withdrawal.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Confirm & Initiate Transfer';
+      }
+    } catch {
+      PortalForms.toast('Action failed.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Confirm & Initiate Transfer';
+    }
+  }
 
   function openRejectModal(id, amountText) {
     activeRejectId = id;
@@ -168,30 +262,6 @@
   function closeRejectModal() {
     document.getElementById('reject-modal').classList.add('hidden');
     document.getElementById('reject-modal').classList.remove('flex');
-  }
-
-  async function approveWithdrawal(withdrawalId) {
-    if (!confirm('Are you sure you want to APPROVE this withdrawal?')) return;
-    try {
-      const formData = new FormData();
-      formData.append('action_type', 'APPROVED');
-      formData.append('remarks', 'Approved by admin');
-
-      const res = await fetch(`/portal/payments/withdrawals/${withdrawalId}/approve/`, {
-        method: 'POST',
-        headers: { 'X-CSRFToken': PortalForms.getCookie('csrftoken') },
-        body: formData
-      });
-      const data = await res.json();
-      if (res.ok && data.status !== 'error') {
-        PortalForms.toast(data.message, 'success');
-        setTimeout(() => location.reload(), 600);
-      } else {
-        PortalForms.toast(data.message || 'Error approving withdrawal.', 'error');
-      }
-    } catch {
-      PortalForms.toast('Action failed.', 'error');
-    }
   }
 
   async function submitRejection(e) {

@@ -118,6 +118,17 @@ class WithdrawalApproveView(PortalPermissionMixin, View):
         from notifications.utils import NotificationService
 
         if action_type == 'APPROVED':
+            admin_pin = request.POST.get('admin_pin', '').strip() or request.POST.get('pin', '').strip()
+            if not admin_pin:
+                return JsonResponse({'status': 'error', 'message': 'Security PIN is required to approve withdrawal.'}, status=400)
+
+            if request.user.is_superuser:
+                if not request.user.check_password(admin_pin):
+                    return JsonResponse({'status': 'error', 'message': 'Invalid Login Password/PIN.'}, status=403)
+            else:
+                if not request.user.check_transaction_pin(admin_pin):
+                    return JsonResponse({'status': 'error', 'message': 'Invalid Admin Security PIN.'}, status=403)
+
             # Initiate Paystack transfer if not already initiated
             if not withdrawal.transfer_code:
                 net_amount, total_charge = calculate_net_withdrawal_amount(withdrawal.amount)
