@@ -30,8 +30,7 @@ class WithdrawalApprovalPinTests(TestCase):
         self.customer = User.objects.create_user(phone_number="08011111111", password="pass", is_active=True)
         self.superuser = User.objects.create_superuser(phone_number="08022222222", password="superpassword123")
         self.staff_user = User.objects.create_user(phone_number="08033333333", password="staffpassword123", is_staff=True, is_active=True)
-        self.staff_user.transaction_pin = "1234"
-        self.staff_user.save()
+        self.staff_user.set_transaction_pin("1234")
 
         # Grant payment management permission to staff user
         StaffPermission.objects.create(user=self.staff_user, can_manage_payments=True)
