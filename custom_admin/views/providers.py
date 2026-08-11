@@ -214,14 +214,51 @@ class ProviderServiceConfigListView(PortalPermissionMixin, View):
             'selected_service_type': service_type or ''
         })
 
-    def post(self, request, pk):
-        config = get_object_or_404(ProviderServiceConfig, pk=pk)
-        config.customer_margin_value = request.POST.get('customer_margin_value', 0)
-        config.agent_margin_value = request.POST.get('agent_margin_value', 0)
-        config.developer_margin_value = request.POST.get('developer_margin_value', 0)
-        config.catalogue_source = request.POST.get('catalogue_source', 'db')
+    def post(self, request, pk=None):
+        config_id = pk or request.POST.get('config_id')
+        if config_id:
+            config = get_object_or_404(ProviderServiceConfig, pk=config_id)
+        else:
+            provider_id = request.POST.get('provider_id')
+            service_type = request.POST.get('service_type')
+            if not provider_id or not service_type:
+                return JsonResponse({'status': 'error', 'message': 'Provider and Service Type are required.'}, status=400)
+            
+            provider = get_object_or_404(VTUProviderConfig, pk=provider_id)
+            config, _ = ProviderServiceConfig.objects.get_or_create(
+                provider=provider,
+                service_type=service_type
+            )
+
+        if 'catalogue_source' in request.POST:
+            config.catalogue_source = request.POST.get('catalogue_source', 'db')
+        
+        if 'customer_margin_type' in request.POST:
+            config.customer_margin_type = request.POST.get('customer_margin_type', 'flat')
+        try:
+            if 'customer_margin_value' in request.POST:
+                config.customer_margin_value = float(request.POST.get('customer_margin_value', 0))
+        except (ValueError, TypeError): pass
+
+        if 'agent_margin_type' in request.POST:
+            config.agent_margin_type = request.POST.get('agent_margin_type', 'flat')
+        try:
+            if 'agent_margin_value' in request.POST:
+                config.agent_margin_value = float(request.POST.get('agent_margin_value', 0))
+        except (ValueError, TypeError): pass
+
+        if 'developer_margin_type' in request.POST:
+            config.developer_margin_type = request.POST.get('developer_margin_type', 'flat')
+        try:
+            if 'developer_margin_value' in request.POST:
+                config.developer_margin_value = float(request.POST.get('developer_margin_value', 0))
+        except (ValueError, TypeError): pass
+
         config.save()
-        return JsonResponse({'status': 'success', 'message': 'Margin updated.'})
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Service margin for {config.provider.get_name_display()} ({config.get_service_type_display()}) saved successfully.'
+        })
 
 
 class ServiceRoutingListView(PortalPermissionMixin, View):
