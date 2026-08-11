@@ -142,14 +142,25 @@ class ProviderDetailView(PortalPermissionMixin, View):
 
     def get(self, request, pk):
         provider = get_object_or_404(VTUProviderConfig, pk=pk)
-        service_configs = ensure_provider_service_configs(provider)
+        service_configs = ProviderServiceConfig.objects.filter(provider=provider)
+        configured_types = set(service_configs.values_list('service_type', flat=True))
+        missing_service_types = [(code, label) for code, label in SERVICE_TYPES if code not in configured_types]
+
         return render(request, 'custom_admin/providers/detail.html', {
             'provider': provider,
-            'service_configs': service_configs
+            'service_configs': service_configs,
+            'missing_service_types': missing_service_types,
+            'all_service_types': SERVICE_TYPES,
         })
 
     def post(self, request, pk):
         provider = get_object_or_404(VTUProviderConfig, pk=pk)
+        
+        # Handle "Add Missing Service Margins" trigger
+        if request.POST.get('action') == 'add_missing_services':
+            ensure_provider_service_configs(provider)
+            return JsonResponse({'status': 'success', 'message': f'All missing service margins created for {provider.get_name_display()}.'})
+
         provider.is_active = request.POST.get('is_active') == 'on' or request.POST.get('is_active') == 'true'
         provider.api_key = request.POST.get('api_key', '').strip()
         provider.user_id = request.POST.get('user_id', '').strip()
@@ -164,25 +175,6 @@ class ProviderDetailView(PortalPermissionMixin, View):
         except ValueError: pass
         provider.auto_refund_on_failure = request.POST.get('auto_refund_on_failure') == 'on' or request.POST.get('auto_refund_on_failure') == 'true'
         provider.save()
-
-        # Update inline service configs & margins
-        for stype, _ in SERVICE_TYPES:
-            cfg, _ = ProviderServiceConfig.objects.get_or_create(provider=provider, service_type=stype)
-            if f'catalogue_source_{stype}' in request.POST:
-                cfg.catalogue_source = request.POST.get(f'catalogue_source_{stype}', 'db')
-                cfg.customer_margin_type = request.POST.get(f'customer_margin_type_{stype}', 'flat')
-                try:
-                    cfg.customer_margin_value = float(request.POST.get(f'customer_margin_value_{stype}', 0.0))
-                except ValueError: pass
-                cfg.agent_margin_type = request.POST.get(f'agent_margin_type_{stype}', 'flat')
-                try:
-                    cfg.agent_margin_value = float(request.POST.get(f'agent_margin_value_{stype}', 0.0))
-                except ValueError: pass
-                cfg.developer_margin_type = request.POST.get(f'developer_margin_type_{stype}', 'flat')
-                try:
-                    cfg.developer_margin_value = float(request.POST.get(f'developer_margin_value_{stype}', 0.0))
-                except ValueError: pass
-                cfg.save()
 
         return JsonResponse({'status': 'success', 'message': f'Provider {provider.get_name_display()} updated successfully.'})
 
@@ -214,6 +206,36 @@ class ProviderServiceConfigListView(PortalPermissionMixin, View):
             'selected_service_type': service_type or ''
         })
 
+
+class ProviderServiceConfigConfigureView(PortalPermissionMixin, View):
+    required_permission = ('orders.ProviderServiceConfig', 'change')
+
+    def get(self, request, pk=None):
+        config = None
+        if pk:
+            config = get_object_or_404(ProviderServiceConfig.objects.select_related('provider'), pk=pk)
+            selected_provider = str(config.provider.id)
+            selected_service_type = config.service_type
+        else:
+            selected_provider = request.GET.get('provider', '')
+            selected_service_type = request.GET.get('service_type', '')
+            if selected_provider and selected_service_type:
+                config = ProviderServiceConfig.objects.filter(
+                    provider_id=selected_provider,
+                    service_type=selected_service_type
+                ).select_related('provider').first()
+
+        all_providers = VTUProviderConfig.objects.all()
+
+        return render(request, 'custom_admin/providers/margin_form.html', {
+            'config': config,
+            'providers': all_providers,
+            'service_types': SERVICE_TYPES,
+            'selected_provider': selected_provider,
+            'selected_service_type': selected_service_type,
+            'redirect_to': request.GET.get('from', '')
+        })
+
     def post(self, request, pk=None):
         config_id = pk or request.POST.get('config_id')
         if config_id:
@@ -230,34 +252,29 @@ class ProviderServiceConfigListView(PortalPermissionMixin, View):
                 service_type=service_type
             )
 
-        if 'catalogue_source' in request.POST:
-            config.catalogue_source = request.POST.get('catalogue_source', 'db')
-        
-        if 'customer_margin_type' in request.POST:
-            config.customer_margin_type = request.POST.get('customer_margin_type', 'flat')
+        config.catalogue_source = request.POST.get('catalogue_source', 'db')
+        config.customer_margin_type = request.POST.get('customer_margin_type', 'flat')
         try:
-            if 'customer_margin_value' in request.POST:
-                config.customer_margin_value = float(request.POST.get('customer_margin_value', 0))
+            config.customer_margin_value = float(request.POST.get('customer_margin_value', 0.0))
         except (ValueError, TypeError): pass
 
-        if 'agent_margin_type' in request.POST:
-            config.agent_margin_type = request.POST.get('agent_margin_type', 'flat')
+        config.agent_margin_type = request.POST.get('agent_margin_type', 'flat')
         try:
-            if 'agent_margin_value' in request.POST:
-                config.agent_margin_value = float(request.POST.get('agent_margin_value', 0))
+            config.agent_margin_value = float(request.POST.get('agent_margin_value', 0.0))
         except (ValueError, TypeError): pass
 
-        if 'developer_margin_type' in request.POST:
-            config.developer_margin_type = request.POST.get('developer_margin_type', 'flat')
+        config.developer_margin_type = request.POST.get('developer_margin_type', 'flat')
         try:
-            if 'developer_margin_value' in request.POST:
-                config.developer_margin_value = float(request.POST.get('developer_margin_value', 0))
+            config.developer_margin_value = float(request.POST.get('developer_margin_value', 0.0))
         except (ValueError, TypeError): pass
 
         config.save()
+
+        redirect_url = f"/portal/providers/{config.provider.id}/" if request.POST.get('redirect_to') == 'provider' else "/portal/providers/margins/"
         return JsonResponse({
             'status': 'success',
-            'message': f'Service margin for {config.provider.get_name_display()} ({config.get_service_type_display()}) saved successfully.'
+            'message': f'Service margin for {config.provider.get_name_display()} ({config.get_service_type_display()}) saved successfully.',
+            'redirect_url': redirect_url
         })
 
 

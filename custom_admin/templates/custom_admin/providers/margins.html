@@ -1,6 +1,7 @@
 {% extends 'custom_admin/base.html' %}
 {% block title %}Service Margins - Starboy Global Admin Dashboard{% endblock %}
 {% block page_title %}Provider Service Margins & Catalogue Source{% endblock %}
+
 {% block content %}
 <div class="space-y-6">
   <div class="portal-card p-4 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -31,9 +32,9 @@
         {% endif %}
       </form>
 
-      <button onclick="openConfigureModal()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded text-xs shadow flex items-center gap-1">
+      <a href="{% url 'portal:provider_service_config_configure' %}" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded text-xs shadow flex items-center gap-1">
         + Configure Margin
-      </button>
+      </a>
     </div>
   </div>
 
@@ -67,20 +68,9 @@
                 {% if c.developer_margin_type == 'percentage' %}{{ c.developer_margin_value }}%{% else %}₦{{ c.developer_margin_value }}{% endif %}
               </td>
               <td class="p-3 text-right">
-                <button onclick="editMargin(this)"
-                  data-id="{{ c.pk }}"
-                  data-provider-id="{{ c.provider.id }}"
-                  data-service-type="{{ c.service_type }}"
-                  data-catalogue-source="{{ c.catalogue_source }}"
-                  data-customer-margin-type="{{ c.customer_margin_type }}"
-                  data-customer-margin-value="{{ c.customer_margin_value }}"
-                  data-agent-margin-type="{{ c.agent_margin_type }}"
-                  data-agent-margin-value="{{ c.agent_margin_value }}"
-                  data-developer-margin-type="{{ c.developer_margin_type }}"
-                  data-developer-margin-value="{{ c.developer_margin_value }}"
-                  class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-semibold text-[11px]">
+                <a href="{% url 'portal:provider_service_config_edit' c.pk %}" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-semibold text-[11px] inline-block">
                   Edit
-                </button>
+                </a>
               </td>
             </tr>
           {% empty %}
@@ -91,206 +81,4 @@
     </div>
   </div>
 </div>
-
-<!-- Edit / Create Margin Modal -->
-<div id="margin-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
-  <div class="portal-card max-w-lg w-full p-6 space-y-4 bg-slate-900 border-slate-700 shadow-2xl">
-    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-      <h3 id="modal-title" class="font-bold text-white text-base">Configure Service Margin</h3>
-      <button onclick="closeMarginModal()" class="text-slate-400 hover:text-white text-xl">&times;</button>
-    </div>
-
-    <form id="margin-form" onsubmit="submitMarginForm(event)" class="space-y-4 text-xs">
-      <input type="hidden" id="margin-config-id" name="config_id" value="">
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-          <label class="block font-semibold text-slate-300 uppercase mb-1">Provider <span class="text-red-400">*</span></label>
-          <select id="margin-provider-id" name="provider_id" required class="portal-input w-full text-xs">
-            <option value="">Select Provider</option>
-            {% for p in providers %}
-              <option value="{{ p.id }}">{{ p.get_name_display }}</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div>
-          <label class="block font-semibold text-slate-300 uppercase mb-1">Service Type <span class="text-red-400">*</span></label>
-          <select id="margin-service-type" name="service_type" required class="portal-input w-full text-xs">
-            <option value="">Select Service</option>
-            {% for code, label in service_types %}
-              <option value="{{ code }}">{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-      </div>
-
-      <div>
-        <label class="block font-semibold text-slate-300 uppercase mb-1">Catalogue Source</label>
-        <select id="margin-catalogue-source" name="catalogue_source" class="portal-input w-full text-xs">
-          <option value="db">Local Database (db)</option>
-          <option value="live">Live from Provider API (live)</option>
-        </select>
-      </div>
-
-      <div class="border-t border-slate-800 pt-3 space-y-3">
-        <h4 class="font-bold text-slate-200 uppercase text-[11px] tracking-wider">Pricing Markup Margins</h4>
-
-        <!-- Customer Margin -->
-        <div class="p-3 bg-slate-800/50 rounded-lg border border-slate-700/60 space-y-2">
-          <span class="font-semibold text-emerald-400">Customer Margin</span>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="text-[10px] text-slate-400 uppercase block mb-1">Type</label>
-              <select id="customer-margin-type" name="customer_margin_type" class="portal-input w-full text-xs">
-                <option value="flat">Flat Amount (₦)</option>
-                <option value="percentage">Percentage (%)</option>
-              </select>
-            </div>
-            <div>
-              <label class="text-[10px] text-slate-400 uppercase block mb-1">Value</label>
-              <input type="number" step="0.01" min="0" id="customer-margin-value" name="customer_margin_value" value="0.00" required class="portal-input w-full text-xs font-mono">
-            </div>
-          </div>
-        </div>
-
-        <!-- Agent Margin -->
-        <div class="p-3 bg-slate-800/50 rounded-lg border border-slate-700/60 space-y-2">
-          <span class="font-semibold text-blue-400">Agent / Reseller Margin</span>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="text-[10px] text-slate-400 uppercase block mb-1">Type</label>
-              <select id="agent-margin-type" name="agent_margin_type" class="portal-input w-full text-xs">
-                <option value="flat">Flat Amount (₦)</option>
-                <option value="percentage">Percentage (%)</option>
-              </select>
-            </div>
-            <div>
-              <label class="text-[10px] text-slate-400 uppercase block mb-1">Value</label>
-              <input type="number" step="0.01" min="0" id="agent-margin-value" name="agent_margin_value" value="0.00" required class="portal-input w-full text-xs font-mono">
-            </div>
-          </div>
-        </div>
-
-        <!-- Developer Margin -->
-        <div class="p-3 bg-slate-800/50 rounded-lg border border-slate-700/60 space-y-2">
-          <span class="font-semibold text-purple-400">Developer API Margin</span>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="text-[10px] text-slate-400 uppercase block mb-1">Type</label>
-              <select id="developer-margin-type" name="developer_margin_type" class="portal-input w-full text-xs">
-                <option value="flat">Flat Amount (₦)</option>
-                <option value="percentage">Percentage (%)</option>
-              </select>
-            </div>
-            <div>
-              <label class="text-[10px] text-slate-400 uppercase block mb-1">Value</label>
-              <input type="number" step="0.01" min="0" id="developer-margin-value" name="developer_margin_value" value="0.00" required class="portal-input w-full text-xs font-mono">
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
-        <button type="button" onclick="closeMarginModal()" class="px-4 py-2 bg-slate-800 text-slate-300 rounded font-semibold text-xs">Cancel</button>
-        <button type="submit" id="btn-submit-margin" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded text-xs shadow">Save Margin Config</button>
-      </div>
-    </form>
-  </div>
-</div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-  function openConfigureModal() {
-    document.getElementById('modal-title').textContent = 'Configure Service Margin';
-    document.getElementById('margin-config-id').value = '';
-    document.getElementById('margin-provider-id').value = '';
-    document.getElementById('margin-provider-id').disabled = false;
-    document.getElementById('margin-service-type').value = '';
-    document.getElementById('margin-service-type').disabled = false;
-    document.getElementById('margin-catalogue-source').value = 'db';
-
-    document.getElementById('customer-margin-type').value = 'flat';
-    document.getElementById('customer-margin-value').value = '0.00';
-    document.getElementById('agent-margin-type').value = 'flat';
-    document.getElementById('agent-margin-value').value = '0.00';
-    document.getElementById('developer-margin-type').value = 'flat';
-    document.getElementById('developer-margin-value').value = '0.00';
-
-    document.getElementById('margin-modal').classList.remove('hidden');
-    document.getElementById('margin-modal').classList.add('flex');
-  }
-
-  function editMargin(btn) {
-    const ds = btn.dataset;
-    document.getElementById('modal-title').textContent = 'Edit Service Margin';
-    document.getElementById('margin-config-id').value = ds.id || '';
-    document.getElementById('margin-provider-id').value = ds.providerId || '';
-    document.getElementById('margin-provider-id').disabled = true;
-    document.getElementById('margin-service-type').value = ds.serviceType || '';
-    document.getElementById('margin-service-type').disabled = true;
-    document.getElementById('margin-catalogue-source').value = ds.catalogueSource || 'db';
-
-    document.getElementById('customer-margin-type').value = ds.customerMarginType || 'flat';
-    document.getElementById('customer-margin-value').value = ds.customerMarginValue || '0.00';
-    document.getElementById('agent-margin-type').value = ds.agentMarginType || 'flat';
-    document.getElementById('agent-margin-value').value = ds.agentMarginValue || '0.00';
-    document.getElementById('developer-margin-type').value = ds.developerMarginType || 'flat';
-    document.getElementById('developer-margin-value').value = ds.developerMarginValue || '0.00';
-
-    document.getElementById('margin-modal').classList.remove('hidden');
-    document.getElementById('margin-modal').classList.add('flex');
-  }
-
-  function closeMarginModal() {
-    document.getElementById('margin-modal').classList.add('hidden');
-    document.getElementById('margin-modal').classList.remove('flex');
-  }
-
-  async function submitMarginForm(e) {
-    e.preventDefault();
-
-    const configId = document.getElementById('margin-config-id').value;
-    const providerId = document.getElementById('margin-provider-id').value;
-    const serviceType = document.getElementById('margin-service-type').value;
-
-    if (!configId && (!providerId || !serviceType)) {
-      PortalForms.toast('Please select provider and service type.', 'error');
-      return;
-    }
-
-    const btn = document.getElementById('btn-submit-margin');
-    btn.disabled = true;
-    btn.textContent = 'Saving…';
-
-    try {
-      const formData = new FormData(document.getElementById('margin-form'));
-      if (!formData.get('provider_id')) formData.append('provider_id', providerId);
-      if (!formData.get('service_type')) formData.append('service_type', serviceType);
-
-      const targetUrl = configId ? `/portal/providers/margins/${configId}/` : '/portal/providers/margins/';
-
-      const res = await fetch(targetUrl, {
-        method: 'POST',
-        headers: { 'X-CSRFToken': PortalForms.getCookie('csrftoken') },
-        body: formData
-      });
-      const data = await res.json();
-      if (res.ok && data.status !== 'error') {
-        PortalForms.toast(data.message || 'Margin saved successfully.', 'success');
-        closeMarginModal();
-        setTimeout(() => location.reload(), 600);
-      } else {
-        PortalForms.toast(data.message || 'Error saving service margin.', 'error');
-        btn.disabled = false;
-        btn.textContent = 'Save Margin Config';
-      }
-    } catch {
-      PortalForms.toast('Action failed.', 'error');
-      btn.disabled = false;
-      btn.textContent = 'Save Margin Config';
-    }
-  }
-</script>
 {% endblock %}

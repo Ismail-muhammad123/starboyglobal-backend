@@ -24,7 +24,7 @@ from custom_admin.views.services import (
 )
 from custom_admin.views.providers import (
     ProviderListView, ProviderDetailView, ProviderCreateView, ProviderServiceConfigListView,
-    ServiceRoutingListView, ProviderSyncTriggerView, ServiceRoutingCreateView
+    ProviderServiceConfigConfigureView, ServiceRoutingListView, ProviderSyncTriggerView, ServiceRoutingCreateView
 )
 from custom_admin.views.wallet import (
     WalletListView, WalletDetailView, TransactionListView, ManualTransactionView, WalletUserLookupView
@@ -131,7 +131,9 @@ urlpatterns = [
     path('providers/<int:pk>/', ProviderDetailView.as_view(), name='provider_detail'),
     path('providers/<int:pk>/sync/', ProviderSyncTriggerView.as_view(), name='provider_sync'),
     path('providers/margins/', ProviderServiceConfigListView.as_view(), name='provider_service_configs'),
+    path('providers/margins/configure/', ProviderServiceConfigConfigureView.as_view(), name='provider_service_config_configure'),
     path('providers/margins/<int:pk>/', ProviderServiceConfigListView.as_view(), name='provider_service_config_detail'),
+    path('providers/margins/<int:pk>/edit/', ProviderServiceConfigConfigureView.as_view(), name='provider_service_config_edit'),
     path('providers/routing/', ServiceRoutingListView.as_view(), name='service_routings'),
     path('providers/routing/add/', ServiceRoutingCreateView.as_view(), name='service_routing_create'),
     path('providers/routing/<int:pk>/', ServiceRoutingListView.as_view(), name='service_routings_detail'),

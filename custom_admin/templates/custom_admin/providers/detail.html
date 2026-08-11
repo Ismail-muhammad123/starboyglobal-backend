@@ -42,7 +42,8 @@
     </div>
   </div>
 
-  <div class="portal-card p-6 max-w-3xl">
+  <!-- API Credentials & Endpoints Form -->
+  <div class="portal-card p-6 max-w-4xl">
     <form method="POST" action="{% url 'portal:provider_detail' provider.pk %}" data-ajax="true" data-reload="true" class="space-y-5">
       {% csrf_token %}
 
@@ -95,76 +96,77 @@
         </div>
       </div>
 
-      <!-- Inline Provider Service Configs & Margins (Django Admin style) -->
-      <div class="border-t border-slate-800 pt-5 space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-          <h4 class="font-bold text-amber-400 text-sm uppercase tracking-wider">Service Catalogue & Margin Settings (Inline)</h4>
-          <span class="text-[11px] text-slate-400">Configure catalogue sources & profit margins per service</span>
-        </div>
-
-        <div class="space-y-4">
-          {% for cfg in service_configs %}
-            <div class="p-4 rounded-lg bg-slate-900/80 border border-slate-800 space-y-3">
-              <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
-                <span class="font-bold text-white text-sm uppercase">{{ cfg.get_service_type_display }} Service Configuration</span>
-                <div class="flex items-center gap-2 text-xs">
-                  <label class="text-slate-400">Catalogue Source:</label>
-                  <select name="catalogue_source_{{ cfg.service_type }}" class="portal-input text-xs py-1">
-                    <option value="db" {% if cfg.catalogue_source == 'db' %}selected{% endif %}>Local Database</option>
-                    <option value="live" {% if cfg.catalogue_source == 'live' %}selected{% endif %}>Live Provider API</option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- Margins Grid -->
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                <!-- Customer Margin -->
-                <div class="p-3 bg-slate-950/40 rounded border border-slate-800 space-y-1">
-                  <span class="font-semibold text-blue-400">Customer Margin</span>
-                  <div class="flex gap-2">
-                    <select name="customer_margin_type_{{ cfg.service_type }}" class="portal-input text-[11px] py-1">
-                      <option value="flat" {% if cfg.customer_margin_type == 'flat' %}selected{% endif %}>Flat (₦)</option>
-                      <option value="percentage" {% if cfg.customer_margin_type == 'percentage' %}selected{% endif %}>Percentage (%)</option>
-                    </select>
-                    <input type="number" step="0.01" name="customer_margin_value_{{ cfg.service_type }}" value="{{ cfg.customer_margin_value|default:0.00 }}" class="portal-input w-full text-xs font-mono py-1">
-                  </div>
-                </div>
-
-                <!-- Agent Margin -->
-                <div class="p-3 bg-slate-950/40 rounded border border-slate-800 space-y-1">
-                  <span class="font-semibold text-purple-400">Agent Margin</span>
-                  <div class="flex gap-2">
-                    <select name="agent_margin_type_{{ cfg.service_type }}" class="portal-input text-[11px] py-1">
-                      <option value="flat" {% if cfg.agent_margin_type == 'flat' %}selected{% endif %}>Flat (₦)</option>
-                      <option value="percentage" {% if cfg.agent_margin_type == 'percentage' %}selected{% endif %}>Percentage (%)</option>
-                    </select>
-                    <input type="number" step="0.01" name="agent_margin_value_{{ cfg.service_type }}" value="{{ cfg.agent_margin_value|default:0.00 }}" class="portal-input w-full text-xs font-mono py-1">
-                  </div>
-                </div>
-
-                <!-- Developer Margin -->
-                <div class="p-3 bg-slate-950/40 rounded border border-slate-800 space-y-1">
-                  <span class="font-semibold text-emerald-400">Developer Margin</span>
-                  <div class="flex gap-2">
-                    <select name="developer_margin_type_{{ cfg.service_type }}" class="portal-input text-[11px] py-1">
-                      <option value="flat" {% if cfg.developer_margin_type == 'flat' %}selected{% endif %}>Flat (₦)</option>
-                      <option value="percentage" {% if cfg.developer_margin_type == 'percentage' %}selected{% endif %}>Percentage (%)</option>
-                    </select>
-                    <input type="number" step="0.01" name="developer_margin_value_{{ cfg.service_type }}" value="{{ cfg.developer_margin_value|default:0.00 }}" class="portal-input w-full text-xs font-mono py-1">
-                  </div>
-                </div>
-              </div>
-            </div>
-          {% endfor %}
-        </div>
-      </div>
-
-      <div class="pt-4 flex justify-end">
-        <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-xs shadow">
-          Save All Config Changes & Margins
+      <div class="pt-2 flex justify-end">
+        <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-lg text-xs shadow">
+          Save Credentials & Bank Settings
         </button>
       </div>
     </form>
+  </div>
+
+  <!-- Provider Service Margins & Catalogue Table -->
+  <div class="portal-card overflow-hidden">
+    <div class="p-4 flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-slate-800 bg-slate-900/60">
+      <div>
+        <h3 class="font-bold text-white text-sm">Provider Service Margins</h3>
+        <p class="text-xs text-slate-400">Catalogue sources and profit margins configured for {{ provider.get_name_display }}.</p>
+      </div>
+
+      <div class="flex items-center gap-2 flex-wrap justify-end">
+        {% if missing_service_types %}
+          <form method="POST" action="{% url 'portal:provider_detail' provider.pk %}" data-ajax="true" data-reload="true" class="inline">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_missing_services">
+            <button type="submit" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded text-xs shadow flex items-center gap-1">
+              <span>+</span> Add Missing Service Margins ({{ missing_service_types|length }} missing)
+            </button>
+          </form>
+        {% endif %}
+
+        <a href="{% url 'portal:provider_service_config_configure' %}?provider={{ provider.id }}&from=provider" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded text-xs shadow flex items-center gap-1">
+          + Configure Margin
+        </a>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-left text-xs text-slate-300">
+        <thead class="bg-slate-900/80 text-slate-400 uppercase text-[10px] tracking-wider border-b border-[var(--border)]">
+          <tr>
+            <th class="p-3">Service Type</th>
+            <th class="p-3">Catalogue Source</th>
+            <th class="p-3">Customer Margin</th>
+            <th class="p-3">Agent Margin</th>
+            <th class="p-3">Developer Margin</th>
+            <th class="p-3 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-800">
+          {% for c in service_configs %}
+            <tr class="hover:bg-slate-800/40">
+              <td class="p-3 uppercase font-bold text-purple-300">{{ c.get_service_type_display }}</td>
+              <td class="p-3 uppercase font-mono text-blue-400">{{ c.get_catalogue_source_display }}</td>
+              <td class="p-3 font-mono font-semibold text-emerald-400">
+                {% if c.customer_margin_type == 'percentage' %}{{ c.customer_margin_value }}%{% else %}₦{{ c.customer_margin_value }}{% endif %}
+              </td>
+              <td class="p-3 font-mono font-semibold text-blue-400">
+                {% if c.agent_margin_type == 'percentage' %}{{ c.agent_margin_value }}%{% else %}₦{{ c.agent_margin_value }}{% endif %}
+              </td>
+              <td class="p-3 font-mono font-semibold text-purple-400">
+                {% if c.developer_margin_type == 'percentage' %}{{ c.developer_margin_value }}%{% else %}₦{{ c.developer_margin_value }}{% endif %}
+              </td>
+              <td class="p-3 text-right space-x-1">
+                <a href="{% url 'portal:provider_service_config_edit' c.pk %}?from=provider" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-semibold text-[11px] inline-block">
+                  Edit Margin
+                </a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="p-8 text-center text-slate-500">No service margins configured for this provider yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 
 </div>
