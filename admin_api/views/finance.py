@@ -21,7 +21,7 @@ from payments.models import AdminTransfer, AdminTransferBeneficiary
 from wallet.models import Wallet
 import requests
 from django.conf import settings
-from wallet.utils import fund_wallet, debit_wallet
+from wallet.utils import fund_wallet, debit_wallet, apply_charges, refund_charges
 from users.models import User
 from payments.utils import PaystackGateway, calculate_net_withdrawal_amount
 
@@ -132,7 +132,15 @@ class AdminDepositViewSet(viewsets.ModelViewSet):
         deposit.remarks = request.data.get('reason', 'Manually confirmed by Admin')
         deposit.save()
         
-        fund_wallet(deposit.user.id, deposit.amount, description=f"Manual Deposit: {deposit.reference}", initiator='admin', initiated_by=request.user)
+        _, deposit_tx = fund_wallet(
+            deposit.user.id,
+            deposit.amount,
+            description=f"Manual Deposit: {deposit.reference}",
+            initiator='admin',
+            initiated_by=request.user,
+            return_tx=True
+        )
+        apply_charges(deposit.user.id, 'deposit', deposit.amount, parent_wallet_tx=deposit_tx, initiator='admin', initiated_by=request.user)
 
         log_admin_action(
             user=request.user,
@@ -183,7 +191,7 @@ class AdminWithdrawalViewSet(viewsets.ModelViewSet):
 
         net_amount, total_charge = calculate_net_withdrawal_amount(withdrawal.amount)
         if net_amount <= 0:
-            return Response({"error": f"Withdrawal amount (₦{withdrawal.amount}) is less than or equal to configured withdrawal charge (₦{total_charge})"}, status=400)
+            return Response({"error": f"Withdrawal amount (₦{withdrawal.amount}) is invalid."}, status=400)
 
         try:
             gateway = PaystackGateway()
@@ -215,6 +223,7 @@ class AdminWithdrawalViewSet(viewsets.ModelViewSet):
                 initiator='admin',
                 initiated_by=request.user
             )
+            refund_charges(withdrawal.reference, initiated_by=request.user)
             return Response(
                 {"status": "FAILED", "message": "Transfer initiation failed. Withdrawal rejected and funds refunded."},
                 status=400
@@ -244,6 +253,7 @@ class AdminWithdrawalViewSet(viewsets.ModelViewSet):
         withdrawal.save()
         
         fund_wallet(withdrawal.user.id, withdrawal.amount, description=f"Refund: Withdrawal rejected ({withdrawal.reference})", initiator='admin', initiated_by=request.user)
+        refund_charges(withdrawal.reference, initiated_by=request.user)
         
         return Response({"status": "REJECTED", "message": "Withdrawal rejected and funds refunded to user."})
 

@@ -10,7 +10,7 @@ from wallet.serializers import (
     WalletTransferResponseSerializer, VerifyRecipientRequestSerializer, VerifyRecipientResponseSerializer, 
     TransferBeneficiarySerializer, ErrorResponseSerializer
 )
-from wallet.utils import fund_wallet, debit_wallet
+from wallet.utils import fund_wallet, debit_wallet, apply_charges, refund_charges, validate_balance_for_transaction
 from notifications.utils import NotificationService
 from payments.models import Withdrawal
 from payments.utils import PaystackGateway, calculate_net_withdrawal_amount
@@ -30,6 +30,11 @@ class InitiateBankTransferView(APIView):
         if config and not config.withdrawals_enabled:
             return Response({"error": "Withdrawals are currently disabled"}, status=403)
 
+        # Validate balance against amount + blocking charges
+        is_valid, total_required, err_msg = validate_balance_for_transaction(user.id, 'transfer_others', amount)
+        if not is_valid:
+            return Response({"error": err_msg}, status=400)
+
         # Get sender virtual account details
         sender_account_name = None
         sender_account_number = None
@@ -48,12 +53,14 @@ class InitiateBankTransferView(APIView):
         receiver_bank_name = serializer.validated_data['bank_name']
 
         ref = f"WTH-{uuid.uuid4().hex[:12].upper()}"
+        wallet_tx = None
         try:
             with db_transaction.atomic():
-                debit_wallet(
+                _, wallet_tx = debit_wallet(
                     user.id,
                     amount,
                     description=f"Withdrawal to {receiver_bank_name}",
+                    reference=ref,
                     initiator="self",
                     sender_account_name=sender_account_name,
                     sender_account_number=sender_account_number,
@@ -61,7 +68,9 @@ class InitiateBankTransferView(APIView):
                     receiver_account_name=receiver_account_name,
                     receiver_account_number=receiver_account_number,
                     receiver_bank_name=receiver_bank_name,
+                    return_tx=True
                 )
+                apply_charges(user.id, 'transfer_others', amount, parent_wallet_tx=wallet_tx, initiator='self')
                 withdrawal = Withdrawal.objects.create(
                     user=user,
                     amount=amount,
@@ -78,14 +87,16 @@ class InitiateBankTransferView(APIView):
         if config and config.automatic_withdrawal:
             net_amount, total_charge = calculate_net_withdrawal_amount(amount)
             if net_amount <= 0:
-                refund_err = f"Withdrawal amount (₦{amount}) is less than or equal to configured withdrawal charge (₦{total_charge})."
+                refund_err = f"Withdrawal amount (₦{amount}) is invalid."
                 print(f"[Auto Withdrawal Error]: {refund_err}")
                 fund_wallet(
                     user.id,
                     amount,
-                    description=f"Refund: Withdrawal charge exceeds amount ({ref})",
+                    description=f"Refund: Withdrawal failed ({ref})",
                     initiator='system'
                 )
+                if wallet_tx:
+                    refund_charges(wallet_tx)
                 withdrawal.status = "REJECTED"
                 withdrawal.reason = refund_err
                 withdrawal.save(update_fields=["status", "reason", "updated_at"])
@@ -121,6 +132,8 @@ class InitiateBankTransferView(APIView):
                         receiver_account_number=sender_account_number,
                         receiver_bank_name=sender_bank_name,
                     )
+                    if wallet_tx:
+                        refund_charges(wallet_tx)
                     return Response(
                         {"message": "Withdrawal failed and amount refunded", "reference": ref},
                         status=400
@@ -152,6 +165,12 @@ class WalletTransferView(APIView):
         try: recipient = User.objects.get(phone_number__icontains=search_phone)
         except User.DoesNotExist: return Response({"error": "Recipient not found"}, status=404)
         if sender == recipient: return Response({"error": "Cannot transfer to yourself"}, status=400)
+
+        # Validate sender balance for amount + blocking charges
+        is_valid, total_required, err_msg = validate_balance_for_transaction(sender.id, 'transfer_p2p', amount)
+        if not is_valid:
+            return Response({"error": err_msg}, status=400)
+
         # Get sender virtual account details
         sender_account_name = None
         sender_account_number = None
@@ -176,31 +195,37 @@ class WalletTransferView(APIView):
         except Exception:
             pass
 
-        with db_transaction.atomic():
-            debit_wallet(
-                sender.id,
-                amount,
-                description=f"Transfer to {recipient.phone_number}",
-                initiator='self',
-                sender_account_name=sender_account_name,
-                sender_account_number=sender_account_number,
-                sender_bank_name=sender_bank_name,
-                receiver_account_name=receiver_account_name,
-                receiver_account_number=receiver_account_number,
-                receiver_bank_name=receiver_bank_name,
-            )
-            fund_wallet(
-                recipient.id,
-                amount,
-                description=f"Transfer from {sender.phone_number}",
-                initiator='self',
-                sender_account_name=sender_account_name,
-                sender_account_number=sender_account_number,
-                sender_bank_name=sender_bank_name,
-                receiver_account_name=receiver_account_name,
-                receiver_account_number=receiver_account_number,
-                receiver_bank_name=receiver_bank_name,
-            )
+        try:
+            with db_transaction.atomic():
+                _, sender_tx = debit_wallet(
+                    sender.id,
+                    amount,
+                    description=f"Transfer to {recipient.phone_number}",
+                    initiator='self',
+                    sender_account_name=sender_account_name,
+                    sender_account_number=sender_account_number,
+                    sender_bank_name=sender_bank_name,
+                    receiver_account_name=receiver_account_name,
+                    receiver_account_number=receiver_account_number,
+                    receiver_bank_name=receiver_bank_name,
+                    return_tx=True
+                )
+                fund_wallet(
+                    recipient.id,
+                    amount,
+                    description=f"Transfer from {sender.phone_number}",
+                    initiator='self',
+                    sender_account_name=sender_account_name,
+                    sender_account_number=sender_account_number,
+                    sender_bank_name=sender_bank_name,
+                    receiver_account_name=receiver_account_name,
+                    receiver_account_number=receiver_account_number,
+                    receiver_bank_name=receiver_bank_name,
+                )
+                apply_charges(sender.id, 'transfer_p2p', amount, parent_wallet_tx=sender_tx, initiator='self')
+        except ValueError as exc:
+            return Response({"error": str(exc)}, status=400)
+
         NotificationService.send_from_template(
             sender, 
             "wallet-transfer-sent", 
@@ -212,6 +237,7 @@ class WalletTransferView(APIView):
             {"amount": amount, "sender": sender.full_name or sender.phone_number, "balance": recipient.wallet.balance}
         )
         return Response({"success": True, "message": f"Transferred ₦{amount} to {recipient.full_name}."})
+
 
 class VerifyRecipientView(APIView):
     permission_classes = [permissions.IsAuthenticated]

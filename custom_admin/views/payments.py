@@ -114,7 +114,7 @@ class WithdrawalApproveView(PortalPermissionMixin, View):
             return JsonResponse({'status': 'error', 'message': f'Withdrawal is already {withdrawal.status}.'}, status=400)
 
         from django.db import transaction
-        from wallet.utils import fund_wallet
+        from wallet.utils import fund_wallet, refund_charges
         from notifications.utils import NotificationService
 
         if action_type == 'APPROVED':
@@ -133,7 +133,7 @@ class WithdrawalApproveView(PortalPermissionMixin, View):
             if not withdrawal.transfer_code:
                 net_amount, total_charge = calculate_net_withdrawal_amount(withdrawal.amount)
                 if net_amount <= 0:
-                    err_msg = f"Withdrawal amount (₦{withdrawal.amount}) is less than or equal to configured withdrawal charge (₦{total_charge})."
+                    err_msg = f"Withdrawal amount (₦{withdrawal.amount}) is invalid."
                     print(f"[Withdrawal Approve Error]: {err_msg}")
                     return JsonResponse({'status': 'error', 'message': err_msg}, status=400)
 
@@ -166,6 +166,7 @@ class WithdrawalApproveView(PortalPermissionMixin, View):
                                 initiator='admin',
                                 initiated_by=request.user,
                             )
+                            refund_charges(withdrawal.reference, initiated_by=request.user)
 
                         print(f"[Withdrawal Approval Failed]: Paystack transfer failed for {withdrawal.reference}")
                         logger.error(f"[Withdrawal Approval Failed]: Paystack transfer failed for {withdrawal.reference}")
@@ -201,6 +202,7 @@ class WithdrawalApproveView(PortalPermissionMixin, View):
                         initiator='admin',
                         initiated_by=request.user,
                     )
+                    refund_charges(withdrawal.reference, initiated_by=request.user)
 
                 # Send notification to user
                 notif_reason = remarks or "Rejected by Admin"

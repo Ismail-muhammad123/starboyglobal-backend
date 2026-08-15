@@ -12,20 +12,11 @@ logger = logging.getLogger(__name__)
 
 def calculate_net_withdrawal_amount(amount: float) -> Tuple[float, float]:
     """
-    Given the gross withdrawal amount, calculates and returns (net_transfer_amount, total_charge).
-    Deducts fixed charge + percentage charge defined in SiteConfig.
+    Calculates (transfer_amount, total_charges).
+    Returns (float(amount), 0.0).
     """
-    from summary.models import SiteConfig
-    config = SiteConfig.objects.first()
-    if not config:
-        return float(amount), 0.0
+    return round(float(amount), 2), 0.0
 
-    fixed_charge = float(config.withdrawal_charge_fixed or config.withdrawal_charge or 0.0)
-    percent_charge = float(config.withdrawal_charge_percentage or 0.0)
-
-    total_charge = fixed_charge + (float(amount) * (percent_charge / 100.0))
-    net_transfer_amount = max(0.0, float(amount) - total_charge)
-    return round(net_transfer_amount, 2), round(total_charge, 2)
 
 
 class PaystackGateway:

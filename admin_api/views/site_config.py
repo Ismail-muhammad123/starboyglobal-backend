@@ -60,3 +60,91 @@ class AdminServiceCashbackViewSet(viewsets.ModelViewSet):
     queryset = ServiceCashback.objects.all()
     serializer_class = ServiceCashbackSerializer
     permission_classes = [CanManageSiteConfig]
+
+
+from rest_framework import filters
+from django_filters.rest_framework import DjangoFilterBackend
+from wallet.models import TransactionCharge
+from wallet.utils import calculate_total_charges
+from admin_api.serializers import (
+    TransactionChargeSerializer,
+    TransactionChargeCalculateRequestSerializer,
+    TransactionChargeCalculateResponseSerializer,
+    AdminErrorResponseSerializer
+)
+
+@extend_schema_view(
+    list=extend_schema(tags=["Admin Site Configuration"]),
+    retrieve=extend_schema(tags=["Admin Site Configuration"]),
+    create=extend_schema(tags=["Admin Site Configuration"]),
+    update=extend_schema(tags=["Admin Site Configuration"]),
+    partial_update=extend_schema(tags=["Admin Site Configuration"]),
+    destroy=extend_schema(tags=["Admin Site Configuration"]),
+)
+class AdminTransactionChargeViewSet(viewsets.ModelViewSet):
+    """
+    Manage fee and charge rules for transactions (deposit, withdrawal, transfers).
+    """
+    queryset = TransactionCharge.objects.all().order_by('transaction_type', '-created_at')
+    serializer_class = TransactionChargeSerializer
+    permission_classes = [CanManageSiteConfig]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['transaction_type', 'charge_type', 'is_active', 'block_if_insufficient']
+    search_fields = ['name', 'transaction_type']
+    ordering_fields = ['created_at', 'amount', 'min_transaction_amount']
+
+    @extend_schema(
+        tags=["Admin Site Configuration"],
+        summary="Calculate and preview charges",
+        description="Calculate and preview applicable charges for a given transaction type and amount.",
+        request=TransactionChargeCalculateRequestSerializer,
+        responses={200: TransactionChargeCalculateResponseSerializer, 400: AdminErrorResponseSerializer}
+    )
+    @action(detail=False, methods=['post'], url_path='calculate')
+    def calculate(self, request):
+        serializer = TransactionChargeCalculateRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        txn_type = serializer.validated_data['transaction_type']
+        amount = serializer.validated_data['amount']
+
+        total_charge, breakdown = calculate_total_charges(txn_type, amount)
+        net_amount = amount - total_charge if txn_type == 'withdrawal' else amount + total_charge
+
+        return Response({
+            "transaction_type": txn_type,
+            "amount": amount,
+            "charges": breakdown,
+            "total_charge": total_charge,
+            "net_amount": net_amount
+        })
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        log_admin_action(
+            user=self.request.user,
+            action_type="CREATE_TRANSACTION_CHARGE",
+            description=f"Created transaction charge rule: {instance.name} for {instance.transaction_type}",
+            target=instance,
+            metadata=serializer.data
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        log_admin_action(
+            user=self.request.user,
+            action_type="UPDATE_TRANSACTION_CHARGE",
+            description=f"Updated transaction charge rule: {instance.name}",
+            target=instance,
+            metadata=serializer.data
+        )
+
+    def perform_destroy(self, instance):
+        name = instance.name
+        instance.delete()
+        log_admin_action(
+            user=self.request.user,
+            action_type="DELETE_TRANSACTION_CHARGE",
+            description=f"Deleted transaction charge rule: {name}",
+            target=None
+        )
+

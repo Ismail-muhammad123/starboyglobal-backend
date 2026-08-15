@@ -39,7 +39,7 @@ from custom_admin.views.automation import (
 from custom_admin.views.reports import ReportsIndexView
 from custom_admin.views.settings import (
     SiteConfigView, PaystackConfigView, ReferralConfigView, RoleUpgradeConfigView,
-    CashbackConfigView, PromoCodesView
+    CashbackConfigView, PromoCodesView, TransactionChargesView
 )
 from custom_admin.views.staff import (
     StaffListView, PortalGroupListView, PortalGroupDetailView
@@ -167,6 +167,7 @@ urlpatterns = [
 
     # Settings
     path('settings/site/', SiteConfigView.as_view(), name='site_config'),
+    path('settings/charges/', TransactionChargesView.as_view(), name='transaction_charges'),
     path('settings/paystack/', PaystackConfigView.as_view(), name='paystack_config'),
     path('settings/referrals/', ReferralConfigView.as_view(), name='referral_config'),
     path('settings/role-upgrades/', RoleUpgradeConfigView.as_view(), name='role_upgrade_config'),

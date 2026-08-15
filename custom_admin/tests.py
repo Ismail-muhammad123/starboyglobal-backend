@@ -120,6 +120,39 @@ class CustomAdminTests(TestCase):
         self.assertTrue(v1.is_active)
         self.assertFalse(v2.is_active)
 
+    def test_transaction_charges_portal_view(self):
+        from wallet.models import TransactionCharge
+        self.client.login(username='08000000000', password='superuserpass')
 
+        # GET page
+        res = self.client.get(reverse('portal:transaction_charges'))
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "Transaction Charges Configuration")
 
+        # POST create
+        create_res = self.client.post(reverse('portal:transaction_charges'), {
+            'name': 'Portal Test Charge',
+            'transaction_type': 'transfer_p2p',
+            'charge_type': 'percentage',
+            'amount': '1.5',
+            'cap': '100.00',
+            'min_transaction_amount': '200.00',
+            'max_transaction_amount': '10000.00',
+            'block_if_insufficient': 'on',
+            'is_active': 'on'
+        })
+        self.assertEqual(create_res.status_code, 200)
+        self.assertEqual(create_res.json()['status'], 'success')
+        
+        charge = TransactionCharge.objects.get(name='Portal Test Charge')
+        self.assertEqual(charge.transaction_type, 'transfer_p2p')
+        self.assertEqual(charge.amount, 1.5)
+        self.assertTrue(charge.block_if_insufficient)
 
+        # POST delete
+        del_res = self.client.post(reverse('portal:transaction_charges'), {
+            '_delete': '1',
+            'charge_id': str(charge.pk)
+        })
+        self.assertEqual(del_res.status_code, 200)
+        self.assertFalse(TransactionCharge.objects.filter(pk=charge.pk).exists())

@@ -26,7 +26,8 @@ All endpoints require authentication via Bearer token. Staff or superuser privil
 - [13. Support Tickets](#13-support-tickets)
 - [14. Notifications](#14-notifications)
 - [15. Administrative Transfers](#15-administrative-transfers)
-- [16. Management Commands](#16-management-commands)
+- [16. Transaction Charges](#16-transaction-charges)
+- [17. Management Commands](#17-management-commands)
 
 ---
 
@@ -1171,7 +1172,116 @@ View all administrative transfer logs.
 
 ---
 
-## 16. Management Commands
+## 16. Transaction Charges
+
+Configure fee and charge rules for transactions (`deposit`, `transfer_others`, `transfer_p2p`).
+
+Charges are deducted separately from the user's wallet as linked `WalletTransaction` records (`charge_for`). All charges associated with a transaction are automatically refunded if the transaction fails or is rejected.
+
+### `GET /api/admin/settings/transaction-charges/`
+
+List all transaction charge rules. Supports filtering by `transaction_type`, `charge_type`, `is_active`, and `block_if_insufficient`.
+
+**Permission:** `CanManageSiteConfig`
+
+---
+
+### `POST /api/admin/settings/transaction-charges/`
+
+Create a new transaction charge rule.
+
+**Request:**
+```json
+{
+  "name": "Deposit Processing Fee",
+  "transaction_type": "deposit",
+  "charge_type": "percentage",
+  "amount": "1.50",
+  "cap": "200.00",
+  "min_transaction_amount": "100.00",
+  "max_transaction_amount": "50000.00",
+  "block_if_insufficient": false,
+  "is_active": true
+}
+```
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | Yes | Human-readable name for the charge rule |
+| `transaction_type` | string | Yes | One of: `deposit`, `transfer_others`, `transfer_p2p` |
+| `charge_type` | string | Yes | One of: `flat`, `percentage` |
+| `amount` | decimal | Yes | Flat fee amount in Naira or percentage rate (0–100) |
+| `cap` | decimal | No | Maximum fee cap when `charge_type=percentage` (`null` = no cap) |
+| `min_transaction_amount` | decimal | No (default: 0) | Minimum transaction amount required to apply this charge |
+| `max_transaction_amount` | decimal | No (`null`) | Maximum transaction amount to apply this charge (`null` = no maximum) |
+| `block_if_insufficient` | boolean | No (default: false) | If `true`, prevents transaction if wallet balance is insufficient for amount + charge. If `false`, charge is waived/skipped if balance is insufficient. |
+| `is_active` | boolean | No (default: true) | Toggle rule on or off |
+
+---
+
+### `GET /api/admin/settings/transaction-charges/{id}/`
+
+Retrieve details of a transaction charge rule.
+
+---
+
+### `PUT / PATCH /api/admin/settings/transaction-charges/{id}/`
+
+Update a transaction charge rule.
+
+---
+
+### `DELETE /api/admin/settings/transaction-charges/{id}/`
+
+Delete a transaction charge rule.
+
+---
+
+### `POST /api/admin/settings/transaction-charges/calculate/`
+
+Preview and calculate applicable charges for any transaction type and amount.
+
+**Request:**
+```json
+{
+  "transaction_type": "transfer_others",
+  "amount": "5000.00"
+}
+```
+
+**Response `200`:**
+```json
+{
+  "transaction_type": "transfer_others",
+  "amount": "5000.00",
+  "charges": [
+    {
+      "id": 1,
+      "name": "Bank Transfer Fee",
+      "charge_type": "percentage",
+      "rate_or_amount": "2.00",
+      "cap": "200.00",
+      "computed_amount": "100.00",
+      "block_if_insufficient": true
+    },
+    {
+      "id": 2,
+      "name": "Transfer Stamp Duty",
+      "charge_type": "flat",
+      "rate_or_amount": "50.00",
+      "cap": null,
+      "computed_amount": "50.00",
+      "block_if_insufficient": false
+    }
+  ],
+  "total_charge": "150.00",
+  "net_amount": "4850.00"
+}
+```
+
+---
+
+## 17. Management Commands
 
 ### `python manage.py vtu_automation`
 
@@ -1226,3 +1336,4 @@ Sync services and variations from the ClubKonnect provider.
 | Notification Logs & Announcements (`/notifications/logs/`, `/notifications/announcements/`) | `IsAuthenticated` |
 | Notification Provider Config (`/notifications/providers/`) | `IsSuperUserOnly` |
 | Administrative Transfers (`/transfer/*`) | `CanInitiateTransfers` |
+| Transaction Charges (`/settings/transaction-charges/`) | `CanManageSiteConfig` |

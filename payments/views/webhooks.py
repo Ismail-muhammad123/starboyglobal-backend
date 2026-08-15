@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from wallet.models import VirtualAccount
-from wallet.utils import fund_wallet, process_referral_reward
+from wallet.utils import fund_wallet, process_referral_reward, apply_charges, refund_charges
 from payments.models import Deposit, Withdrawal
 from payments.utils import PaystackGateway
 from summary.models import SiteConfig
@@ -22,16 +22,8 @@ class PaymentWebhookView(APIView):
         event_type, data = request.data['event'], request.data['data']
         if event_type == "charge.success":
             ref, amount = data['reference'], float(data['amount']) / 100
-            config = SiteConfig.objects.first()
-            charge = 0
-            if config:
-                # Prefer new granular charge fields if set, otherwise fallback to legacy crediting_charge
-                fixed_charge = float(config.deposit_charge_fixed) if config.deposit_charge_fixed != 0 else float(config.crediting_charge)
-                percent_charge = (amount * float(config.deposit_charge_percentage)) / 100
-                charge = fixed_charge + percent_charge
             
-            amount_to_fund = max(0, amount - charge)
-            if data['authorization']['channel'] == 'dedicated_nuban':
+            if data.get('authorization', {}).get('channel') == 'dedicated_nuban':
                 acc_num = data['authorization']['receiver_bank_account_number']
                 va = VirtualAccount.objects.get(account_number=acc_num)
                 deposit, created = Deposit.objects.get_or_create(reference=ref, defaults={"user":va.user, "amount":amount, "status":"SUCCESS", "payment_type":"CREDIT"})
@@ -43,9 +35,9 @@ class PaymentWebhookView(APIView):
                     sender_num = auth.get('sender_bank_account_number')
                     sender_bank = auth.get('sender_bank')
                     
-                    fund_wallet(
+                    _, deposit_tx = fund_wallet(
                         deposit.user.id,
-                        amount_to_fund,
+                        amount,
                         "Wallet Top-Up",
                         ref,
                         sender_account_name=sender_name,
@@ -53,14 +45,17 @@ class PaymentWebhookView(APIView):
                         sender_bank_name=sender_bank,
                         receiver_account_name=va.account_name,
                         receiver_account_number=va.account_number,
-                        receiver_bank_name=va.bank_name
+                        receiver_bank_name=va.bank_name,
+                        return_tx=True
                     )
+                    apply_charges(deposit.user.id, 'deposit', amount, parent_wallet_tx=deposit_tx, initiator='system')
                     process_referral_reward(deposit.user, trigger_event='credit', transaction_amount=amount)
             else:
                 deposit = get_object_or_404(Deposit, reference=ref)
                 if deposit.status != "SUCCESS":
                     deposit.status, deposit.amount = "SUCCESS", amount; deposit.save()
-                    fund_wallet(deposit.user.id, amount_to_fund, reference=ref)
+                    _, deposit_tx = fund_wallet(deposit.user.id, amount, reference=ref, return_tx=True)
+                    apply_charges(deposit.user.id, 'deposit', amount, parent_wallet_tx=deposit_tx, initiator='system')
                     process_referral_reward(deposit.user, trigger_event='credit', transaction_amount=amount)
         elif event_type == "dedicatedaccount.assign.success":
             User = get_user_model()
@@ -119,5 +114,6 @@ class PaymentWebhookView(APIView):
                         receiver_account_number=sender_account_number,
                         receiver_bank_name=sender_bank_name,
                     )
+                    refund_charges(withdrawal.reference)
                     NotificationService.send_from_template(withdrawal.user, "withdrawal-failed", {"amount": withdrawal.amount, "bank_name": withdrawal.bank_name, "reason": withdrawal.reason})
         return HttpResponse(status=200)

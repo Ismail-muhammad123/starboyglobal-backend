@@ -177,4 +177,24 @@ class WalletTransactionAdmin(admin.ModelAdmin):
         except Exception as e:
             messages.error(request, f"❌ Transaction failed: {e}")
 
-    
+
+from .models import TransactionCharge
+
+@admin.register(TransactionCharge)
+class TransactionChargeAdmin(admin.ModelAdmin):
+    list_display = (
+        'name',
+        'transaction_type',
+        'charge_type',
+        'amount',
+        'cap',
+        'min_transaction_amount',
+        'max_transaction_amount',
+        'block_if_insufficient',
+        'is_active',
+        'created_at'
+    )
+    list_filter = ('transaction_type', 'charge_type', 'is_active', 'block_if_insufficient')
+    search_fields = ('name',)
+    ordering = ('transaction_type', '-created_at')
+

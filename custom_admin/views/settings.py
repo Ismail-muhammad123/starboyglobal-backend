@@ -185,3 +185,114 @@ class PromoCodesView(PortalPermissionMixin, View):
         )
 
         return JsonResponse({'status': 'success', 'message': f"Promo code '{code}' created."})
+
+
+from wallet.models import TransactionCharge
+
+class TransactionChargesView(PortalPermissionMixin, View):
+    required_permission = ('wallet.TransactionCharge', 'view')
+
+    def get(self, request):
+        charges = TransactionCharge.objects.all().order_by('transaction_type', '-created_at')
+        return render(request, 'custom_admin/settings/transaction_charges.html', {
+            'charges': charges,
+            'transaction_types': TransactionCharge.TRANSACTION_TYPES,
+            'charge_types': TransactionCharge.CHARGE_TYPES,
+        })
+
+    def post(self, request):
+        # --- Delete action ---
+        if request.POST.get('_delete') == '1':
+            charge_id = request.POST.get('charge_id')
+            try:
+                charge = TransactionCharge.objects.get(pk=charge_id)
+                name = charge.name
+                charge.delete()
+                AdminActionLog.objects.create(
+                    admin_user=request.user,
+                    action_type="DELETE_TRANSACTION_CHARGE",
+                    target_model="TransactionCharge",
+                    target_id=str(charge_id),
+                    description=f"Deleted transaction charge: {name}"
+                )
+                return JsonResponse({'status': 'success', 'message': f"Charge rule '{name}' deleted."})
+            except TransactionCharge.DoesNotExist:
+                return JsonResponse({'status': 'error', 'message': 'Charge rule not found.'}, status=404)
+
+        # --- Create / Edit action ---
+        name = request.POST.get('name', '').strip()
+        transaction_type = request.POST.get('transaction_type', '').strip()
+        charge_type = request.POST.get('charge_type', 'flat').strip()
+        
+        if not name:
+            return JsonResponse({'status': 'error', 'message': 'Name is required.'}, status=400)
+        if not transaction_type:
+            return JsonResponse({'status': 'error', 'message': 'Transaction type is required.'}, status=400)
+
+        try:
+            amount = float(request.POST.get('amount', 0))
+            if amount < 0:
+                return JsonResponse({'status': 'error', 'message': 'Amount cannot be negative.'}, status=400)
+            if charge_type == 'percentage' and (amount < 0 or amount > 100):
+                return JsonResponse({'status': 'error', 'message': 'Percentage rate must be between 0 and 100.'}, status=400)
+
+            cap_raw = request.POST.get('cap', '').strip()
+            cap = float(cap_raw) if cap_raw and charge_type == 'percentage' else None
+
+            min_raw = request.POST.get('min_transaction_amount', '').strip()
+            min_amt = float(min_raw) if min_raw else 0.0
+
+            max_raw = request.POST.get('max_transaction_amount', '').strip()
+            max_amt = float(max_raw) if max_raw else None
+
+            if max_amt is not None and max_amt < min_amt:
+                return JsonResponse({'status': 'error', 'message': 'Maximum transaction amount cannot be less than minimum amount.'}, status=400)
+
+        except (ValueError, TypeError) as e:
+            return JsonResponse({'status': 'error', 'message': f'Invalid numeric value: {str(e)}'}, status=400)
+
+        block_if_insufficient = request.POST.get('block_if_insufficient') in ('true', 'on', '1')
+        is_active = request.POST.get('is_active') in ('true', 'on', '1')
+
+        charge_id = request.POST.get('charge_id', '').strip()
+
+        if charge_id:
+            try:
+                charge = TransactionCharge.objects.get(pk=charge_id)
+                charge.name = name
+                charge.transaction_type = transaction_type
+                charge.charge_type = charge_type
+                charge.amount = amount
+                charge.cap = cap
+                charge.min_transaction_amount = min_amt
+                charge.max_transaction_amount = max_amt
+                charge.block_if_insufficient = block_if_insufficient
+                charge.is_active = is_active
+                charge.save()
+                action_desc = "updated"
+            except TransactionCharge.DoesNotExist:
+                return JsonResponse({'status': 'error', 'message': 'Charge rule not found.'}, status=404)
+        else:
+            charge = TransactionCharge.objects.create(
+                name=name,
+                transaction_type=transaction_type,
+                charge_type=charge_type,
+                amount=amount,
+                cap=cap,
+                min_transaction_amount=min_amt,
+                max_transaction_amount=max_amt,
+                block_if_insufficient=block_if_insufficient,
+                is_active=is_active
+            )
+            action_desc = "created"
+
+        AdminActionLog.objects.create(
+            admin_user=request.user,
+            action_type=f"{action_desc.upper()}_TRANSACTION_CHARGE",
+            target_model="TransactionCharge",
+            target_id=str(charge.pk),
+            description=f"{action_desc.capitalize()} transaction charge: {charge.name} ({charge.get_transaction_type_display()})"
+        )
+
+        return JsonResponse({'status': 'success', 'message': f"Transaction charge rule '{charge.name}' {action_desc} successfully."})
+

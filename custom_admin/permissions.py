@@ -90,6 +90,7 @@ RESOURCES_LIST = [
     ('payments.PaystackConfig', 'Paystack Gateway Config'),
     ('summary.SiteConfig', 'Site Configuration'),
     ('summary.ServiceCashback', 'Service Cashback'),
+    ('wallet.TransactionCharge', 'Transaction Charges'),
     ('wallet.BonusConfig', 'Bonus Configuration'),
     ('users.ReferralConfig', 'Referral Configuration'),
     ('users.RoleUpgradeConfig', 'Role Upgrade Configuration'),
@@ -144,6 +145,7 @@ DEFAULT_GROUPS = {
     'Admin': [
         ('summary.SiteConfig', ['view', 'change']),
         ('summary.ServiceCashback', ['view', 'add', 'change', 'delete']),
+        ('wallet.TransactionCharge', ['view', 'add', 'change', 'delete']),
         ('wallet.BonusConfig', ['view', 'add', 'change', 'delete']),
         ('users.ReferralConfig', ['view', 'change']),
         ('users.RoleUpgradeConfig', ['view', 'change']),

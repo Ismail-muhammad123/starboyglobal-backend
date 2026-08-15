@@ -42,6 +42,7 @@ from .views import (
     # New views added today
     AdminWalletViewSet, AdminTransferViewSet, AdminTransferBeneficiaryViewSet,
     AdminPaystackDataViewSet, AdminReferralViewSet, AdminSiteConfigViewSet, AdminServiceCashbackViewSet,
+    AdminTransactionChargeViewSet,
     AdminExportUsersView, AdminExportWalletTransactionsView, AdminExportDepositsView, AdminExportWithdrawalsView, AdminExportPurchasesView,
     # Permissions & Groups
     AdminPermissionViewSet, AdminGroupViewSet, AdminUserPermissionView, AdminUserGroupView,
@@ -91,6 +92,7 @@ router.register(r'admin-transfers/transactions', AdminTransferViewSet, basename=
 router.register(r'analytics/referrals', AdminReferralViewSet, basename='admin-referral-analytics')
 router.register(r'settings/site-config', AdminSiteConfigViewSet, basename='admin-site-config')
 router.register(r'settings/service-cashbacks', AdminServiceCashbackViewSet, basename='admin-service-cashbacks')
+router.register(r'settings/transaction-charges', AdminTransactionChargeViewSet, basename='admin-transaction-charges')
 router.register(r'paystack/data', AdminPaystackDataViewSet, basename='admin-paystack-data')
 router.register(r'permissions/all', AdminPermissionViewSet, basename='admin-permissions')
 router.register(r'permissions/groups', AdminGroupViewSet, basename='admin-groups')
