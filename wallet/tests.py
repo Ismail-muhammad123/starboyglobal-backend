@@ -172,3 +172,112 @@ class TransactionChargeTests(TestCase):
         self.assertEqual(len(refunded_again), 0)
         self.wallet.refresh_from_db()
         self.assertEqual(self.wallet.balance, Decimal("600.00"))
+
+
+from rest_framework.test import APIClient
+from rest_framework import status
+
+
+class WalletChargesAPITests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            phone_number="08099887766",
+            email="charges_test@example.com",
+            password="testpassword123",
+            first_name="Charges",
+            last_name="Tester"
+        )
+        self.client.force_authenticate(user=self.user)
+
+        # Create charge rules
+        TransactionCharge.objects.create(
+            name="P2P Flat Charge",
+            transaction_type="transfer_p2p",
+            charge_type="flat",
+            amount=Decimal("25.00"),
+            min_transaction_amount=Decimal("100.00"),
+            block_if_insufficient=True,
+            is_active=True
+        )
+        TransactionCharge.objects.create(
+            name="Deposit Percent Charge",
+            transaction_type="deposit",
+            charge_type="percentage",
+            amount=Decimal("1.50"),
+            cap=Decimal("200.00"),
+            min_transaction_amount=Decimal("500.00"),
+            block_if_insufficient=False,
+            is_active=True
+        )
+
+    def test_get_charges_p2p(self):
+        response = self.client.get("/api/wallet/charges/", {
+            "transaction_type": "transfer_p2p",
+            "amount": "5000.00"
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data["transaction_type"], "transfer_p2p")
+        self.assertEqual(data["amount"], "5000.00")
+        self.assertEqual(data["total_charge"], "25.00")
+        self.assertEqual(data["total_required"], "5025.00")
+        self.assertEqual(len(data["charges"]), 1)
+        self.assertEqual(data["charges"][0]["name"], "P2P Flat Charge")
+        self.assertEqual(data["charges"][0]["computed_amount"], "25.00")
+
+    def test_get_charges_deposit_percentage_capped(self):
+        # 1.5% of 20,000 = 300, capped at 200
+        response = self.client.get("/api/wallet/charges/", {
+            "transaction_type": "deposit",
+            "amount": "20000.00"
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data["transaction_type"], "deposit")
+        self.assertEqual(data["amount"], "20000.00")
+        self.assertEqual(data["total_charge"], "200.00")
+        self.assertEqual(data["total_required"], "20200.00")
+        self.assertEqual(len(data["charges"]), 1)
+        self.assertEqual(data["charges"][0]["name"], "Deposit Percent Charge")
+        self.assertEqual(data["charges"][0]["computed_amount"], "200.00")
+
+    def test_post_charges_endpoint(self):
+        response = self.client.post("/api/wallet/charges/", {
+            "transaction_type": "transfer_p2p",
+            "amount": 2500.00
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data["transaction_type"], "transfer_p2p")
+        self.assertEqual(data["amount"], "2500.00")
+        self.assertEqual(data["total_charge"], "25.00")
+        self.assertEqual(data["total_required"], "2525.00")
+
+    def test_charges_below_min_amount(self):
+        # Amount 50 is below min_transaction_amount 100
+        response = self.client.get("/api/wallet/charges/", {
+            "transaction_type": "transfer_p2p",
+            "amount": "50.00"
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data["total_charge"], "0.00")
+        self.assertEqual(data["total_required"], "50.00")
+        self.assertEqual(len(data["charges"]), 0)
+
+    def test_invalid_transaction_type(self):
+        response = self.client.get("/api/wallet/charges/", {
+            "transaction_type": "invalid_type",
+            "amount": "1000.00"
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_unauthenticated_request_rejected(self):
+        unauth_client = APIClient()
+        response = unauth_client.get("/api/wallet/charges/", {
+            "transaction_type": "transfer_p2p",
+            "amount": "1000.00"
+        })
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+

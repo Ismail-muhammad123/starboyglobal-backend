@@ -552,6 +552,56 @@ Get details of a specific wallet transaction.
 
 ---
 
+### `GET /api/wallet/charges/` or `POST /api/wallet/charges/`
+
+Retrieve and calculate all applicable charges and fee breakdown for a given transaction type (`deposit`, `transfer_others`, or `transfer_p2p`) and amount.
+
+**Permission:** `IsAuthenticated`
+
+**Query Parameters (`GET`) or Body (`POST`):**
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `transaction_type` | string | Yes | One of `deposit`, `transfer_others`, or `transfer_p2p` |
+| `amount` | decimal | Yes | Transaction amount in Naira (e.g. `5000.00`) |
+
+**Example Request (`GET`):**
+```http
+GET /api/wallet/charges/?transaction_type=transfer_p2p&amount=5000.00
+Authorization: Bearer <token>
+```
+
+**Example Request (`POST`):**
+```json
+{
+  "transaction_type": "transfer_p2p",
+  "amount": 5000.00
+}
+```
+
+**Response `200`:**
+```json
+{
+  "transaction_type": "transfer_p2p",
+  "amount": "5000.00",
+  "charges": [
+    {
+      "id": 1,
+      "name": "P2P Transfer Fee",
+      "charge_type": "flat",
+      "rate_or_amount": "25.00",
+      "cap": null,
+      "computed_amount": "25.00",
+      "block_if_insufficient": true
+    }
+  ],
+  "total_charge": "25.00",
+  "total_required": "5025.00"
+}
+```
+
+---
+
+
 ## 9. Wallet Funding
 
 ### `POST /api/wallet/deposit/`

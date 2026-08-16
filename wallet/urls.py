@@ -4,7 +4,7 @@ from .views import (
     WalletTransactionListView, VirtualAccountDetailView, BankListView, 
     ResolveAccountView, WalletTransferView, VerifyRecipientView,
     InitiateBankTransferView, TransferBeneficiaryListCreateView, 
-    TransferBeneficiaryDeleteView
+    TransferBeneficiaryDeleteView, TransactionChargesView
 )
 
 urlpatterns = [
@@ -13,6 +13,7 @@ urlpatterns = [
     path('transactions/', WalletTransactionListView.as_view(), name='wallet-transactions'),
     path('transactions/<int:pk>/', WalletTransactionDetailView.as_view(), name='wallet-transaction-detail'),
     path('deposit/', InitFundWallet.as_view(), name='initiate-deposit'),
+    path('charges/', TransactionChargesView.as_view(), name='wallet-charges'),
     
     path('p2p-verify/', VerifyRecipientView.as_view(), name='p2p-verify'),
     
@@ -29,3 +30,4 @@ urlpatterns = [
     path('beneficiaries/', TransferBeneficiaryListCreateView.as_view(), name='transfer-beneficiary-list-create'),
     path('beneficiaries/<int:pk>/', TransferBeneficiaryDeleteView.as_view(), name='transfer-beneficiary-delete'),
 ]
+

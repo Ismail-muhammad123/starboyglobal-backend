@@ -5,3 +5,5 @@ from .transfers import (
     InitiateBankTransferView, WalletTransferView, VerifyRecipientView, 
     TransferBeneficiaryListCreateView, TransferBeneficiaryDeleteView
 )
+from .charges import TransactionChargesView
+
