@@ -198,3 +198,76 @@ class CatalogueAndSyncTestCase(TestCase):
             log.delete()
 
 
+class UnlinkedProviderFilteringTestCase(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            phone_number='08012345678',
+            password='testpassword',
+            transaction_pin='1234'
+        )
+        from wallet.models import Wallet
+        self.wallet = Wallet.objects.create(user=self.user, balance=Decimal('1000.00'))
+
+        self.vtpass_provider = VTUProviderConfig.objects.create(name='vtpass', is_active=True)
+        self.ck_provider = VTUProviderConfig.objects.create(name='clubkonnect', is_active=True)
+        
+        self.routing = ServiceRouting.objects.create(
+            service='data',
+            primary_provider=self.vtpass_provider
+        )
+
+        # Services
+        self.svc_vtpass = DataService.objects.create(service_name='MTN (VTPass)', service_id='1', provider=self.vtpass_provider, is_active=True)
+        self.svc_ck = DataService.objects.create(service_name='MTN (ClubKonnect)', service_id='1', provider=self.ck_provider, is_active=True)
+        self.svc_unlinked = DataService.objects.create(service_name='MTN (Unlinked)', service_id='1', provider=None, is_active=True)
+
+        # Variations
+        self.var_vtpass = DataVariation.objects.create(service=self.svc_vtpass, name='1GB VTPass', variation_id='v_vt', selling_price=Decimal('100.00'), cost_price=Decimal('80.00'), is_active=True)
+        self.var_ck = DataVariation.objects.create(service=self.svc_ck, name='1GB CK', variation_id='v_ck', selling_price=Decimal('100.00'), cost_price=Decimal('80.00'), is_active=True)
+        self.var_unlinked = DataVariation.objects.create(service=self.svc_unlinked, name='1GB Unlinked', variation_id='v_un', selling_price=Decimal('100.00'), cost_price=Decimal('80.00'), is_active=True)
+
+    def test_unlinked_services_and_variations_excluded_from_api_list(self):
+        from orders.views.list_views import _active_services_with_routing_fallback, _get_variations_queryset
+        
+        # Test active services query: only returns services for primary routed provider (vtpass), unlinked service is excluded
+        services = list(_active_services_with_routing_fallback(DataService, 'data'))
+        self.assertIn(self.svc_vtpass, services)
+        self.assertNotIn(self.svc_unlinked, services)
+        self.assertNotIn(self.svc_ck, services)
+
+        # Test variations query without param: only returns variations for primary routed provider
+        variations = list(_get_variations_queryset(DataVariation, 'data'))
+        self.assertIn(self.var_vtpass, variations)
+        self.assertNotIn(self.var_unlinked, variations)
+        self.assertNotIn(self.var_ck, variations)
+
+    def test_variations_filtered_by_selected_service_provider(self):
+        from orders.views.list_views import _get_variations_queryset
+
+        # Query specifically for vtpass service PK
+        vtpass_vars = list(_get_variations_queryset(DataVariation, 'data', service_param=self.svc_vtpass.id))
+        self.assertEqual(vtpass_vars, [self.var_vtpass])
+
+        # Query specifically for unlinked service PK -> should return empty list
+        unlinked_vars = list(_get_variations_queryset(DataVariation, 'data', service_param=self.svc_unlinked.id))
+        self.assertEqual(unlinked_vars, [])
+
+    def test_purchase_fails_if_unlinked_provider_without_debiting_wallet(self):
+        from orders.utils.purchase_logic import purchase_data
+
+        res = purchase_data(
+            user=self.user,
+            plan=self.var_unlinked,
+            phone='08012345678',
+            reference='TEST_REF_UNLINKED'
+        )
+
+        self.assertEqual(res['status'], 'failed')
+        self.assertIn('No active provider linked', res['error'])
+
+        # Verify wallet was NOT debited
+        self.wallet.refresh_from_db()
+        self.assertEqual(self.wallet.balance, Decimal('1000.00'))
+
+
+

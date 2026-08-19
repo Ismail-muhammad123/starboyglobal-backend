@@ -113,6 +113,9 @@ def _validate_service_and_plan(purchase_type: str, kwargs: dict):
             return "Airtime service not found."
         if not getattr(network, "is_active", True):
             return "Airtime service is inactive."
+        provider = getattr(network, "provider", None)
+        if not provider or not getattr(provider, "is_active", True):
+            return "No active provider linked to this airtime network."
         return None
 
     if purchase_type == "data":
@@ -122,8 +125,11 @@ def _validate_service_and_plan(purchase_type: str, kwargs: dict):
         if not getattr(plan, "is_active", True):
             return "Data plan is inactive."
         service = getattr(plan, "service", None)
-        if service and not getattr(service, "is_active", True):
+        if not service or not getattr(service, "is_active", True):
             return "Data service is inactive."
+        provider = getattr(service, "provider", None)
+        if not provider or not getattr(provider, "is_active", True):
+            return "No active provider linked to this data plan."
         return None
 
     if purchase_type == "tv":
@@ -133,19 +139,25 @@ def _validate_service_and_plan(purchase_type: str, kwargs: dict):
         if not getattr(variation, "is_active", True):
             return "TV package is inactive."
         service = getattr(variation, "service", None)
-        if service and not getattr(service, "is_active", True):
+        if not service or not getattr(service, "is_active", True):
             return "TV service is inactive."
+        provider = getattr(service, "provider", None)
+        if not provider or not getattr(provider, "is_active", True):
+            return "No active provider linked to this TV package."
         return None
 
     if purchase_type == "electricity":
         variation = kwargs.get("electricity_variation")
-        service = kwargs.get("electricity_service")
+        service = kwargs.get("electricity_service") or (getattr(variation, "service", None) if variation else None)
         if not variation:
             return "Electricity plan not found."
         if not getattr(variation, "is_active", True):
             return "Electricity plan is inactive."
-        if service and not getattr(service, "is_active", True):
+        if not service or not getattr(service, "is_active", True):
             return "Electricity service is inactive."
+        provider = getattr(service, "provider", None)
+        if not provider or not getattr(provider, "is_active", True):
+            return "No active provider linked to this electricity service."
         return None
 
     if purchase_type == "internet":
@@ -155,8 +167,11 @@ def _validate_service_and_plan(purchase_type: str, kwargs: dict):
         if not getattr(variation, "is_active", True):
             return "Internet plan is inactive."
         service = getattr(variation, "service", None)
-        if service and not getattr(service, "is_active", True):
+        if not service or not getattr(service, "is_active", True):
             return "Internet service is inactive."
+        provider = getattr(service, "provider", None)
+        if not provider or not getattr(provider, "is_active", True):
+            return "No active provider linked to this internet package."
         return None
 
     if purchase_type == "education":
@@ -166,8 +181,11 @@ def _validate_service_and_plan(purchase_type: str, kwargs: dict):
         if not getattr(variation, "is_active", True):
             return "Education plan is inactive."
         service = getattr(variation, "service", None)
-        if service and not getattr(service, "is_active", True):
+        if not service or not getattr(service, "is_active", True):
             return "Education service is inactive."
+        provider = getattr(service, "provider", None)
+        if not provider or not getattr(provider, "is_active", True):
+            return "No active provider linked to this education PIN."
         return None
 
     return None
@@ -449,6 +467,17 @@ def purchase_airtime(user, network, phone, amount, reference, promo_code_str=Non
     if not network.is_active:
         return {"status": "failed", "error": "Airtime service is inactive."}
 
+def purchase_airtime(user, network, phone, amount, reference, promo_code_str=None, initiator="self", initiated_by=None):
+    if not _service_enabled("airtime"):
+        return {"status": "failed", "error": "Airtime purchases are currently disabled."}
+    
+    if not network.is_active:
+        return {"status": "failed", "error": "Airtime service is inactive."}
+
+    provider_config = getattr(network, 'provider', None)
+    if not provider_config or not provider_config.is_active:
+        return {"status": "failed", "error": "No active provider linked to this airtime network."}
+
     if user.role == 'developer':
         discount_val = network.developer_price if (hasattr(network, 'developer_price') and network.developer_price > 0) else network.discount
     elif user.role == 'agent':
@@ -496,16 +525,10 @@ def purchase_airtime(user, network, phone, amount, reference, promo_code_str=Non
         "amount": base_amount,
         "reference": reference,
     }
-    # Use the provider assigned to this specific network record directly.
-    provider_config = getattr(network, 'provider', None)
-    if provider_config:
-        res = ProviderRouter.execute_with_provider(provider_config, "buy_airtime", **call_kwargs)
-    else:
-        # Fallback: use the routing table if no provider is attached.
-        res = ProviderRouter.execute_with_fallback("airtime", "buy_airtime", **call_kwargs)
+    res = ProviderRouter.execute_with_provider(provider_config, "buy_airtime", **call_kwargs)
 
     _log_provider_response("airtime", reference, user.id, res)
-    status = "success" if res['status'] == 'SUCCESS' else "failed"
+    status = "success" if res.get('status') == 'SUCCESS' else "failed"
     provider_obj = VTUProviderConfig.objects.filter(name=res.get('provider_used')).first() if res.get('provider_used') else None
     
     return _build_finalize_purchase("airtime", status, res, user, final_amount, phone, reference, initiator, initiated_by, provider_obj, discount, promo_obj, f"{network.service_name} Airtime", {"airtime_service": network}, cost_price=cost_price, profit=profit)
@@ -514,8 +537,12 @@ def purchase_airtime(user, network, phone, amount, reference, promo_code_str=Non
 def purchase_data(user, plan, phone, reference, promo_code_str=None, initiator="self", initiated_by=None):
     if not _service_enabled("data"):
         return {"status": "failed", "error": "Data purchases are currently disabled."}
-    if not plan.is_active or not plan.service.is_active:
+    if not plan.is_active or not plan.service or not plan.service.is_active:
         return {"status": "failed", "error": "Data plan is inactive."}
+
+    provider_config = getattr(plan.service, 'provider', None)
+    if not provider_config or not provider_config.is_active:
+        return {"status": "failed", "error": "No active provider linked to this data plan."}
 
     from orders.serializers.variations import resolve_price
     price_type = 'developer' if user.role == 'developer' else 'agent' if user.role == 'agent' else 'customer'
@@ -555,16 +582,10 @@ def purchase_data(user, plan, phone, reference, promo_code_str=None, initiator="
         "amount": amount,
         "reference": reference,
     }
-    # Use the provider assigned to this specific data service record directly.
-    provider_config = getattr(plan.service, 'provider', None)
-    if provider_config:
-        res = ProviderRouter.execute_with_provider(provider_config, "buy_data", **call_kwargs)
-    else:
-        # Fallback: use the routing table if no provider is attached.
-        res = ProviderRouter.execute_with_fallback("data", "buy_data", **call_kwargs)
+    res = ProviderRouter.execute_with_provider(provider_config, "buy_data", **call_kwargs)
 
     _log_provider_response("data", reference, user.id, res)
-    status = "success" if res['status'] == 'SUCCESS' else "failed"
+    status = "success" if res.get('status') == 'SUCCESS' else "failed"
     provider_obj = VTUProviderConfig.objects.filter(name=res.get('provider_used')).first() if res.get('provider_used') else None
     
     return _build_finalize_purchase("data", status, res, user, final_amount, phone, reference, initiator, initiated_by, provider_obj, discount, promo_obj, f"{plan.service.service_name} Data Bundle", {"data_variation": plan}, cost_price=cost_price, profit=profit)
@@ -573,8 +594,12 @@ def purchase_data(user, plan, phone, reference, promo_code_str=None, initiator="
 def purchase_tv(user, tv_variation, customer_id, reference, promo_code_str=None, initiator="self", initiated_by=None):
     if not _service_enabled("tv"):
         return {"status": "failed", "error": "TV purchases are currently disabled."}
-    if not tv_variation.is_active or not tv_variation.service.is_active:
+    if not tv_variation.is_active or not tv_variation.service or not tv_variation.service.is_active:
         return {"status": "failed", "error": "TV package is inactive."}
+
+    provider_config = getattr(tv_variation.service, 'provider', None)
+    if not provider_config or not provider_config.is_active:
+        return {"status": "failed", "error": "No active provider linked to this TV package."}
 
     from orders.serializers.variations import resolve_price
     price_type = 'developer' if user.role == 'developer' else 'agent' if user.role == 'agent' else 'customer'
@@ -615,10 +640,10 @@ def purchase_tv(user, tv_variation, customer_id, reference, promo_code_str=None,
         "amount": amount,
         "reference": reference,
     }
-    res = ProviderRouter.execute_with_fallback("tv", "buy_tv", **call_kwargs)
+    res = ProviderRouter.execute_with_provider(provider_config, "buy_tv", **call_kwargs)
 
     _log_provider_response("tv", reference, user.id, res)
-    status = "success" if res['status'] == 'SUCCESS' else "failed"
+    status = "success" if res.get('status') == 'SUCCESS' else "failed"
     provider_obj = VTUProviderConfig.objects.filter(name=res.get('provider_used')).first() if res.get('provider_used') else None
     
     return _build_finalize_purchase("tv", status, res, user, final_amount, customer_id, reference, initiator, initiated_by, provider_obj, discount, promo_obj, f"{tv_variation.service.service_name} TV Sub", {"tv_variation": tv_variation}, cost_price=cost_price, profit=profit)
@@ -626,8 +651,12 @@ def purchase_tv(user, tv_variation, customer_id, reference, promo_code_str=None,
 def purchase_electricity(user, electricity_variation, meter_number, amount, reference, promo_code_str=None, initiator="self", initiated_by=None):
     if not _service_enabled("electricity"):
         return {"status": "failed", "error": "Electricity purchases are currently disabled."}
-    if not electricity_variation.is_active or not electricity_variation.service.is_active:
+    if not electricity_variation.is_active or not electricity_variation.service or not electricity_variation.service.is_active:
         return {"status": "failed", "error": "Electricity service is inactive."}
+
+    provider_config = getattr(electricity_variation.service, 'provider', None)
+    if not provider_config or not provider_config.is_active:
+        return {"status": "failed", "error": "No active provider linked to this electricity service."}
 
     if user.role == 'developer':
         discount_val = electricity_variation.developer_price if (hasattr(electricity_variation, 'developer_price') and electricity_variation.developer_price > 0) else electricity_variation.discount
@@ -683,10 +712,10 @@ def purchase_electricity(user, electricity_variation, meter_number, amount, refe
         "amount": base_amount,
         "reference": reference,
     }
-    res = ProviderRouter.execute_with_fallback("electricity", "buy_electricity", **call_kwargs)
+    res = ProviderRouter.execute_with_provider(provider_config, "buy_electricity", **call_kwargs)
 
     _log_provider_response("electricity", reference, user.id, res)
-    status = "success" if res['status'] == 'SUCCESS' else "failed"
+    status = "success" if res.get('status') == 'SUCCESS' else "failed"
     provider_obj = VTUProviderConfig.objects.filter(name=res.get('provider_used')).first() if res.get('provider_used') else None
     
     return _build_finalize_purchase("electricity", status, res, user, final_amount, meter_number, reference, initiator, initiated_by, provider_obj, discount, promo_obj, f"{electricity_variation.service.service_name} Electricity", {"electricity_service": electricity_variation.service, "electricity_variation": electricity_variation}, cost_price=cost_price, profit=profit)
@@ -694,8 +723,12 @@ def purchase_electricity(user, electricity_variation, meter_number, amount, refe
 def purchase_internet(user, internet_variation, phone, reference, promo_code_str=None, initiator="self", initiated_by=None):
     if not _service_enabled("internet"):
         return {"status": "failed", "error": "Internet purchases are currently disabled."}
-    if not internet_variation.is_active or not internet_variation.service.is_active:
+    if not internet_variation.is_active or not internet_variation.service or not internet_variation.service.is_active:
         return {"status": "failed", "error": "Internet service is inactive."}
+
+    provider_config = getattr(internet_variation.service, 'provider', None)
+    if not provider_config or not provider_config.is_active:
+        return {"status": "failed", "error": "No active provider linked to this internet package."}
 
     from orders.serializers.variations import resolve_price
     price_type = 'developer' if user.role == 'developer' else 'agent' if user.role == 'agent' else 'customer'
@@ -735,10 +768,10 @@ def purchase_internet(user, internet_variation, phone, reference, promo_code_str
         "reference": reference,
         "internet_variation": internet_variation
     }
-    res = ProviderRouter.execute_with_fallback("internet", "buy_internet", **call_kwargs)
+    res = ProviderRouter.execute_with_provider(provider_config, "buy_internet", **call_kwargs)
 
     _log_provider_response("internet", reference, user.id, res)
-    status = "success" if res['status'] == 'SUCCESS' else "failed"
+    status = "success" if res.get('status') == 'SUCCESS' else "failed"
     provider_obj = VTUProviderConfig.objects.filter(name=res.get('provider_used')).first() if res.get('provider_used') else None
     
     return _build_finalize_purchase("internet", status, res, user, final_amount, phone, reference, initiator, initiated_by, provider_obj, discount, promo_obj, "Internet Subscription", {"internet_variation": internet_variation}, cost_price=cost_price, profit=profit)
@@ -746,8 +779,12 @@ def purchase_internet(user, internet_variation, phone, reference, promo_code_str
 def purchase_education(user, education_variation, phone, quantity=1, reference=None, promo_code_str=None, initiator="self", initiated_by=None):
     if not _service_enabled("education"):
         return {"status": "failed", "error": "Education purchases are currently disabled."}
-    if not education_variation.is_active or not education_variation.service.is_active:
+    if not education_variation.is_active or not education_variation.service or not education_variation.service.is_active:
         return {"status": "failed", "error": "Education service is inactive."}
+
+    provider_config = getattr(education_variation.service, 'provider', None)
+    if not provider_config or not provider_config.is_active:
+        return {"status": "failed", "error": "No active provider linked to this education PIN."}
 
     from orders.serializers.variations import resolve_price
     price_type = 'developer' if user.role == 'developer' else 'agent' if user.role == 'agent' else 'customer'
@@ -788,10 +825,10 @@ def purchase_education(user, education_variation, phone, quantity=1, reference=N
         "reference": reference,
         "education_variation": education_variation
     }
-    res = ProviderRouter.execute_with_fallback("education", "buy_education", **call_kwargs)
+    res = ProviderRouter.execute_with_provider(provider_config, "buy_education", **call_kwargs)
 
     _log_provider_response("education", reference, user.id, res)
-    status = "success" if res['status'] == 'SUCCESS' else "failed"
+    status = "success" if res.get('status') == 'SUCCESS' else "failed"
     provider_obj = VTUProviderConfig.objects.filter(name=res.get('provider_used')).first() if res.get('provider_used') else None
     
     return _build_finalize_purchase("education", status, res, user, final_amount, phone, reference, initiator, initiated_by, provider_obj, discount, promo_obj, f"{education_variation.name} PIN", {"education_variation": education_variation}, cost_price=cost_price, profit=profit)
@@ -883,7 +920,24 @@ def process_vtu_purchase(user, purchase_type, amount, beneficiary, action, promo
     except ValueError as e:
         return {"status": "failed", "error": f"Wallet debit failed: {e}"}
 
-    # 7. Execute via Router (with fallback/retries)
+    # 7. Execute via Provider
+    provider_config = None
+    if purchase_type == 'airtime' and 'airtime_service' in kwargs:
+        provider_config = getattr(kwargs['airtime_service'], 'provider', None)
+    elif purchase_type == 'data' and 'data_variation' in kwargs:
+        provider_config = getattr(kwargs['data_variation'].service, 'provider', None)
+    elif purchase_type == 'tv' and 'tv_variation' in kwargs:
+        provider_config = getattr(kwargs['tv_variation'].service, 'provider', None)
+    elif purchase_type == 'electricity' and 'electricity_variation' in kwargs:
+        provider_config = getattr(kwargs['electricity_variation'].service, 'provider', None)
+    elif purchase_type == 'internet' and 'internet_variation' in kwargs:
+        provider_config = getattr(kwargs['internet_variation'].service, 'provider', None)
+    elif purchase_type == 'education' and 'education_variation' in kwargs:
+        provider_config = getattr(kwargs['education_variation'].service, 'provider', None)
+
+    if not provider_config or not provider_config.is_active:
+        return {"status": "failed", "error": "No active provider linked to this service or plan."}
+
     call_kwargs = _build_provider_call_kwargs(
         purchase_type=purchase_type,
         amount=amount,
@@ -892,7 +946,6 @@ def process_vtu_purchase(user, purchase_type, amount, beneficiary, action, promo
         kwargs=kwargs,
         user=user,
     )
-    # Provide extra context for providers that accept **kwargs
     if "internet_variation" in kwargs:
         call_kwargs["internet_variation"] = kwargs.get("internet_variation")
     if "education_variation" in kwargs:
@@ -900,15 +953,15 @@ def process_vtu_purchase(user, purchase_type, amount, beneficiary, action, promo
     if "beneficiary" not in call_kwargs:
         call_kwargs["beneficiary"] = beneficiary
 
-    res = ProviderRouter.execute_with_fallback(purchase_type, action, **call_kwargs)
+    res = ProviderRouter.execute_with_provider(provider_config, action, **call_kwargs)
     if isinstance(res, dict):
         res.setdefault("request_data", _json_safe(call_kwargs))
 
     # 8. Handle Outcome
     status = "pending"
-    if res['status'] == 'SUCCESS':
+    if res.get('status') == 'SUCCESS':
         status = "success"
-    elif res['status'] == 'FAILED':
+    elif res.get('status') == 'FAILED':
         status = "failed"
 
     return _build_finalize_purchase(purchase_type, status, res, user, final_amount, beneficiary, reference, initiator, initiated_by, None, discount, promo_obj, service_name, kwargs, cost_price=cost_price, profit=profit)

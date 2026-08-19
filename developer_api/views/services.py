@@ -31,7 +31,7 @@ def get_routed_provider(service):
     """Returns the primary provider for the given service type from ServiceRouting, or None."""
     from orders.models import ServiceRouting
     routing = ServiceRouting.objects.filter(service=service).select_related('primary_provider').first()
-    if routing and routing.primary_provider:
+    if routing and routing.primary_provider and routing.primary_provider.is_active:
         return routing.primary_provider
     return None
 
@@ -86,7 +86,7 @@ class DeveloperAirtimeNetworkListView(APIView):
     permission_classes = [IsDeveloperUser]
 
     def get(self, request):
-        qs = AirtimeNetwork.objects.filter(is_active=True)
+        qs = AirtimeNetwork.objects.filter(is_active=True, provider__isnull=False, provider__is_active=True)
         provider = get_routed_provider('airtime')
         if provider:
             qs = qs.filter(provider=provider)
@@ -114,7 +114,7 @@ class DeveloperDataNetworkListView(APIView):
     permission_classes = [IsDeveloperUser]
 
     def get(self, request):
-        qs = DataService.objects.filter(is_active=True)
+        qs = DataService.objects.filter(is_active=True, provider__isnull=False, provider__is_active=True)
         provider = get_routed_provider('data')
         if provider:
             qs = qs.filter(provider=provider)
@@ -130,7 +130,16 @@ class DeveloperDataPlanListView(APIView):
     permission_classes = [IsDeveloperUser]
 
     def get(self, request, network_id):
-        qs = DataVariation.objects.filter(service_id=network_id, is_active=True)
+        qs = DataVariation.objects.filter(
+            is_active=True,
+            service__is_active=True,
+            service__provider__isnull=False,
+            service__provider__is_active=True
+        )
+        if str(network_id).isdigit():
+            qs = qs.filter(service__id=int(network_id))
+        else:
+            qs = qs.filter(service__service_id=network_id)
         provider = get_routed_provider('data')
         if provider:
             qs = qs.filter(service__provider=provider)
@@ -158,7 +167,7 @@ class DeveloperTVServiceListView(APIView):
     permission_classes = [IsDeveloperUser]
 
     def get(self, request):
-        qs = TVService.objects.filter(is_active=True)
+        qs = TVService.objects.filter(is_active=True, provider__isnull=False, provider__is_active=True)
         provider = get_routed_provider('tv')
         if provider:
             qs = qs.filter(provider=provider)
@@ -174,7 +183,16 @@ class DeveloperTVPackageListView(APIView):
     permission_classes = [IsDeveloperUser]
 
     def get(self, request, service_id):
-        qs = TVVariation.objects.filter(service_id=service_id, is_active=True)
+        qs = TVVariation.objects.filter(
+            is_active=True,
+            service__is_active=True,
+            service__provider__isnull=False,
+            service__provider__is_active=True
+        )
+        if str(service_id).isdigit():
+            qs = qs.filter(service__id=int(service_id))
+        else:
+            qs = qs.filter(service__service_id=service_id)
         provider = get_routed_provider('tv')
         if provider:
             qs = qs.filter(service__provider=provider)
@@ -201,7 +219,7 @@ class DeveloperElectricityServiceListView(APIView):
     permission_classes = [IsDeveloperUser]
 
     def get(self, request):
-        qs = ElectricityService.objects.filter(is_active=True)
+        qs = ElectricityService.objects.filter(is_active=True, provider__isnull=False, provider__is_active=True)
         provider = get_routed_provider('electricity')
         if provider:
             qs = qs.filter(provider=provider)
@@ -217,7 +235,16 @@ class DeveloperElectricityVariationListView(APIView):
     permission_classes = [IsDeveloperUser]
 
     def get(self, request, service_id):
-        qs = ElectricityVariation.objects.filter(service_id=service_id, is_active=True)
+        qs = ElectricityVariation.objects.filter(
+            is_active=True,
+            service__is_active=True,
+            service__provider__isnull=False,
+            service__provider__is_active=True
+        )
+        if str(service_id).isdigit():
+            qs = qs.filter(service__id=int(service_id))
+        else:
+            qs = qs.filter(service__service_id=service_id)
         provider = get_routed_provider('electricity')
         if provider:
             qs = qs.filter(service__provider=provider)
@@ -246,7 +273,7 @@ class DeveloperInternetServiceListView(APIView):
     permission_classes = [IsDeveloperUser]
 
     def get(self, request):
-        qs = InternetService.objects.filter(is_active=True)
+        qs = InternetService.objects.filter(is_active=True, provider__isnull=False, provider__is_active=True)
         provider = get_routed_provider('internet')
         if provider:
             qs = qs.filter(provider=provider)
@@ -262,7 +289,16 @@ class DeveloperInternetPlanListView(APIView):
     permission_classes = [IsDeveloperUser]
 
     def get(self, request, service_id):
-        qs = InternetVariation.objects.filter(service_id=service_id, is_active=True)
+        qs = InternetVariation.objects.filter(
+            is_active=True,
+            service__is_active=True,
+            service__provider__isnull=False,
+            service__provider__is_active=True
+        )
+        if str(service_id).isdigit():
+            qs = qs.filter(service__id=int(service_id))
+        else:
+            qs = qs.filter(service__service_id=service_id)
         provider = get_routed_provider('internet')
         if provider:
             qs = qs.filter(service__provider=provider)
@@ -289,7 +325,7 @@ class DeveloperEducationServiceListView(APIView):
     permission_classes = [IsDeveloperUser]
 
     def get(self, request):
-        qs = EducationService.objects.filter(is_active=True)
+        qs = EducationService.objects.filter(is_active=True, provider__isnull=False, provider__is_active=True)
         provider = get_routed_provider('education')
         if provider:
             qs = qs.filter(provider=provider)
@@ -305,7 +341,16 @@ class DeveloperEducationVariationListView(APIView):
     permission_classes = [IsDeveloperUser]
 
     def get(self, request, service_id):
-        qs = EducationVariation.objects.filter(service_id=service_id, is_active=True)
+        qs = EducationVariation.objects.filter(
+            is_active=True,
+            service__is_active=True,
+            service__provider__isnull=False,
+            service__provider__is_active=True
+        )
+        if str(service_id).isdigit():
+            qs = qs.filter(service__id=int(service_id))
+        else:
+            qs = qs.filter(service__service_id=service_id)
         provider = get_routed_provider('education')
         if provider:
             qs = qs.filter(service__provider=provider)
@@ -322,4 +367,5 @@ class DeveloperEducationVariationListView(APIView):
                 "last_updated": v.updated_at,
             })
         return Response(data)
+
 

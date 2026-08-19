@@ -23,28 +23,71 @@ from orders.utils.pricing import get_provider_service_config, resolve_margin_for
 def _active_services_with_routing_fallback(model, service_type):
     """
     Prefer active services for the routed provider.
-    Also includes services with no provider assigned (legacy/shared catalogue rows).
-    If no rows exist for that provider, gracefully fall back to all active services.
+    Only return services that have an active linked provider.
     """
-    active_qs = model.objects.filter(is_active=True).order_by('id')
+    active_qs = model.objects.filter(
+        is_active=True,
+        provider__isnull=False,
+        provider__is_active=True
+    ).order_by('id')
     routing = ServiceRouting.objects.filter(service=service_type).first()
-    if routing and routing.primary_provider:
-        routed_qs = active_qs.filter(
-            Q(provider=routing.primary_provider) | Q(provider__isnull=True)
-        )
+    if routing and routing.primary_provider and routing.primary_provider.is_active:
+        routed_qs = active_qs.filter(provider=routing.primary_provider)
         if routed_qs.exists():
             return routed_qs
     return active_qs
 
 
-def _filter_variations_by_service_param(queryset, service_param):
+def _get_variations_queryset(model, service_type, service_param=None, network_id=None):
     """
-    Accept both internal PK (`service.id`) and provider service code (`service.service_id`)
-    for compatibility with different clients.
+    Returns variations for a given service category.
+    Strictly enforces that variations match the provider of the selected network/service,
+    or the routed primary provider for that service category.
+    Only variations with a linked, active provider are returned.
     """
-    if not service_param:
-        return queryset
-    return queryset.filter(Q(service__id=service_param) | Q(service__service_id=service_param))
+    routing = ServiceRouting.objects.filter(service=service_type).first()
+    routed_provider = routing.primary_provider if (routing and routing.primary_provider and routing.primary_provider.is_active) else None
+
+    # Base filter: variation active, parent service active, service provider non-null and active
+    qs = model.objects.filter(
+        is_active=True,
+        service__is_active=True,
+        service__provider__isnull=False,
+        service__provider__is_active=True
+    ).order_by('id')
+
+    target_param = network_id or service_param
+
+    if target_param:
+        matched_service = None
+        service_model = model._meta.get_field('service').related_model
+        if str(target_param).isdigit():
+            if routed_provider:
+                matched_service = service_model.objects.filter(
+                    id=int(target_param), provider=routed_provider, is_active=True
+                ).first()
+            if not matched_service:
+                matched_service = service_model.objects.filter(
+                    id=int(target_param), is_active=True
+                ).first()
+
+        if matched_service and matched_service.provider:
+            return qs.filter(service=matched_service, service__provider=matched_service.provider)
+
+        if routed_provider:
+            return qs.filter(
+                Q(service__id=target_param) | Q(service__service_id=target_param),
+                service__provider=routed_provider
+            )
+        else:
+            return qs.filter(Q(service__id=target_param) | Q(service__service_id=target_param))
+
+    if routed_provider:
+        routed_qs = qs.filter(service__provider=routed_provider)
+        if routed_qs.exists():
+            return routed_qs
+
+    return qs
 
 
 def _fetch_live_catalogue_if_enabled(request, service_type, is_variation=False):
@@ -135,12 +178,9 @@ class DataVariationsListView(generics.ListAPIView):
         return super().list(request, *args, **kwargs)
 
     def get_queryset(self):
-        queryset = DataVariation.objects.filter(is_active=True).order_by('id')
         network_id = self.kwargs.get("network_id")
-        if network_id:
-            return queryset.filter(service__id=network_id)
         service_id = self.request.query_params.get("service_id")
-        return _filter_variations_by_service_param(queryset, service_id)
+        return _get_variations_queryset(DataVariation, 'data', service_param=service_id, network_id=network_id)
 
 
 @extend_schema(tags=["Orders - Airtime"])
@@ -191,12 +231,9 @@ class ElectricityVariationListView(generics.ListAPIView):
         return super().list(request, *args, **kwargs)
 
     def get_queryset(self):
-        queryset = ElectricityVariation.objects.filter(is_active=True).order_by('id')
         network_id = self.kwargs.get("network_id")
-        if network_id:
-            return queryset.filter(service__id=network_id)
         service_id = self.request.query_params.get("service_id")
-        return _filter_variations_by_service_param(queryset, service_id)
+        return _get_variations_queryset(ElectricityVariation, 'electricity', service_param=service_id, network_id=network_id)
 
 
 @extend_schema(tags=["Orders - Cable TV"])
@@ -231,12 +268,9 @@ class TVPackagesListView(generics.ListAPIView):
         return super().list(request, *args, **kwargs)
 
     def get_queryset(self):
-        queryset = TVVariation.objects.filter(is_active=True).order_by('id')
         network_id = self.kwargs.get("network_id")
-        if network_id:
-            return queryset.filter(service__id=network_id)
         service_id = self.request.query_params.get("service_id")
-        return _filter_variations_by_service_param(queryset, service_id)
+        return _get_variations_queryset(TVVariation, 'tv', service_param=service_id, network_id=network_id)
 
 
 @extend_schema(tags=["Orders - Internet"])
@@ -271,12 +305,9 @@ class InternetPackagesListView(generics.ListAPIView):
         return super().list(request, *args, **kwargs)
 
     def get_queryset(self):
-        queryset = InternetVariation.objects.filter(is_active=True).order_by('id')
         network_id = self.kwargs.get("network_id")
-        if network_id:
-            return queryset.filter(service__id=network_id)
         service_id = self.request.query_params.get("service_id")
-        return _filter_variations_by_service_param(queryset, service_id)
+        return _get_variations_queryset(InternetVariation, 'internet', service_param=service_id, network_id=network_id)
 
 
 @extend_schema(tags=["Orders - Education"])
@@ -311,11 +342,9 @@ class EducationVariationListView(generics.ListAPIView):
         return super().list(request, *args, **kwargs)
 
     def get_queryset(self):
-        queryset = EducationVariation.objects.filter(is_active=True).order_by('id')
         network_id = self.kwargs.get("network_id")
-        if network_id:
-            return queryset.filter(service__id=network_id)
         service_id = self.request.query_params.get("service_id")
-        return _filter_variations_by_service_param(queryset, service_id)
+        return _get_variations_queryset(EducationVariation, 'education', service_param=service_id, network_id=network_id)
+
 
 
