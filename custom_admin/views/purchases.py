@@ -33,6 +33,16 @@ class PurchaseListView(PortalPermissionMixin, View):
 
         qs = Purchase.objects.all().select_related('user', 'provider')
 
+        user_filter = (request.GET.get('user') or request.GET.get('user_id') or '').strip()
+        target_user_filter = None
+        if user_filter:
+            if user_filter.isdigit():
+                qs = qs.filter(user_id=int(user_filter))
+                target_user_filter = User.objects.filter(pk=int(user_filter)).first()
+            else:
+                qs = qs.filter(user__phone_number=user_filter)
+                target_user_filter = User.objects.filter(phone_number=user_filter).first()
+
         purchase_type = request.GET.get('type')
         if purchase_type:
             qs = qs.filter(purchase_type=purchase_type.lower())
@@ -94,6 +104,8 @@ class PurchaseListView(PortalPermissionMixin, View):
             'end_date': end_date or '',
             'sort_query': sort or 'date_desc',
             'per_page': per_page,
+            'user_filter': user_filter,
+            'target_user_filter': target_user_filter,
         })
 
 

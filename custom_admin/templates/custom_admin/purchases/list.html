@@ -12,6 +12,7 @@
     <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
       <!-- Search Form -->
       <form method="GET" class="flex items-center gap-2 flex-1">
+        {% if user_filter %}<input type="hidden" name="user" value="{{ user_filter }}">{% endif %}
         {% if type_filter %}<input type="hidden" name="type" value="{{ type_filter }}">{% endif %}
         {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
         {% if provider_filter %}<input type="hidden" name="provider" value="{{ provider_filter }}">{% endif %}
@@ -30,6 +31,23 @@
         </a>
       </div>
     </div>
+
+    {% if user_filter %}
+      <div class="flex items-center justify-between p-2.5 bg-blue-950/60 border border-blue-800/60 rounded-lg text-xs">
+        <div class="flex items-center gap-2 text-blue-200">
+          <span>👤</span>
+          <span>
+            Filtering purchases for user:
+            <strong class="text-white font-semibold">
+              {% if target_user_filter %}{{ target_user_filter.full_name|default:target_user_filter.phone_number }} ({{ target_user_filter.phone_number }}){% else %}{{ user_filter }}{% endif %}
+            </strong>
+          </span>
+        </div>
+        <button onclick="updateQueryParam('user', '')" class="text-blue-400 hover:text-white underline font-semibold text-[11px]">
+          Remove User Filter &times;
+        </button>
+      </div>
+    {% endif %}
 
     <!-- Filters & Sort Toolbar -->
     <div class="flex flex-wrap items-center gap-2.5 pt-3 border-t border-slate-800/80 text-xs">
@@ -80,7 +98,7 @@
         <option value="profit" {% if sort_query == 'profit' %}selected{% endif %}>Profit (Low-High)</option>
       </select>
 
-      {% if search_query or type_filter or status_filter or provider_filter or start_date or end_date or sort_query != 'date_desc' %}
+      {% if user_filter or search_query or type_filter or status_filter or provider_filter or start_date or end_date or sort_query != 'date_desc' %}
         <a href="{% url 'portal:purchases_list' %}" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs font-semibold">Clear Filters</a>
       {% endif %}
     </div>
